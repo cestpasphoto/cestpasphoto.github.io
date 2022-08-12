@@ -31,9 +31,7 @@
       }
 
       function setNbChars() {
-        console.log('nbchar')
         n_char = document.getElementById('nbchars').value;
-        console.log(n_char)
         for (let i_word = 0; i_word < 5; i_word++) {
           document.getElementById('try_'+i_word).setAttribute('maxlength', n_char);
           for (let i_char = 0; i_char < 9; i_char++) {
