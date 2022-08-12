@@ -287,210 +287,40 @@
 
   const py_init = `
 from pyodide.http import pyfetch
-from math import log2, sqrt
 import js
 
-max_nb_chars = 10
-base = [3**i for i in range(max_nb_chars+1)]
-max_combinations_to_try = 200000
-min_words = 20
-default_freq = 0.001
-
-estimates = []
-archives = []
-
-json_fr = 'https://raw.githubusercontent.com/cestpasphoto/wordle_solver_french/main/parsed_fr_dictionary.json'
-json_en = 'https://raw.githubusercontent.com/cestpasphoto/wordle_solver_french/main/parsed_en_dictionary.json'
-dico_lang = 'fr'
-response = await pyfetch(json_fr)
-dico = await (response.json())
-dico_n = dico[5]
-dico_n = {w: p for w,p in dico_n.items() if p >= 0.001} # Mode "top"
-dico_n = {w: sqrt(p) for w,p in dico_n.items()} # Mode average
-print(js.n_total_char, ': ', len(dico_n))
-best_words = ', '.join(sorted(dico_n.keys(), key=lambda x: dico_n[x], reverse=True)[:5])
-js.hint_output.innerHTML = f'{len(dico_n)} mot(s) possible(s) dont: {best_words}'
+response = await pyfetch("https://raw.githubusercontent.com/cestpasphoto/wordle_solver_french/main/wordle.py")
+with open("myscript.py", "wb") as f:
+  f.write(await response.bytes())
 `
 
   const py_load_lang = `
-json_url = json_fr if js.lang == 'fr' else json_en
-response = await pyfetch(json_url)
-dico = await (response.json())
-dico_n = dico[js.n_total_char]
-dico_n = {w: p for w,p in dico_n.items() if p >= 0.001} # Mode "top"
-dico_n = {w: sqrt(p) for w,p in dico_n.items()} # Mode average
+import myscript
+
+myscript.max_combinations_to_try = 200000
+myscript.min_words_to_try = 20
+dico_n = await myscript.load_dico_remote(js.lang, js.n_total_char)
+print(len(dico_n))
+dico_n = myscript.adjust_dico(dico_n, True, 'average')
 best_words = ', '.join(sorted(dico_n.keys(), key=lambda x: dico_n[x], reverse=True)[:5])
 js.hint_output.innerHTML = f'{len(dico_n)} mot(s) possible(s) dont: {best_words}'
 `
+
   const py_guess = `
-import numpy as np
+myscript.online_simulation_browser(dico_n)
+  `
 
-# O = rien, 1 = bonne lettre mauvaise place, 2 = bonne lettre, bonne place
-def compute_result(proposed_word, solution_word):
-  result = [0] * len(proposed_word)
-  prop_l, sol_l = list(proposed_word), list(solution_word)
-  # Cherche les lettres bien placées
-  for i, c in enumerate(prop_l):
-    if c == sol_l[i]:
-      result[i] = 2
-      prop_l[i] = sol_l[i] = None
-
-  # Parmi les lettres restantes, cherche les lettres mal placées
-  for i, c in enumerate(prop_l):
-    if c is not None and c in sol_l:
-      sol_l.remove(c)
-      result[i] = 1
-
-  return result
-
-def convert_result(result_list):
-  result_int = [r * b for r, b in zip(result_list, base)]
-  return sum(result_int)
-
-def compute_entropy(dico_n):
-  dico_values = np.array(list(dico_n.values()))
-  dico_values = dico_values[dico_values!=0] / dico_values.sum()
-  entropy = -(dico_values * np.log2(dico_values)).sum()
-  return entropy
-
-def distribution_possibilities(proposed_word, dico_n):
-  distribution = np.zeros(3**(max_nb_chars+1))
-  for solution_word, prob in dico_n.items():
-    result = convert_result( compute_result(proposed_word, solution_word) )
-    distribution[result] += prob
-  # compute entropy
-  distribution = distribution[distribution!=0] / distribution.sum()
-  entropy = -(distribution * np.log2(distribution)).sum()
-  return distribution, entropy
-
-def expected_remaining_moves(dico_solutions, dico_admissible):
-  total = sum([p for _,p in dico_solutions.items() if p > 0])
-  current_entropy = compute_entropy(dico_solutions)
-  print(f'   entropie = {current_entropy:.02f} bit')
-  # js.document.getElementById("output").value = str(f'   entropie = {current_entropy:.02f} bit');
-  # alert('entropie')
-  if len(dico_solutions) * len(dico_admissible) > max_combinations_to_try:
-    nb_words = max(min_words, max_combinations_to_try//len(dico_solutions))
-    sorted_prob = sorted(dico_admissible.values(), reverse=True)
-    dico_admissible = {w:p for w,p in dico_admissible.items() if p >= sorted_prob[nb_words]}
-    print(f'   trop de mots à essayer, je teste les {len(dico_admissible)} plus populaires')  
-  def estimator(w, p):
-    p_normalized = p/total
-    _, entropy = distribution_possibilities(w, dico_solutions)
-    remaining_moves = round( (1-p_normalized) * (1.24+(current_entropy-entropy)*0.71) , 2)
-    #return remaining_moves, current_entropy-entropy
-    return remaining_moves
-
-  entropy_list = [ (word, estimator(word, prob if word in dico_solutions else 0)) for word, prob in dico_admissible.items() ]
-  entropy_list = sorted(entropy_list, key=lambda x: x[1])
-  return entropy_list
-
-def remove_based_on_result(dico_n, proposed_word, result_int):
-  new_dico_n = {
-    w: p for w, p in dico_n.items()
-      if convert_result(compute_result(proposed_word, w)) == result_int
-  }
-  print(f'   taille du dictionnaire {len(dico_n)} --> {len(new_dico_n)}. Mots les plus populaires: {sorted(new_dico_n.keys(), key=lambda x: new_dico_n[x], reverse=True)[:5]}')
-  return new_dico_n
-
-def remove_based_on_first_letter(dico_n, c):
-  new_dico_n = {
-    w: p for w, p in dico_n.items() if w[0] == c
-  }
-  print(f'   taille du dictionnaire {len(dico_n)} -> {sorted(new_dico_n.keys(), key=lambda x: new_dico_n[x], reverse=True)[:5]}')
-  return new_dico_n
-
-def simulation(word_to_find, dico_n):
-  dico_solutions = dico_n
-  best_word_to_try = None
-  while best_word_to_try != word_to_find:
-    best_moves = expected_remaining_moves(dico_solutions, dico_n)
-    best_word_to_try, nb_moves = best_moves[0]
-    if len(best_moves) > 3:
-      print(f'je tente "{best_word_to_try.upper()}" avec {nb_moves} coup(s) estimés, il y avait aussi {best_moves[1]} et {best_moves[2]}')
-    else:
-      print(f'je tente "{best_word_to_try.upper()}" avec {nb_moves} coup(s) estimés')
-    #estimates.append(entropy)
-    result = convert_result(compute_result(best_word_to_try, word_to_find))
-    dico_solutions = remove_based_on_result(dico_solutions, best_word_to_try, result)
-
-  # Archivage infos
-  #for i, entropy in enumerate(estimates[::-1]):
-  # archives.append( (entropy, i+1) )
-  return 'finished'
-
-def just_filter(dico_n):
-  dico_solutions = dico_n
-  trials  = [js.document.getElementById("try_"+str(i)).value for i in range(5)]
-  results = js.results
-  print(trials, results)
-  message = ''
-
-  # Digest user inputs
-  i_last_word = -1
-  for i, (word_trial, trial_result) in enumerate(zip(trials, results)):
-    if len(word_trial) == int(js.n_total_char):
-      print('Input used:', word_trial, trial_result)
-      dico_solutions = remove_based_on_result(dico_solutions, word_trial, trial_result)
-      i_last_word = i
-    else:
-      if len(word_trial) > 0 or trial_result > 0:
-        print('Input not used:', word_trial, trial_result)
-        message += f'Warning: input not used -> {word_trial} {trial_result}'
-  message += f'{len(dico_solutions)} mot(s) possible(s) dont {sorted(dico_solutions.keys(), key=lambda x: dico_solutions[x], reverse=True)[:5]}'
-  best_words = ', '.join(sorted(dico_solutions.keys(), key=lambda x: dico_solutions[x], reverse=True)[:5])
-  js.hint_output.innerHTML = f'{len(dico_solutions)} mot(s) possible(s) dont: {best_words}'
-
-  return message
-
-def online_simulation(dico_n):
-  dico_solutions = dico_n
-  trials  = [js.document.getElementById("try_"+str(i)).value for i in range(5)]
-  results = js.results
-  print(trials, results)
-  message = ''
-
-  # Digest user inputs
-  i_last_word = -1
-  for i, (word_trial, trial_result) in enumerate(zip(trials, results)):
-    if len(word_trial) == int(js.n_total_char):
-      print('Input used:', word_trial, trial_result)
-      dico_solutions = remove_based_on_result(dico_solutions, word_trial, trial_result)
-      i_last_word = i
-    else:
-      if len(word_trial) > 0 or trial_result > 0:
-        print('Input not used:', word_trial, trial_result)
-        message += f'Warning: input not used -> {word_trial} {trial_result}'
-  message += f'{len(dico_solutions)} mot(s) possible(s) dont {sorted(dico_solutions.keys(), key=lambda x: dico_solutions[x], reverse=True)[:5]}'
-  best_words = ', '.join(sorted(dico_solutions.keys(), key=lambda x: dico_solutions[x], reverse=True)[:5])
-  js.hint_output.innerHTML = f'{len(dico_solutions)} mot(s) possible(s) dont: {best_words}'
-
-  # Now compute 
-  best_moves = expected_remaining_moves(dico_solutions, dico_n)
-  best_word_to_try, nb_moves = best_moves[0]
-
-  # Display
-  if len(best_moves) > 3:
-    message += f' - je tente "{best_word_to_try.upper()}" avec {nb_moves} coup(s) estimés, il y avait aussi {best_moves[1]} et {best_moves[2]}'
-  else:
-    message += f' - je tente "{best_word_to_try.upper()}" avec {nb_moves} coup(s) estimés'
-
-  js.document.getElementById("try_"+str(i_last_word+1)).value = best_word_to_try.lower()
-  js.updateButtonsContent(i_last_word+1)
-  return message
-
-online_simulation(dico_n)
-# just_filter(dico_n)
-`
   // init Pyodide
   async function main() {
     let pyodide = await loadPyodide({ fullStdLib : false });
     await pyodide.runPythonAsync(py_init);
     output.value += "Loading numpy...\n";
-    pyodide.loadPackage("numpy").then(() => {
-      output.value += "Ready!\n";
-      button_guess.setAttribute('class', "fluid ui primary massive button");
-    });
+    await pyodide.loadPackage(["numpy", "tqdm"]);
+    console.log("load myscript");
+    myscript = pyodide.pyimport("myscript");
+    console.log("myscript loaded");
+    output.value += "Ready!\n";
+    button_guess.setAttribute('class', "fluid ui primary massive button");
     return pyodide;
   }
 
