@@ -114,19 +114,19 @@
       <div class="three fields">
         <div class="field">
           <div class="ui toggle checkbox">
-            <input type="checkbox" id="opt_rare">
+            <input type="checkbox" id="opt_rare" onchange="changeLangPythonOpt()">
             <label>Autorise les mots rares (déconseillé)</label>
           </div>
         </div>
         <div class="field">
           <div class="ui toggle checkbox">
-            <input type="checkbox" id="opt_hard">
+            <input type="checkbox" id="opt_hard" onchange="changeLangPythonOpt()">
             <label>Wordle en mode difficile (conseillé pour nytimes)</label>
           </div>
         </div>
         <div class="field">
           <div class="ui toggle checkbox">
-            <input type="checkbox" id="opt_best">
+            <input type="checkbox" id="opt_best" onchange="changeLangPythonOpt()">
             <label>Cherche de meilleures solutions, mais plus lent</label>
           </div>
         </div>
@@ -146,7 +146,7 @@
       </div>
     </div>
     <div class="thirteen wide column ">
-      <div class="ui nine big buttons">
+      <div class="ui nine huge buttons">
         <button class="ui disabled button" id="button_0_0" onclick="setColor(0, 0)" >-</button>
         <button class="ui disabled button" id="button_0_1" onclick="setColor(0, 1)" >-</button>
         <button class="ui disabled button" id="button_0_2" onclick="setColor(0, 2)" >-</button>
@@ -167,7 +167,7 @@
       </div>
     </div>
     <div class="thirteen wide column ">
-      <div class="ui nine big buttons">
+      <div class="ui nine huge buttons">
         <button class="ui disabled button" id="button_1_0" onclick="setColor(1, 0)" >-</button>
         <button class="ui disabled button" id="button_1_1" onclick="setColor(1, 1)" >-</button>
         <button class="ui disabled button" id="button_1_2" onclick="setColor(1, 2)" >-</button>
@@ -188,7 +188,7 @@
       </div>
     </div>
     <div class="thirteen wide column ">
-      <div class="ui nine big buttons">
+      <div class="ui nine huge buttons">
         <button class="ui disabled button" id="button_2_0" onclick="setColor(2, 0)" >-</button>
         <button class="ui disabled button" id="button_2_1" onclick="setColor(2, 1)" >-</button>
         <button class="ui disabled button" id="button_2_2" onclick="setColor(2, 2)" >-</button>
@@ -209,7 +209,7 @@
       </div>
     </div>
     <div class="thirteen wide column ">
-      <div class="ui nine big buttons">
+      <div class="ui nine huge buttons">
         <button class="ui disabled button" id="button_3_0" onclick="setColor(3, 0)" >-</button>
         <button class="ui disabled button" id="button_3_1" onclick="setColor(3, 1)" >-</button>
         <button class="ui disabled button" id="button_3_2" onclick="setColor(3, 2)" >-</button>
@@ -230,7 +230,7 @@
       </div>
     </div>
     <div class="thirteen wide column ">
-      <div class="ui nine big buttons">
+      <div class="ui nine huge buttons">
         <button class="ui disabled button" id="button_4_0" onclick="setColor(4, 0)" >-</button>
         <button class="ui disabled button" id="button_4_1" onclick="setColor(4, 1)" >-</button>
         <button class="ui disabled button" id="button_4_2" onclick="setColor(4, 2)" >-</button>
@@ -289,12 +289,25 @@ with open("myscript.py", "wb") as f:
 
   const py_load_lang = `
 import myscript
+base_dico = await myscript.load_dico_remote(js.lang, js.n_total_char)
+print(len(base_dico))
+`
 
-myscript.max_combinations_to_try = 200000
-myscript.min_words_to_try = 20
-dico_n = await myscript.load_dico_remote(js.lang, js.n_total_char)
-print(len(dico_n))
-dico_n = myscript.adjust_dico(dico_n, True, 'average')
+  const py_load_lang_opt = `
+import myscript
+
+if js.document.getElementById('opt_best').checked:
+  myscript.max_combinations_to_try = 2000000
+  myscript.min_words_to_try = 200
+else:
+  myscript.max_combinations_to_try = 400000
+  myscript.min_words_to_try = 40
+
+dico_n = myscript.adjust_dico(
+  base_dico,
+  not(js.document.getElementById('opt_rare').checked),
+  'hard' if js.document.getElementById('opt_best').checked else 'average'
+)
 best_words = ', '.join(sorted(dico_n.keys(), key=lambda x: dico_n[x], reverse=True)[:5])
 js.hint_output.innerHTML = f'{len(dico_n)} mot(s) possible(s) dont: {best_words}'
 `
@@ -323,8 +336,15 @@ myscript.online_simulation_browser_best(dico_solutions, dico_n)
     button_guess.setAttribute('class', "fluid ui primary massive elastic loading button");
     let pyodide = await pyodideReadyPromise;
     await pyodide.runPythonAsync(py_load_lang);
+    await pyodide.runPythonAsync(py_load_lang_opt);
     output.value += "New lang loaded...\n";
     button_guess.setAttribute('class', "fluid ui primary massive button");
+  }
+
+  async function changeLangPythonOpt() {
+    let pyodide = await pyodideReadyPromise;
+    await pyodide.runPythonAsync(py_load_lang_opt);
+    output.value += "Lang options updated...\n";
   }
 
   async function guess() {
