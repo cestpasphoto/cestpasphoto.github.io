@@ -95,24 +95,58 @@
 
   <div class="ui section hidden divider"></div>
   <div class="ui form">
-    <div class="field">
-      <label>Langue et nombre de lettres</label>
-      <div class="ui buttons">
-        <button class="ui tertiary button"><i class="fr flag"></i></button>
-        <button class="ui grey basic button" id="fr5" onclick="setNbChars('fr', 5)">5</button>
-        <button class="ui basic button" id="fr6" onclick="setNbChars('fr', 6)">6</button>
-        <button class="ui basic button" id="fr7" onclick="setNbChars('fr', 7)">7</button>
-        <button class="ui basic button" id="fr8" onclick="setNbChars('fr', 8)">8</button>
-        <button class="ui basic button" id="fr9" onclick="setNbChars('fr', 9)">9</button>
+    <div class="fields">
+      <div class="twelve wide field">
+        <label>Langue et nombre de lettres</label>
+        <div class="ui buttons">
+          <button class="ui tertiary button"><i class="fr flag"></i></button>
+          <button class="ui grey basic button" id="fr5" onclick="setNbChars('fr', 5)">5</button>
+          <button class="ui basic button" id="fr6" onclick="setNbChars('fr', 6)">6</button>
+          <button class="ui basic button" id="fr7" onclick="setNbChars('fr', 7)">7</button>
+          <button class="ui basic button" id="fr8" onclick="setNbChars('fr', 8)">8</button>
+          <button class="ui basic button" id="fr9" onclick="setNbChars('fr', 9)">9</button>
+        </div>
+        <span style="display:inline-block; width:1em;"></span>
+        <div class="ui buttons">
+          <button class="ui tertiary button" ><i class="us flag"></i></button>
+          <button class="ui basic button" id="en5" onclick="setNbChars('en', 5)">5</button>
+          <button class="ui basic button" id="en6" onclick="setNbChars('en', 6)">6</button>
+          <button class="ui basic button" id="en7" onclick="setNbChars('en', 7)">7</button>
+          <button class="ui basic button" id="en8" onclick="setNbChars('en', 8)">8</button>
+          <button class="ui basic button" id="en9" onclick="setNbChars('en', 9)">9</button>
+        </div>
       </div>
-      <span style="display:inline-block; width:1em;"></span>
-      <div class="ui buttons">
-        <button class="ui tertiary button" ><i class="us flag"></i></button>
-        <button class="ui basic button" id="en5" onclick="setNbChars('en', 5)">5</button>
-        <button class="ui basic button" id="en6" onclick="setNbChars('en', 6)">6</button>
-        <button class="ui basic button" id="en7" onclick="setNbChars('en', 7)">7</button>
-        <button class="ui basic button" id="en8" onclick="setNbChars('en', 8)">8</button>
-        <button class="ui basic button" id="en9" onclick="setNbChars('en', 9)">9</button>
+      <div class="four wide field">
+        <label>Premiere lettre</label>
+        <select class="ui selection dropdown" onchange="changeLangPythonOpt()" id="firstletter">
+          <option value="0" selected>Aucune</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+          <option value="D">D</option>
+          <option value="E">E</option>
+          <option value="F">F</option>
+          <option value="G">G</option>
+          <option value="H">H</option>
+          <option value="I">I</option>
+          <option value="J">J</option>
+          <option value="K">K</option>
+          <option value="L">L</option>
+          <option value="M">M</option>
+          <option value="N">N</option>
+          <option value="O">O</option>
+          <option value="P">P</option>
+          <option value="Q">Q</option>
+          <option value="R">R</option>
+          <option value="S">S</option>
+          <option value="T">T</option>
+          <option value="U">U</option>
+          <option value="V">V</option>
+          <option value="W">W</option>
+          <option value="X">X</option>
+          <option value="Y">Y</option>
+          <option value="Z">Z</option>
+        </select>
       </div>
     </div>
 
@@ -310,8 +344,14 @@ else:
   myscript.max_combinations_to_try = 400000
   myscript.min_words_to_try = 40
 
+firstletter = js.document.getElementById('firstletter').value.lower()
+if firstletter == "0":
+  dico_n = base_dico
+else:
+  dico_n = myscript.remove_based_on_first_letter(base_dico, firstletter)
+
 dico_n = myscript.adjust_dico(
-  base_dico,
+  dico_n,
   not(js.document.getElementById('opt_rare').checked),
   'hard' if js.document.getElementById('opt_best').checked else 'average'
 )
@@ -333,6 +373,7 @@ myscript.online_simulation_browser_best(dico_solutions, dico_n)
     myscript = pyodide.pyimport("myscript");
     console.log("myscript loaded");
     await pyodide.runPythonAsync(py_load_lang);
+    await pyodide.runPythonAsync(py_load_lang_opt);
     console.log("dico loaded");
     output.value += "Ready!\n";
     button_guess.setAttribute('class', "fluid ui primary massive button");
