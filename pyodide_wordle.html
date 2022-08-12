@@ -1,192 +1,294 @@
+<!--
+2. brancher les fils restants pour les 3 options
+3. Sortir code python en externe
+1. Optimisation chargement dictionnaire: découpage, compression
+4. améliorer UI: découper "deviner" en 2 fonctions
+-->
+
 <!DOCTYPE html>
 <html>
-  <head>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@2.1.0/build/pure-min.css" integrity="sha384-yHIFVG6ClnONEA5yB5DJXfW2/KC173DIQrYoZMEtBvGzmf0PKiGyNEqe9N6BNDBH" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss@2.1.0/build/grids-responsive-min.css">
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.21.0/full/pyodide.js"></script>
-    <script>
-      var results = new Array(0,0,0,0,0);
-      function setColor(n_word, n_char) {
-        var base = Math.pow(3, n_char);
-        var current_state = Math.floor(results[n_word] / base) % 3;
-        var property = document.getElementById('button_'+n_word+'_'+n_char);
-        if (current_state == 0) {
-          property.style.backgroundColor = "#ff9d00" // color if 1
-          results[n_word] += base;
-        } else if (current_state == 1) {
-          property.style.backgroundColor = "#8fce00" // color if 2
-          results[n_word] += base;
-        } else {
-          property.style.backgroundColor = "#999999" // color if 0
-          results[n_word] -= 2*base;
-        }
-      }
+<head>
+  <script src="https://unpkg.com/jquery@3.3.1/dist/jquery.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/fomantic-ui@2.8.8/dist/semantic.min.css">
+  <script src="https://unpkg.com/fomantic-ui@2.8.8/dist/semantic.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.21.0/full/pyodide.js"></script>
+  <script>
+    var results = new Array(0,0,0,0,0);
+    var n_total_char = 5;
+    var lang = 'fr';
 
-      function updateButtons(n_word) {
-        var input_word = document.getElementById('try_'+n_word).value;
+    function setColor(n_word, n_char) {
+      var base = Math.pow(3, n_char);
+      var current_state = Math.floor(results[n_word] / base) % 3;
+      var property = document.getElementById('button_'+n_word+'_'+n_char);
+      if (current_state == 2) {
+        property.setAttribute('class', 'ui button'); // color if 0
+        results[n_word] -= 2*base;
+      } else if (current_state == 0) {
+        property.setAttribute('class', 'ui orange button'); // color if 1
+        results[n_word] += base;
+      } else {
+        property.setAttribute('class', 'ui green button'); // color if 2
+        results[n_word] += base;        
+      }
+    }
+
+    function updateButtonsContent(n_word) {
+      var input_word = document.getElementById('try_'+n_word).value;
+      if (input_word.length == 0) {
         for (let c = 0; c < 9; c++) {
           var property = document.getElementById('button_'+n_word+'_'+c);
-          property.value = (c < input_word.length) ? input_word.charAt(c) : '-'
+          property.innerHTML = '-';
+          property.setAttribute('class', 'ui disabled button');
+        }
+      } else {
+        for (let c = 0; c < 9; c++) {
+          var property = document.getElementById('button_'+n_word+'_'+c);
+          property.innerHTML = (c < input_word.length) ? input_word.charAt(c) : '-';
+          property.setAttribute('class', 'ui button');
         }
       }
+    }
 
-      function setNbChars() {
-        n_char = document.getElementById('nbchars').value;
-        for (let i_word = 0; i_word < 5; i_word++) {
-          document.getElementById('try_'+i_word).setAttribute('maxlength', n_char);
-          for (let i_char = 0; i_char < 9; i_char++) {
-            document.getElementById('button_'+i_word+'_'+i_char).hidden = (i_char >= n_char);
+    function setNbChars(new_lang, new_nb_chars) {
+      n_total_char = new_nb_chars;
+      lang = new_lang;
+      for (let i_word = 0; i_word < 5; i_word++) {
+        document.getElementById('try_'+i_word).setAttribute('maxlength', n_total_char);
+        for (let i_char = 0; i_char < 9; i_char++) {
+          document.getElementById('button_'+i_word+'_'+i_char).hidden = (i_char >= n_total_char);
+          if (i_char >= n_total_char) {
+            document.getElementById('button_'+i_word+'_'+i_char).style.display = 'none';
+          } else {
+            document.getElementById('button_'+i_word+'_'+i_char).style = '';
           }
         }
       }
-    </script>
-  </head>
 
-  <body>
-    <div class="header">
-      <h1>Wordle solver</h1>
-      <h3>in French or in English</h3>
-    </div>
-    <div class="pure-g">
-      <div class="pure-u-5-12 pure-u-md-1-4">
-        <label>Try 1:</label>
-        <input id="try_0" value="" oninput="updateButtons(0)" size="10" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" autofocus placeholder="1st guess"/>
-      </div>
-      <div class="pure-u-7-12 pure-u-md-1-2 pure-u-lg-1-3">
-        <div class="pure-button-group">
-          <input type="button" id="button_0_0" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(0, 0)";/>
-          <input type="button" id="button_0_1" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(0, 1)";/>
-          <input type="button" id="button_0_2" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(0, 2)";/>
-          <input type="button" id="button_0_3" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(0, 3)";/>
-          <input type="button" id="button_0_4" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(0, 4)";/>
-          <input type="button" id="button_0_5" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(0, 5)";/>
-          <input type="button" id="button_0_6" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(0, 6)";/>
-          <input type="button" id="button_0_7" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(0, 7)";/>
-          <input type="button" id="button_0_8" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(0, 8)";/>
-        </div>
-      </div>
-      <br>
-    </div>
-    
-    <div class="pure-g">
-      <div class="pure-u-5-12 pure-u-md-1-4">
-        <label>Try 2:</label>
-        <input id="try_1" value="" oninput="updateButtons(1)" size="9" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      </div>
-      <div class="pure-u-7-12 pure-u-md-1-2 pure-u-lg-1-3">
-        <div class="pure-button-group">
-          <input type="button" id="button_1_0" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(1, 0)";/>
-          <input type="button" id="button_1_1" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(1, 1)";/>
-          <input type="button" id="button_1_2" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(1, 2)";/>
-          <input type="button" id="button_1_3" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(1, 3)";/>
-          <input type="button" id="button_1_4" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(1, 4)";/>
-          <input type="button" id="button_1_5" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(1, 5)";/>
-          <input type="button" id="button_1_6" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(1, 6)";/>
-          <input type="button" id="button_1_7" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(1, 7)";/>
-          <input type="button" id="button_1_8" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(1, 8)";/>
-        </div>
-      </div>
-    <br>
-    </div>
-
-    <div class="pure-g">
-      <div class="pure-u-5-12 pure-u-md-1-4">
-        <label>Try 3:</label>
-        <input id="try_2" value="" oninput="updateButtons(2)" size="9" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      </div>
-      <div class="pure-u-7-12 pure-u-md-1-2 pure-u-lg-1-3">
-        <div class="pure-button-group">
-          <input type="button" id="button_2_0" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(2, 0)";/>
-          <input type="button" id="button_2_1" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(2, 1)";/>
-          <input type="button" id="button_2_2" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(2, 2)";/>
-          <input type="button" id="button_2_3" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(2, 3)";/>
-          <input type="button" id="button_2_4" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(2, 4)";/>
-          <input type="button" id="button_2_5" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(2, 5)";/>
-          <input type="button" id="button_2_6" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(2, 6)";/>
-          <input type="button" id="button_2_7" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(2, 7)";/>
-          <input type="button" id="button_2_8" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(2, 8)";/>
-        </div>
-      </div>
-    <br>
-    </div>
-
-    <div class="pure-g">
-      <div class="pure-u-5-12 pure-u-md-1-4">
-        <label>Try 4:</label>
-        <input id="try_3" value="" oninput="updateButtons(3)" size="9" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      </div>
-      <div class="pure-u-7-12 pure-u-md-1-2 pure-u-lg-1-3">
-        <div class="pure-button-group">
-          <input type="button" id="button_3_0" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(3, 0)";/>
-          <input type="button" id="button_3_1" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(3, 1)";/>
-          <input type="button" id="button_3_2" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(3, 2)";/>
-          <input type="button" id="button_3_3" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(3, 3)";/>
-          <input type="button" id="button_3_4" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(3, 4)";/>
-          <input type="button" id="button_3_5" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(3, 5)";/>
-          <input type="button" id="button_3_6" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(3, 6)";/>
-          <input type="button" id="button_3_7" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(3, 7)";/>
-          <input type="button" id="button_3_8" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(3, 8)";/>
-        </div>
-      </div>
-    <br>
-    </div>
-
-    <div class="pure-g">
-      <div class="pure-u-5-12 pure-u-md-1-4">
-        <label>Try 5:</label>
-        <input id="try_4" value="" oninput="updateButtons(4)" size="9" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      </div>
-      <div class="pure-u-7-12 pure-u-md-1-2 pure-u-lg-1-3">
-        <div class="pure-button-group">
-          <input type="button" id="button_4_0" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(4, 0)";/>
-          <input type="button" id="button_4_1" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(4, 1)";/>
-          <input type="button" id="button_4_2" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(4, 2)";/>
-          <input type="button" id="button_4_3" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(4, 3)";/>
-          <input type="button" id="button_4_4" value="-" class="pure-button" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(4, 4)";/>
-          <input type="button" id="button_4_5" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(4, 5)";/>
-          <input type="button" id="button_4_6" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(4, 6)";/>
-          <input type="button" id="button_4_7" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(4, 7)";/>
-          <input type="button" id="button_4_8" value="-" class="pure-button" hidden="true" style="background:#999999;color:white;font-size: 150%;width:3em;" onclick="setColor(4, 8)";/>
-        </div>
-      </div>
-    <br>
-    </div>
-    <button onclick="evaluatePython()" class="pure-button pure-button-primary" style="font-size: 200%;">Guess</button>
-    <button onclick="changeLangPython()" class="pure-button" id="changelang" style="font-size: 200%;">FR</button>
-    <select onchange="setNbChars()" id="nbchars" style="font-size: 200%;">
-      <option>2</option>
-      <option>3</option>
-      <option>4</option>
-      <option selected>5</option>
-      <option>6</option>
-      <option>7</option>
-      <option>8</option>
-      <option>9</option>
-    </select>
-
-    <br>
-    <div>Output:</div>
-    <div class="pure-g">
-      <div class="pure-u-1-1 pure-u-md-3-4 pure-u-lg-1-2">
-        <textarea id="output" style="width: 90%;" rows="10" disabled></textarea>
-      </div>
-    </div>
-
-    <script>
-      const output = document.getElementById("output");
-
-
-      function addToOutput(s) {
-        output.value += ">>>" + s + "\n";
+      for (let i_lang = 0; i_lang < 2; i_lang++) {
+        s_lang = ['fr', 'en'][i_lang];
+        for (let i_chars = 5; i_chars < 10; i_chars++) {
+          if (new_lang == s_lang && new_nb_chars == i_chars) {
+            document.getElementById(s_lang+i_chars).setAttribute('class', "ui grey basic button");
+          } else {
+            document.getElementById(s_lang+i_chars).setAttribute('class', "ui basic button");
+          }
+        }
       }
 
-      output.value = "Initializing Pyodide...\n";
-      // init Pyodide
-      async function main() {
-        let pyodide = await loadPyodide({ fullStdLib : false });
-        await pyodide.runPythonAsync(`
+      changeLangPython();
+    }
+
+  </script>
+</head>
+<body>
+<div class="ui container">
+
+<!-- Titre -->
+
+  <div class="ui text">
+    <div class="ui section hidden divider"></div>
+    <h1 class="ui massive centered header">Wordle Solver</h1>
+  </div>
+
+<!-- Options -->
+
+  <div class="ui section hidden divider"></div>
+  <div class="ui form">
+    <div class="field">
+      <label>Langue et nombre de lettres</label>
+      <div class="ui buttons">
+        <button class="ui tertiary button"><i class="fr flag"></i></button>
+        <button class="ui grey basic button" id="fr5" onclick="setNbChars('fr', 5)">5</button>
+        <button class="ui basic button" id="fr6" onclick="setNbChars('fr', 6)">6</button>
+        <button class="ui basic button" id="fr7" onclick="setNbChars('fr', 7)">7</button>
+        <button class="ui basic button" id="fr8" onclick="setNbChars('fr', 8)">8</button>
+        <button class="ui basic button" id="fr9" onclick="setNbChars('fr', 9)">9</button>
+      </div>
+      <span style="display:inline-block; width:1em;"></span>
+      <div class="ui buttons">
+        <button class="ui tertiary button" ><i class="us flag"></i></button>
+        <button class="ui basic button" id="en5" onclick="setNbChars('en', 5)">5</button>
+        <button class="ui basic button" id="en6" onclick="setNbChars('en', 6)">6</button>
+        <button class="ui basic button" id="en7" onclick="setNbChars('en', 7)">7</button>
+        <button class="ui basic button" id="en8" onclick="setNbChars('en', 8)">8</button>
+        <button class="ui basic button" id="en9" onclick="setNbChars('en', 9)">9</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Avancé</label>
+      <div class="three fields">
+        <div class="field">
+          <div class="ui toggle checkbox">
+            <input type="checkbox" id="opt_rare">
+            <label>Autorise les mots rares (déconseillé)</label>
+          </div>
+        </div>
+        <div class="field">
+          <div class="ui toggle checkbox">
+            <input type="checkbox" id="opt_hard">
+            <label>Wordle en mode difficile (conseillé pour nytimes)</label>
+          </div>
+        </div>
+        <div class="field">
+          <div class="ui toggle checkbox">
+            <input type="checkbox" id="opt_best">
+            <label>Cherche de meilleures solutions, mais plus lent</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+<!-- Mots -->
+
+  <div class="ui section hidden divider"></div>
+  <div class="ui grid">
+    <div class="three wide column ">
+      <div class="ui fluid labeled input">
+        <input id="try_0" value="" oninput="updateButtonsContent(0)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Mot essayé"/>
+      </div>
+    </div>
+    <div class="thirteen wide column ">
+      <div class="ui nine big buttons">
+        <button class="ui disabled button" id="button_0_0" onclick="setColor(0, 0)" >-</button>
+        <button class="ui disabled button" id="button_0_1" onclick="setColor(0, 1)" >-</button>
+        <button class="ui disabled button" id="button_0_2" onclick="setColor(0, 2)" >-</button>
+        <button class="ui disabled button" id="button_0_3" onclick="setColor(0, 3)" >-</button>
+        <button class="ui disabled button" id="button_0_4" onclick="setColor(0, 4)" >-</button>
+        <button class="ui disabled button" id="button_0_5" onclick="setColor(0, 5)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_0_6" onclick="setColor(0, 6)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_0_7" onclick="setColor(0, 7)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_0_8" onclick="setColor(0, 8)" style="display: none">-</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ui grid">
+    <div class="three wide column ">
+      <div class="ui fluid labeled input">
+        <input id="try_1" value="" oninput="updateButtonsContent(1)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Mot essayé"/>
+      </div>
+    </div>
+    <div class="thirteen wide column ">
+      <div class="ui nine big buttons">
+        <button class="ui disabled button" id="button_1_0" onclick="setColor(1, 0)" >-</button>
+        <button class="ui disabled button" id="button_1_1" onclick="setColor(1, 1)" >-</button>
+        <button class="ui disabled button" id="button_1_2" onclick="setColor(1, 2)" >-</button>
+        <button class="ui disabled button" id="button_1_3" onclick="setColor(1, 3)" >-</button>
+        <button class="ui disabled button" id="button_1_4" onclick="setColor(1, 4)" >-</button>
+        <button class="ui disabled button" id="button_1_5" onclick="setColor(1, 5)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_1_6" onclick="setColor(1, 6)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_1_7" onclick="setColor(1, 7)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_1_8" onclick="setColor(1, 8)" style="display: none">-</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ui grid">
+    <div class="three wide column ">
+      <div class="ui fluid labeled input">
+        <input id="try_2" value="" oninput="updateButtonsContent(2)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Mot essayé"/>
+      </div>
+    </div>
+    <div class="thirteen wide column ">
+      <div class="ui nine big buttons">
+        <button class="ui disabled button" id="button_2_0" onclick="setColor(2, 0)" >-</button>
+        <button class="ui disabled button" id="button_2_1" onclick="setColor(2, 1)" >-</button>
+        <button class="ui disabled button" id="button_2_2" onclick="setColor(2, 2)" >-</button>
+        <button class="ui disabled button" id="button_2_3" onclick="setColor(2, 3)" >-</button>
+        <button class="ui disabled button" id="button_2_4" onclick="setColor(2, 4)" >-</button>
+        <button class="ui disabled button" id="button_2_5" onclick="setColor(2, 5)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_2_6" onclick="setColor(2, 6)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_2_7" onclick="setColor(2, 7)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_2_8" onclick="setColor(2, 8)" style="display: none">-</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ui grid">
+    <div class="three wide column ">
+      <div class="ui fluid labeled input">
+        <input id="try_3" value="" oninput="updateButtonsContent(3)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Mot essayé"/>
+      </div>
+    </div>
+    <div class="thirteen wide column ">
+      <div class="ui nine big buttons">
+        <button class="ui disabled button" id="button_3_0" onclick="setColor(3, 0)" >-</button>
+        <button class="ui disabled button" id="button_3_1" onclick="setColor(3, 1)" >-</button>
+        <button class="ui disabled button" id="button_3_2" onclick="setColor(3, 2)" >-</button>
+        <button class="ui disabled button" id="button_3_3" onclick="setColor(3, 3)" >-</button>
+        <button class="ui disabled button" id="button_3_4" onclick="setColor(3, 4)" >-</button>
+        <button class="ui disabled button" id="button_3_5" onclick="setColor(3, 5)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_3_6" onclick="setColor(3, 6)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_3_7" onclick="setColor(3, 7)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_3_8" onclick="setColor(3, 8)" style="display: none">-</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ui grid">
+    <div class="three wide column ">
+      <div class="ui fluid labeled input">
+        <input id="try_4" value="" oninput="updateButtonsContent(4)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Mot essayé"/>
+      </div>
+    </div>
+    <div class="thirteen wide column ">
+      <div class="ui nine big buttons">
+        <button class="ui disabled button" id="button_4_0" onclick="setColor(4, 0)" >-</button>
+        <button class="ui disabled button" id="button_4_1" onclick="setColor(4, 1)" >-</button>
+        <button class="ui disabled button" id="button_4_2" onclick="setColor(4, 2)" >-</button>
+        <button class="ui disabled button" id="button_4_3" onclick="setColor(4, 3)" >-</button>
+        <button class="ui disabled button" id="button_4_4" onclick="setColor(4, 4)" >-</button>
+        <button class="ui disabled button" id="button_4_5" onclick="setColor(4, 5)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_4_6" onclick="setColor(4, 6)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_4_7" onclick="setColor(4, 7)" style="display: none">-</button>
+        <button class="ui disabled button" id="button_4_8" onclick="setColor(4, 8)" style="display: none">-</button>
+      </div>
+    </div>
+  </div>
+
+
+<!-- Bouton(s) et sortie console -->
+
+  <div class="ui section hidden divider"></div>
+  <div class="ui stackable grid">
+    <div class="four wide column ">
+      <span class="ui grey text" id="guesshint">-</span>
+    </div>
+    <div class="eight wide column ">
+      <button class="fluid ui primary massive button" id="btn_guess" onclick="guess()">Deviner</button>
+    </div>
+  </div>
+  <div class="ui hidden divider"></div>
+  
+  <div class="ui section hidden divider"></div>
+  <div class="ui form">
+    <div class="field">
+      <label>Sortie console</label>
+      <div class="ui fluid disabled input">
+        <textarea placeholder="Console log" id="consolelog"></textarea>
+      </div>
+    </div>
+  </div>
+
+
+</div>
+<script>
+  const output = document.getElementById("consolelog");
+  var hint_output = document.getElementById('guesshint');
+  const button_guess = document.getElementById('btn_guess');
+  function addToOutput(s) {
+    output.value += ">>>" + s + "\n";
+  }
+
+  const py_init = `
 from pyodide.http import pyfetch
 from math import log2, sqrt
+import js
 
 max_nb_chars = 10
 base = [3**i for i in range(max_nb_chars+1)]
@@ -197,55 +299,31 @@ default_freq = 0.001
 estimates = []
 archives = []
 
-
-json_url = 'https://raw.githubusercontent.com/cestpasphoto/wordle_solver_french/main/parsed_fr_dictionary.json'
+json_fr = 'https://raw.githubusercontent.com/cestpasphoto/wordle_solver_french/main/parsed_fr_dictionary.json'
+json_en = 'https://raw.githubusercontent.com/cestpasphoto/wordle_solver_french/main/parsed_en_dictionary.json'
 dico_lang = 'fr'
-response = await pyfetch(json_url)
+response = await pyfetch(json_fr)
 dico = await (response.json())
 dico_n = dico[5]
 dico_n = {w: p for w,p in dico_n.items() if p >= 0.001} # Mode "top"
 dico_n = {w: sqrt(p) for w,p in dico_n.items()} # Mode average
-        `)
-        output.value += "Loading numpy...\n";
-        pyodide.loadPackage("numpy").then(() => {
-          output.value += "Ready!\n";
-        });
-        return pyodide;
-      }
-      let pyodideReadyPromise = main();
+print(js.n_total_char, ': ', len(dico_n))
+best_words = ', '.join(sorted(dico_n.keys(), key=lambda x: dico_n[x], reverse=True)[:5])
+js.hint_output.innerHTML = f'{len(dico_n)} mot(s) possible(s) dont: {best_words}'
+`
 
-      async function changeLangPython() {
-        let pyodide = await pyodideReadyPromise;
-        await pyodide.runPythonAsync(`
-from pyodide.http import pyfetch
-from math import log2, sqrt
-import js
-json_fr = 'https://raw.githubusercontent.com/cestpasphoto/wordle_solver_french/main/parsed_fr_dictionary.json'
-json_en = 'https://raw.githubusercontent.com/cestpasphoto/wordle_solver_french/main/parsed_en_dictionary.json'
-
-if dico_lang == 'fr':
-  json_url = json_en
-  dico_lang = 'en'
-else:
-  json_url = json_fr
-  dico_lang = 'fr'
-n_chars = int(js.document.getElementById('nbchars').value);
+  const py_load_lang = `
+json_url = json_fr if js.lang == 'fr' else json_en
 response = await pyfetch(json_url)
 dico = await (response.json())
-dico_n = dico[n_chars]
+dico_n = dico[js.n_total_char]
 dico_n = {w: p for w,p in dico_n.items() if p >= 0.001} # Mode "top"
 dico_n = {w: sqrt(p) for w,p in dico_n.items()} # Mode average
-js.document.getElementById("changelang").innerHTML = dico_lang.upper()
-print(n_chars, ': ', len(dico_n))
-        `);
-        output.value += "New lang loaded...\n";
-      };
-
-      async function evaluatePython() {
-        let pyodide = await pyodideReadyPromise;
-        addToOutput(pyodide.runPython(`
+best_words = ', '.join(sorted(dico_n.keys(), key=lambda x: dico_n[x], reverse=True)[:5])
+js.hint_output.innerHTML = f'{len(dico_n)} mot(s) possible(s) dont: {best_words}'
+`
+  const py_guess = `
 import numpy as np
-import js
 
 # O = rien, 1 = bonne lettre mauvaise place, 2 = bonne lettre, bonne place
 def compute_result(proposed_word, solution_word):
@@ -341,16 +419,17 @@ def simulation(word_to_find, dico_n):
   # archives.append( (entropy, i+1) )
   return 'finished'
 
-def online_simulation(dico_n):
+def just_filter(dico_n):
   dico_solutions = dico_n
   trials  = [js.document.getElementById("try_"+str(i)).value for i in range(5)]
   results = js.results
+  print(trials, results)
   message = ''
 
   # Digest user inputs
   i_last_word = -1
   for i, (word_trial, trial_result) in enumerate(zip(trials, results)):
-    if len(word_trial) == int(js.document.getElementById('nbchars').value):
+    if len(word_trial) == int(js.n_total_char):
       print('Input used:', word_trial, trial_result)
       dico_solutions = remove_based_on_result(dico_solutions, word_trial, trial_result)
       i_last_word = i
@@ -359,6 +438,32 @@ def online_simulation(dico_n):
         print('Input not used:', word_trial, trial_result)
         message += f'Warning: input not used -> {word_trial} {trial_result}'
   message += f'{len(dico_solutions)} mot(s) possible(s) dont {sorted(dico_solutions.keys(), key=lambda x: dico_solutions[x], reverse=True)[:5]}'
+  best_words = ', '.join(sorted(dico_solutions.keys(), key=lambda x: dico_solutions[x], reverse=True)[:5])
+  js.hint_output.innerHTML = f'{len(dico_solutions)} mot(s) possible(s) dont: {best_words}'
+
+  return message
+
+def online_simulation(dico_n):
+  dico_solutions = dico_n
+  trials  = [js.document.getElementById("try_"+str(i)).value for i in range(5)]
+  results = js.results
+  print(trials, results)
+  message = ''
+
+  # Digest user inputs
+  i_last_word = -1
+  for i, (word_trial, trial_result) in enumerate(zip(trials, results)):
+    if len(word_trial) == int(js.n_total_char):
+      print('Input used:', word_trial, trial_result)
+      dico_solutions = remove_based_on_result(dico_solutions, word_trial, trial_result)
+      i_last_word = i
+    else:
+      if len(word_trial) > 0 or trial_result > 0:
+        print('Input not used:', word_trial, trial_result)
+        message += f'Warning: input not used -> {word_trial} {trial_result}'
+  message += f'{len(dico_solutions)} mot(s) possible(s) dont {sorted(dico_solutions.keys(), key=lambda x: dico_solutions[x], reverse=True)[:5]}'
+  best_words = ', '.join(sorted(dico_solutions.keys(), key=lambda x: dico_solutions[x], reverse=True)[:5])
+  js.hint_output.innerHTML = f'{len(dico_solutions)} mot(s) possible(s) dont: {best_words}'
 
   # Now compute 
   best_moves = expected_remaining_moves(dico_solutions, dico_n)
@@ -371,12 +476,43 @@ def online_simulation(dico_n):
     message += f' - je tente "{best_word_to_try.upper()}" avec {nb_moves} coup(s) estimés'
 
   js.document.getElementById("try_"+str(i_last_word+1)).value = best_word_to_try.lower()
-  js.updateButtons(i_last_word+1)
+  js.updateButtonsContent(i_last_word+1)
   return message
 
 online_simulation(dico_n)
-        `));
-      }
-    </script>
-  </body>
+# just_filter(dico_n)
+`
+  // init Pyodide
+  async function main() {
+    let pyodide = await loadPyodide({ fullStdLib : false });
+    await pyodide.runPythonAsync(py_init);
+    output.value += "Loading numpy...\n";
+    pyodide.loadPackage("numpy").then(() => {
+      output.value += "Ready!\n";
+      button_guess.setAttribute('class', "fluid ui primary massive button");
+    });
+    return pyodide;
+  }
+
+   async function changeLangPython() {
+    button_guess.setAttribute('class', "fluid ui primary massive elastic loading button");
+    let pyodide = await pyodideReadyPromise;
+    await pyodide.runPythonAsync(py_load_lang);
+    output.value += "New lang loaded...\n";
+    button_guess.setAttribute('class', "fluid ui primary massive button");
+  }
+
+  async function guess() {
+    button_guess.setAttribute('class', "fluid ui primary massive elastic loading button");
+    let pyodide = await pyodideReadyPromise;
+    let message = await pyodide.runPythonAsync(py_guess);
+    addToOutput(message);
+    button_guess.setAttribute('class', "fluid ui primary massive button");
+  }
+
+  output.value = "Initializing Pyodide...\n";
+  button_guess.setAttribute('class', "fluid ui primary massive elastic loading button");
+  let pyodideReadyPromise = main();
+</script>
+</body>
 </html>
