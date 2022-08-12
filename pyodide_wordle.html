@@ -1,10 +1,3 @@
-<!--
-2. brancher les fils restants pour les 3 options
-3. Sortir code python en externe
-1. Optimisation chargement dictionnaire: découpage, compression
-4. améliorer UI: découper "deviner" en 2 fonctions
--->
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -307,18 +300,20 @@ js.hint_output.innerHTML = f'{len(dico_n)} mot(s) possible(s) dont: {best_words}
 `
 
   const py_guess = `
-myscript.online_simulation_browser(dico_n)
+dico_solutions = myscript.online_simulation_browser_filter(dico_n)
+myscript.online_simulation_browser_best(dico_solutions, dico_n)
   `
 
   // init Pyodide
   async function main() {
     let pyodide = await loadPyodide({ fullStdLib : false });
     await pyodide.runPythonAsync(py_init);
-    output.value += "Loading numpy...\n";
     await pyodide.loadPackage(["numpy", "tqdm"]);
     console.log("load myscript");
     myscript = pyodide.pyimport("myscript");
     console.log("myscript loaded");
+    await pyodide.runPythonAsync(py_load_lang);
+    console.log("dico loaded");
     output.value += "Ready!\n";
     button_guess.setAttribute('class', "fluid ui primary massive button");
     return pyodide;
@@ -335,12 +330,14 @@ myscript.online_simulation_browser(dico_n)
   async function guess() {
     button_guess.setAttribute('class', "fluid ui primary massive elastic loading button");
     let pyodide = await pyodideReadyPromise;
-    let message = await pyodide.runPythonAsync(py_guess);
+    await pyodide.runPythonAsync(`dico_solutions = myscript.online_simulation_browser_filter(dico_n)`);
+    let message = await pyodide.runPythonAsync(`myscript.online_simulation_browser_best(dico_solutions, dico_n)`);
+    /*let message = await pyodide.runPythonAsync(py_guess);*/
     addToOutput(message);
     button_guess.setAttribute('class', "fluid ui primary massive button");
   }
 
-  output.value = "Initializing Pyodide...\n";
+  output.value = "Initializing Pyodide, numpy, python code and loading dictionnary...\n";
   button_guess.setAttribute('class', "fluid ui primary massive elastic loading button");
   let pyodideReadyPromise = main();
 </script>
