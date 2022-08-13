@@ -330,8 +330,8 @@ with open("myscript.py", "wb") as f:
 
   const py_load_lang = `
 import myscript
-base_dico = await myscript.load_dico_remote(js.lang, js.n_total_char)
-print(len(base_dico))
+base_dico, precomputed = await myscript.load_dico_remote(js.lang, js.n_total_char)
+print(len(base_dico), len(precomputed))
 `
 
   const py_load_lang_opt = `
@@ -349,6 +349,13 @@ if firstletter == "0":
   dico_n = base_dico
 else:
   dico_n = myscript.remove_based_on_first_letter(base_dico, firstletter)
+
+precomputed_first_guess = precomputed.get(firstletter)
+if precomputed_first_guess:
+  js.document.getElementById("try_0").value = precomputed_first_guess.lower()
+else:
+  js.document.getElementById("try_0").value = ''
+js.updateButtonsContent(0)
 
 dico_n = myscript.adjust_dico(
   dico_n,
@@ -368,7 +375,7 @@ myscript.online_simulation_browser_best(dico_solutions, dico_n)
   async function main() {
     let pyodide = await loadPyodide({ fullStdLib : false });
     await pyodide.runPythonAsync(py_init);
-    await pyodide.loadPackage(["numpy", "tqdm"]);
+    await pyodide.loadPackage("numpy");
     console.log("load myscript");
     myscript = pyodide.pyimport("myscript");
     console.log("myscript loaded");
