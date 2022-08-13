@@ -353,7 +353,7 @@ else:
 dico_n = myscript.adjust_dico(
   dico_n,
   not(js.document.getElementById('opt_rare').checked),
-  'hard' if js.document.getElementById('opt_best').checked else 'average'
+  'hard' if js.document.getElementById('opt_hard').checked else 'average'
 )
 best_words = ', '.join(sorted(dico_n.keys(), key=lambda x: dico_n[x], reverse=True)[:5])
 js.hint_output.innerHTML = f'{len(dico_n)} mot(s) possible(s) dont: {best_words}'
