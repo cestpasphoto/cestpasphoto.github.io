@@ -1,17 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://unpkg.com/jquery@3.3.1/dist/jquery.js"></script>
   <link rel="stylesheet" type="text/css" href="https://unpkg.com/fomantic-ui@2.8.8/dist/semantic.min.css">
   <script src="https://unpkg.com/fomantic-ui@2.8.8/dist/semantic.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.21.0/full/pyodide.js"></script>
-  <style>
-    @media only screen and (max-width: 1000px) {
-      .ui.ui.ui.container:not(.fluid) {
-        width: 100%;
-      }
-    }
-  </style>
   <script>
     var results = new Array(0,0,0,0,0);
     var n_total_char = 5;
@@ -41,6 +35,7 @@
           property.innerHTML = '-';
           property.setAttribute('class', 'ui disabled button');
         }
+        results[n_word] = 0;
       } else {
         for (let c = 0; c < 9; c++) {
           var property = document.getElementById('button_'+n_word+'_'+c);
@@ -79,6 +74,10 @@
       changeLangPython();
     }
 
+    $(document).ready(function(){
+      $('.ui.accordion').accordion();
+    });
+
   </script>
 </head>
 <body>
@@ -86,89 +85,88 @@
 
 <!-- Titre -->
 
-  <div class="ui text">
-    <div class="ui section hidden divider"></div>
-    <h1 class="ui massive centered header">Wordle Solver</h1>
-  </div>
+  <div class="ui hidden divider"></div>
+  <h1 class="ui massive center aligned header">Wordle Solver en Français et en Anglais</h1>
+  <div class="ui center aligned sub header">Appuyer sur les lettres pour changer leur couleur</div>
 
 <!-- Options -->
 
-  <div class="ui section hidden divider"></div>
+  <div class="ui hidden divider"></div>
   <div class="ui form">
-    <div class="fields">
-      <div class="twelve wide field">
-        <label>Langue et nombre de lettres</label>
-        <div class="ui buttons">
-          <button class="ui tertiary button"><i class="fr flag"></i></button>
-          <button class="ui grey basic button" id="fr5" onclick="setNbChars('fr', 5)">5</button>
-          <button class="ui basic button" id="fr6" onclick="setNbChars('fr', 6)">6</button>
-          <button class="ui basic button" id="fr7" onclick="setNbChars('fr', 7)">7</button>
-          <button class="ui basic button" id="fr8" onclick="setNbChars('fr', 8)">8</button>
-          <button class="ui basic button" id="fr9" onclick="setNbChars('fr', 9)">9</button>
-        </div>
-        <span style="display:inline-block; width:1em;"></span>
-        <div class="ui buttons">
-          <button class="ui tertiary button" ><i class="us flag"></i></button>
-          <button class="ui basic button" id="en5" onclick="setNbChars('en', 5)">5</button>
-          <button class="ui basic button" id="en6" onclick="setNbChars('en', 6)">6</button>
-          <button class="ui basic button" id="en7" onclick="setNbChars('en', 7)">7</button>
-          <button class="ui basic button" id="en8" onclick="setNbChars('en', 8)">8</button>
-          <button class="ui basic button" id="en9" onclick="setNbChars('en', 9)">9</button>
-        </div>
-      </div>
-      <div class="four wide field">
-        <label>Premiere lettre</label>
-        <select class="ui selection dropdown" onchange="changeLangPythonOpt()" id="firstletter">
-          <option value="0" selected>Aucune</option>
-          <option value="A">A</option>
-          <option value="B">B</option>
-          <option value="C">C</option>
-          <option value="D">D</option>
-          <option value="E">E</option>
-          <option value="F">F</option>
-          <option value="G">G</option>
-          <option value="H">H</option>
-          <option value="I">I</option>
-          <option value="J">J</option>
-          <option value="K">K</option>
-          <option value="L">L</option>
-          <option value="M">M</option>
-          <option value="N">N</option>
-          <option value="O">O</option>
-          <option value="P">P</option>
-          <option value="Q">Q</option>
-          <option value="R">R</option>
-          <option value="S">S</option>
-          <option value="T">T</option>
-          <option value="U">U</option>
-          <option value="V">V</option>
-          <option value="W">W</option>
-          <option value="X">X</option>
-          <option value="Y">Y</option>
-          <option value="Z">Z</option>
-        </select>
+    <div class="field">
+      <label>Langue et nombre de lettres</label>
+      <div class="ui fluid large buttons">
+        <button class="ui tertiary button" style="padding: 0px !important; margin: 0px !important;"><i class="fr flag"></i></button>
+        <button class="ui grey basic button" style="padding: 0.5em;" id="fr5" onclick="setNbChars('fr', 5)">5</button>
+        <button class="ui basic button" style="padding: 0.5em;" id="fr6" onclick="setNbChars('fr', 6)">6</button>
+        <button class="ui basic button" style="padding: 0.5em;" id="fr7" onclick="setNbChars('fr', 7)">7</button>
+        <button class="ui basic button" style="padding: 0.5em;" id="fr8" onclick="setNbChars('fr', 8)">8</button>
+        <button class="ui basic button" style="padding: 0.5em;" id="fr9" onclick="setNbChars('fr', 9)">9</button>
+        <button class="ui tertiary button" style="padding: 0px !important; margin: 0px !important;"><i class="us flag"></i></button>
+        <button class="ui basic button" style="padding: 0.5em;" id="en5" onclick="setNbChars('en', 5)">5</button>
+        <button class="ui basic button" style="padding: 0.5em;" id="en6" onclick="setNbChars('en', 6)">6</button>
+        <button class="ui basic button" style="padding: 0.5em;" id="en7" onclick="setNbChars('en', 7)">7</button>
+        <button class="ui basic button" style="padding: 0.5em;" id="en8" onclick="setNbChars('en', 8)">8</button>
+        <button class="ui basic button" style="padding: 0.5em;" id="en9" onclick="setNbChars('en', 9)">9</button>
       </div>
     </div>
 
-    <div class="field">
-      <label>Avancé</label>
-      <div class="three fields">
-        <div class="field">
-          <div class="ui toggle checkbox">
-            <input type="checkbox" id="opt_rare" onchange="changeLangPythonOpt()">
-            <label>Autorise les mots rares (déconseillé)</label>
+    <div class="ui accordion field">
+      <div class="title"><i class="icon dropdown"></i>Réglages avancés</div>
+      <div class="content">
+        <div class="four fields">
+          <div class="field">
+            <label>Première lettre</label>
+            <select class="ui selection dropdown" onchange="changeLangPythonOpt()" id="firstletter">
+              <option value="0" selected>Aucune</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+              <option value="D">D</option>
+              <option value="E">E</option>
+              <option value="F">F</option>
+              <option value="G">G</option>
+              <option value="H">H</option>
+              <option value="I">I</option>
+              <option value="J">J</option>
+              <option value="K">K</option>
+              <option value="L">L</option>
+              <option value="M">M</option>
+              <option value="N">N</option>
+              <option value="O">O</option>
+              <option value="P">P</option>
+              <option value="Q">Q</option>
+              <option value="R">R</option>
+              <option value="S">S</option>
+              <option value="T">T</option>
+              <option value="U">U</option>
+              <option value="V">V</option>
+              <option value="W">W</option>
+              <option value="X">X</option>
+              <option value="Y">Y</option>
+              <option value="Z">Z</option>
+            </select>
           </div>
-        </div>
-        <div class="field">
-          <div class="ui toggle checkbox">
-            <input type="checkbox" id="opt_hard" onchange="changeLangPythonOpt()">
-            <label>Wordle en mode difficile (conseillé pour nytimes)</label>
+         <div class="field">
+            <label>Option déconseillée</label>
+            <div class="ui toggle checkbox">
+              <input type="checkbox" id="opt_rare" onchange="changeLangPythonOpt()">
+              <label>Autorise les mots rares</label>
+            </div>
           </div>
-        </div>
-        <div class="field">
-          <div class="ui toggle checkbox">
-            <input type="checkbox" id="opt_best" onchange="changeLangPythonOpt()">
-            <label>Cherche de meilleures solutions, mais plus lent</label>
+          <div class="field">
+            <label>En mode difficile</label>
+            <div class="ui toggle checkbox">
+              <input type="checkbox" id="opt_hard" onchange="changeLangPythonOpt()">
+              <label>Conseillé pour nytimes</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Cherche de meilleures solutions</label>
+            <div class="ui toggle checkbox">
+              <input type="checkbox" id="opt_best" onchange="changeLangPythonOpt()">
+              <label>Plus lent</label>
+            </div>
           </div>
         </div>
       </div>
@@ -179,15 +177,15 @@
 
 <!-- Mots -->
 
-  <div class="ui section hidden divider"></div>
-  <div class="ui grid">
-    <div class="three wide column ">
+  <div class="ui hidden divider"></div>
+  <div class="ui stackable grid">
+    <div class="three wide column computer only tablet only">
       <div class="ui fluid labeled input">
         <input id="try_0" value="" oninput="updateButtonsContent(0)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Mot essayé"/>
       </div>
     </div>
     <div class="thirteen wide column ">
-      <div class="ui nine huge buttons">
+      <div class="ui nine big buttons">
         <button class="ui disabled button" id="button_0_0" onclick="setColor(0, 0)" >-</button>
         <button class="ui disabled button" id="button_0_1" onclick="setColor(0, 1)" >-</button>
         <button class="ui disabled button" id="button_0_2" onclick="setColor(0, 2)" >-</button>
@@ -201,14 +199,14 @@
     </div>
   </div>
 
-  <div class="ui grid">
-    <div class="three wide column ">
+  <div class="ui stackable grid">
+    <div class="three wide column computer only tablet only">
       <div class="ui fluid labeled input">
         <input id="try_1" value="" oninput="updateButtonsContent(1)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Mot essayé"/>
       </div>
     </div>
     <div class="thirteen wide column ">
-      <div class="ui nine huge buttons">
+      <div class="ui nine big buttons">
         <button class="ui disabled button" id="button_1_0" onclick="setColor(1, 0)" >-</button>
         <button class="ui disabled button" id="button_1_1" onclick="setColor(1, 1)" >-</button>
         <button class="ui disabled button" id="button_1_2" onclick="setColor(1, 2)" >-</button>
@@ -222,14 +220,14 @@
     </div>
   </div>
 
-  <div class="ui grid">
-    <div class="three wide column ">
+  <div class="ui stackable grid">
+    <div class="three wide column computer only tablet only">
       <div class="ui fluid labeled input">
         <input id="try_2" value="" oninput="updateButtonsContent(2)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Mot essayé"/>
       </div>
     </div>
     <div class="thirteen wide column ">
-      <div class="ui nine huge buttons">
+      <div class="ui nine big buttons">
         <button class="ui disabled button" id="button_2_0" onclick="setColor(2, 0)" >-</button>
         <button class="ui disabled button" id="button_2_1" onclick="setColor(2, 1)" >-</button>
         <button class="ui disabled button" id="button_2_2" onclick="setColor(2, 2)" >-</button>
@@ -243,14 +241,14 @@
     </div>
   </div>
 
-  <div class="ui grid">
-    <div class="three wide column ">
+  <div class="ui stackable grid">
+    <div class="three wide column computer only tablet only">
       <div class="ui fluid labeled input">
         <input id="try_3" value="" oninput="updateButtonsContent(3)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Mot essayé"/>
       </div>
     </div>
     <div class="thirteen wide column ">
-      <div class="ui nine huge buttons">
+      <div class="ui nine big buttons">
         <button class="ui disabled button" id="button_3_0" onclick="setColor(3, 0)" >-</button>
         <button class="ui disabled button" id="button_3_1" onclick="setColor(3, 1)" >-</button>
         <button class="ui disabled button" id="button_3_2" onclick="setColor(3, 2)" >-</button>
@@ -264,14 +262,14 @@
     </div>
   </div>
 
-  <div class="ui grid">
-    <div class="three wide column ">
+  <div class="ui stackable grid">
+    <div class="three wide column computer only tablet only">
       <div class="ui fluid labeled input">
         <input id="try_4" value="" oninput="updateButtonsContent(4)" maxlength="5" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Mot essayé"/>
       </div>
     </div>
     <div class="thirteen wide column ">
-      <div class="ui nine huge buttons">
+      <div class="ui nine big buttons">
         <button class="ui disabled button" id="button_4_0" onclick="setColor(4, 0)" >-</button>
         <button class="ui disabled button" id="button_4_1" onclick="setColor(4, 1)" >-</button>
         <button class="ui disabled button" id="button_4_2" onclick="setColor(4, 2)" >-</button>
@@ -285,11 +283,10 @@
     </div>
   </div>
 
-
 <!-- Bouton(s) et sortie console -->
 
-  <div class="ui section hidden divider"></div>
-  <div class="ui stackable grid">
+  <div class="ui hidden divider"></div>
+  <div class="ui stackable grid mobile reversed">
     <div class="four wide column ">
       <span class="ui grey text" id="guesshint">-</span>
     </div>
@@ -299,7 +296,7 @@
   </div>
   <div class="ui hidden divider"></div>
   
-  <div class="ui section hidden divider"></div>
+  <div class="ui hidden divider"></div>
   <div class="ui form">
     <div class="field">
       <label>Sortie console</label>
