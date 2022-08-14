@@ -35,7 +35,6 @@
           property.innerHTML = '-';
           property.setAttribute('class', 'ui disabled button');
         }
-        results[n_word] = 0;
       } else {
         for (let c = 0; c < 9; c++) {
           var property = document.getElementById('button_'+n_word+'_'+c);
@@ -43,6 +42,7 @@
           property.setAttribute('class', 'ui button');
         }
       }
+      results[n_word] = 0; // All buttons reset to standard state, so reseting internal variables too
     }
 
     function setNbChars(new_lang, new_nb_chars) {
