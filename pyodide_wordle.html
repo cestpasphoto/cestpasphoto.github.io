@@ -74,6 +74,16 @@
       changeLangPython();
     }
 
+    function resetAll() {
+      document.getElementById("firstletter").value = "0";
+      for (let i_word = 0; i_word < 5; i_word++) {
+        document.getElementById('try_'+i_word).value = "";
+        updateButtonsContent(i_word);
+      }
+
+      changeLangPython();
+    }
+
     $(document).ready(function(){
       $('.ui.accordion').accordion();
     });
@@ -162,7 +172,7 @@
             </div>
           </div>
           <div class="field">
-            <label>Cherche de meilleures solutions</label>
+            <label>Cherche mieux</label>
             <div class="ui toggle checkbox">
               <input type="checkbox" id="opt_best" onchange="changeLangPythonOpt()">
               <label>Plus lent</label>
@@ -292,6 +302,9 @@
     </div>
     <div class="eight wide column ">
       <button class="fluid ui primary massive button" id="btn_guess" onclick="guess()">Deviner</button>
+    </div>
+    <div class="four wide column ">
+      <button class="fluid ui tertiary massive icon button" onclick="resetAll()"><i class="undo icon"></i></button>
     </div>
   </div>
   <div class="ui hidden divider"></div>
