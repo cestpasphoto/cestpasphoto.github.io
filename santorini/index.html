@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://unpkg.com/jquery@3.3.1/dist/jquery.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://unpkg.com/fomantic-ui@2.8.8/dist/semantic.min.css">
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.21.0/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+  <script>
+    var results = new Array(0,0,0,0,0);
+    var n_total_char = 5;
+
+    function updateTable() {
+      let board = globalThis.santorini.getBoard().toJs({create_proxies: false});
+      levels_array = ['◎', '▂', '▅', '█', 'X'];
+      for (let y = 0; y < 5; y++) {
+        for (let x = 0; x < 5; x++) {
+          let level  = board[y][x][1];
+          let cell_id = 'cell_' + y + '_' + x;
+          document.getElementById(cell_id).innerHTML = levels_array[level];
+          let worker = board[y][x][0];
+          if (worker > 0) {
+            document.getElementById(cell_id).setAttribute('class', 'ui green text');
+          } else if (worker < 0) {
+            document.getElementById(cell_id).setAttribute('class', 'ui red text');
+          } else {
+            document.getElementById(cell_id).setAttribute('class', 'ui text');
+          }
+        }
+      }
+    }
+
+    function displayNextPlayer() {
+      let nextPlayer = globalThis.santorini.getNextPlayer();
+      if (nextPlayer == 0) {
+        document.getElementById('nextplayer').innerHTML = 'P0';
+        document.getElementById('nextplayer').setAttribute('class', 'ui big green text');
+      } else if (nextPlayer == 1) {
+        document.getElementById('nextplayer').innerHTML = 'P1';
+        document.getElementById('nextplayer').setAttribute('class', 'ui big red text');
+      } else {
+        document.getElementById('nextplayer').innerHTML = 'P' + nextPlayer;
+        document.getElementById('nextplayer').setAttribute('class', 'ui big text');
+      }
+    }
+  </script>
+  <script>
+    var onnxSession;
+    var santorini;
+    
+    // Function called by python code
+    async function predict(canonicalBoard, valids) {
+      const cb_js = Float32Array.from(canonicalBoard.toJs({create_proxies: false}));
+      const vs_js = Uint8Array.from(valids.toJs({create_proxies: false}));
+      const tensor_board = new ort.Tensor('float32', cb_js, [1, 25, 3]);
+      const tensor_valid = new ort.Tensor('bool'   , vs_js, [1, 162  ]);
+      // console.log('canonicalboard:', tensor_board);
+      // console.log('valid:', tensor_valid);
+      const results = await globalThis.onnxSession.run({ board: tensor_board, valid_actions: tensor_valid });
+      // console.log('results:', results);
+      return {pi: Array.from(results.pi.data), v: Array.from(results.v.data)}
+    }
+
+    // init Pyodide and stuff
+    async function init_code() {
+      let pyodide = await loadPyodide({ fullStdLib : false });
+      await pyodide.loadPackage("numpy");
+
+      globalThis.onnxSession = await ort.InferenceSession.create('./exported_model.onnx');
+
+      await pyodide.runPythonAsync(`
+          from pyodide.http import pyfetch
+          # response = await pyfetch("./mycode.zip")
+          # await response.unpack_archive() # by default, unpacks to the current dir
+
+          code_files = ['Game.py', 'main_web.py', 'MCTS.py', 'SantoriniConstants.py', 'SantoriniDisplay.py', 'SantoriniGame.py', 'SantoriniLogicNumba.py']
+          for filename in code_files:
+            response = await pyfetch("./"+filename)
+            with open(filename, "wb") as f:
+              f.write(await response.bytes())
+
+      `)
+      console.log('Loaded python code, pyodide ready');
+      return pyodide
+    }
+
+    async function init_game(pyodide) {
+      console.log('Now importing python module');
+      globalThis.santorini = pyodide.pyimport("main_web");
+      console.log('Run a game');
+      globalThis.santorini.init_stuff();
+      globalThis.santorini.printBoard();
+      updateTable();
+      displayNextPlayer();
+    }
+
+    async function ai_guess_and_play() {
+      console.log('guessing');
+      button_ai.setAttribute('class', "ui primary huge elastic loading button");
+      var best_action = await globalThis.santorini.guessBestAction();
+      console.log('best_action:', best_action);
+      globalThis.santorini.getNextState(best_action);
+      globalThis.santorini.printBoard();
+      updateTable();
+      displayNextPlayer();
+      button_ai.setAttribute('class', "ui primary huge button");
+    }
+    
+    async function main() {
+      let pyodide = await init_code();
+      await init_game(pyodide);
+      button_ai.setAttribute('class', "ui primary huge button");
+    }
+  </script>
+</head>
+<body>
+<div class="ui container">
+
+<!-- Titre -->
+
+  <div class="ui hidden divider"></div>
+  <h1 class="ui massive center aligned header">Santorini AI player</h1>
+  <div class="ui center aligned sub header"><span class="ui green text">You in green</span> and <span class="ui red text">opponent in red</span></div>
+
+<!-- Table -->
+
+  <table class="ui fixed collapsing unstackable celled huge table"><tbody>
+    <tr class="center aligned">
+      <td><span id="cell_0_0" class="ui text">.</span></td>
+      <td><span id="cell_0_1" class="ui text">.</span></td>
+      <td><span id="cell_0_2" class="ui text">.</span></td>
+      <td><span id="cell_0_3" class="ui text">.</span></td>
+      <td><span id="cell_0_4" class="ui text">.</span></td>
+    </tr>
+    <tr class="center aligned">
+      <td><span id="cell_1_0" class="ui text">.</span></td>
+      <td><span id="cell_1_1" class="ui text">.</span></td>
+      <td><span id="cell_1_2" class="ui text">.</span></td>
+      <td><span id="cell_1_3" class="ui text">.</span></td>
+      <td><span id="cell_1_4" class="ui text">.</span></td>
+    </tr>
+    <tr class="center aligned">
+      <td><span id="cell_2_0" class="ui text">.</span></td>
+      <td><span id="cell_2_1" class="ui text">.</span></td>
+      <td><span id="cell_2_2" class="ui text">.</span></td>
+      <td><span id="cell_2_3" class="ui text">.</span></td>
+      <td><span id="cell_2_4" class="ui text">.</span></td>
+    </tr>
+    <tr class="center aligned">
+      <td><span id="cell_3_0" class="ui text">.</span></td>
+      <td><span id="cell_3_1" class="ui text">.</span></td>
+      <td><span id="cell_3_2" class="ui text">.</span></td>
+      <td><span id="cell_3_3" class="ui text">.</span></td>
+      <td><span id="cell_3_4" class="ui text">.</span></td>
+    </tr>
+    <tr class="center aligned">
+      <td><span id="cell_4_0" class="ui text">.</span></td>
+      <td><span id="cell_4_1" class="ui text">.</span></td>
+      <td><span id="cell_4_2" class="ui text">.</span></td>
+      <td><span id="cell_4_3" class="ui text">.</span></td>
+      <td><span id="cell_4_4" class="ui text">.</span></td>
+    </tr>
+  </tbody></table>
+
+  <div class="ui centered stackable grid">
+    <div class="center aligned five wide column">
+      <span class="ui big green text" id="nextplayer">P0</span><span class="ui big text"> to play</span>
+    </div>
+    <div class="center aligned five wide column">
+      <button class="ui fluid primary huge button" id="button_ai">AI move</button>
+    </div>
+    <div class="center aligned five wide column">
+      <div class="ui file action input">
+        <input id="manualAction" placeholder="Action ID" maxlength="3" size="9">
+        <label for="manualAction" class="ui huge button">Human move</label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const button_ai = document.getElementById('button_ai');
+  button_ai.setAttribute('class', "ui primary huge elastic loading button");
+  button_ai.onclick=async ()=>{ await ai_guess_and_play(); };
+  main()
+</script>
+</body>
+</html>
