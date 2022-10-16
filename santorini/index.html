@@ -97,20 +97,20 @@
 
     async function ai_guess_and_play() {
       console.log('guessing');
-      button_ai.setAttribute('class', "ui primary huge elastic loading button");
+      button_ai.setAttribute('class', "ui fluid primary huge elastic loading button");
       var best_action = await globalThis.santorini.guessBestAction();
       console.log('best_action:', best_action);
       globalThis.santorini.getNextState(best_action);
       globalThis.santorini.printBoard();
       updateTable();
       displayNextPlayer();
-      button_ai.setAttribute('class', "ui primary huge button");
+      button_ai.setAttribute('class', "ui fluid primary huge button");
     }
     
     async function main() {
       let pyodide = await init_code();
       await init_game(pyodide);
-      button_ai.setAttribute('class', "ui primary huge button");
+      button_ai.setAttribute('class', "ui fluid primary huge button");
     }
   </script>
 </head>
@@ -125,7 +125,7 @@
 
 <!-- Table -->
 
-  <table class="ui fixed collapsing unstackable celled huge table"><tbody>
+  <table class="ui fixed unstackable celled huge table"><tbody>
     <tr class="center aligned">
       <td><span id="cell_0_0" class="ui text">.</span></td>
       <td><span id="cell_0_1" class="ui text">.</span></td>
@@ -163,6 +163,8 @@
     </tr>
   </tbody></table>
 
+<!-- Boutons -->
+
   <div class="ui centered stackable grid">
     <div class="center aligned five wide column">
       <span class="ui big green text" id="nextplayer">P0</span><span class="ui big text"> to play</span>
@@ -181,7 +183,7 @@
 
 <script>
   const button_ai = document.getElementById('button_ai');
-  button_ai.setAttribute('class', "ui primary huge elastic loading button");
+  button_ai.setAttribute('class', "ui fluid primary huge elastic loading button");
   button_ai.onclick=async ()=>{ await ai_guess_and_play(); };
   main()
 </script>
