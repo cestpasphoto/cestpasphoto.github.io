@@ -23,27 +23,26 @@ def init_stuff():
 	board = g.getInitBoard()
 	mcts = MCTS(g, None, mcts_args)
 	player = 0
+	valids = g.getValidMoves(board, player)
+	end = [0,0]
+
+	return player, end, board.tolist(), valids
 
 def getNextState(action):
 	global g, board, mcts, player
-	board, nextPlayer = g.getNextState(board, player, action)
-	player = nextPlayer
+	board, player = g.getNextState(board, player, action)
+	end = g.getGameEnded(board, player)
+	valids = g.getValidMoves(board, player)
 
-def printBoard():
-	global g, board, mcts, player
-	g.printBoard(board)
+	return player, end, board.tolist(), valids
 
 def getBoard():
 	global g, board, mcts, player
 	return board.tolist()
 
-def getNextPlayer():
-	global g, board, mcts, player
-	return player
-
 async def guessBestAction():
 	global g, board, mcts, player
-	probs, _, _ = await mcts.getActionProb(board, 1)
+	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), 1)
 	# print('Results', probs)
 	best_action = max(range(len(probs)), key=lambda x: probs[x])
 	print(f'best_action {best_action} with strength {int(probs[best_action]*100)}%')
