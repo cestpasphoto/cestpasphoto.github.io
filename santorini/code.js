@@ -64,22 +64,23 @@ class Santorini {
 
 
 function updateTable() {
-  levels_array = ['◎', '▂', '▅', '█', 'X'];
+  levels_array = ['‌', '▂', '▅', '█', 'X'];
+  worker_string = '◎'; no_worker_string = '‌';
   for (let y = 0; y < 5; y++) {
     for (let x = 0; x < 5; x++) {
       let level  = game.board[y][x][1];
       let cell = document.getElementById('cell_' + y + '_' + x);
-      cell.firstChild.innerHTML = levels_array[level];
+      
       let worker = game.board[y][x][0];
       if (worker > 0) {
+        cell.firstChild.innerHTML = worker_string + '<br>' + levels_array[level];
         cell.firstChild.setAttribute('class', 'ui green text');
       } else if (worker < 0) {
+        cell.firstChild.innerHTML = worker_string + '<br>' + levels_array[level];
         cell.firstChild.setAttribute('class', 'ui red text');
       } else {
+        cell.firstChild.innerHTML = no_worker_string + '<br>' + levels_array[level];
         cell.firstChild.setAttribute('class', 'ui text');
-        if (level == 0) {
-          cell.firstChild.innerHTML = '‌'
-        }
       }
     }
   }
