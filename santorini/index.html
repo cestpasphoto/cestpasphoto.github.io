@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.1/dist/jquery.min.js"></script>
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.css">
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.21.0/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
   <script src="./code.js"></script>
 </head>
@@ -17,6 +17,28 @@
   <div class="ui hidden divider"></div>
   <h1 class="ui massive center aligned header">Santorini AI player</h1>
   <div class="ui center aligned sub header"><span class="ui green text">You in green</span> and <span class="ui red text">opponent in red</span></div>
+
+<!-- Options -->
+  <div class="ui form">
+    <div class="fields">
+      <div class="three wide field">
+        <label>Difficulty</label>
+        <select class="ui selection dropdown" onchange="game.changeDifficulty()" id="difficulty">
+          <option value="0">Harder</option>
+          <option value="1" selected>Hard</option>
+          <option value="2">Medium</option>
+          <option value="3">Easy</option>
+          <option value="4">Come on</option>
+        </select>
+      </div>
+      <div class="three wide field">
+        <div class="ui checkbox">
+          <input type="checkbox" tabindex="0" class="hidden">
+          <label>Another option</label>
+        </div>
+      </div>
+    </div>
+  </div>
 
 <!-- Table -->
   <div class="ui hidden divider"></div>

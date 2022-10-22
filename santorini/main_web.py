@@ -40,6 +40,12 @@ def getBoard():
 	global g, board, mcts, player
 	return board.tolist()
 
+# 0: max (400), 1: medium (100), 2: easy (25), 3: easier (6), 4: come on (1)
+def changeDifficulty(level):
+	global g, board, mcts, player
+	level = min(4, max(0, level))
+	mcts.args.numMCTSSims = [400, 100, 25, 6, 4, 1][level]
+
 async def guessBestAction():
 	global g, board, mcts, player
 	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), 1)

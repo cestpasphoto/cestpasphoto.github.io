@@ -60,6 +60,12 @@ class Santorini {
     updateTable();
     displayNextPlayer();
   }
+
+  changeDifficulty() {
+    let level = parseInt(document.getElementById('difficulty').value);
+    console.log('Difficuly changed to ', level);
+    this.py.changeDifficulty(level);
+  }
 }
 
 
@@ -174,7 +180,19 @@ function displayAIMove(move) {
 }
 
 function displayNextPlayer() {
-  if (game.nextPlayer == 0) {
+  if (game.gameEnded.some(x => !!x)) {
+    console.log('End of game');
+    if (game.gameEnded[0] > 0) {
+      document.getElementById('nextplayer').innerHTML = 'P0';
+      document.getElementById('nextplayer').setAttribute('class', 'ui big green text');
+    } else {
+      document.getElementById('nextplayer').innerHTML = 'P1';
+      document.getElementById('nextplayer').setAttribute('class', 'ui big red text');
+    }
+    document.getElementById('nextplayer').nextElementSibling.innerHTML = ' won';
+    document.getElementById('button_ai').setAttribute('disabled', true);
+    document.getElementById('button_human').setAttribute('disabled', true);
+  } else if (game.nextPlayer == 0) {
     document.getElementById('nextplayer').innerHTML = 'P0';
     document.getElementById('nextplayer').setAttribute('class', 'ui big green text');
   } else if (game.nextPlayer == 1) {
