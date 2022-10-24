@@ -15,28 +15,24 @@
 <!-- Titre -->
 
   <div class="ui hidden divider"></div>
-  <h1 class="ui massive center aligned header">Santorini AI player</h1>
-  <div class="ui center aligned sub header"><span class="ui green text">You in green</span> and <span class="ui red text">opponent in red</span></div>
+  <h1 class="ui massive center aligned header">
+    Santorini AI player
+    <div class="ui center aligned sub header">
+      <span class="ui green text">You in green</span> and <span class="ui red text">opponent in red</span>
+    </div>
+  </h1>
 
 <!-- Options -->
   <div class="ui form">
-    <div class="fields">
-      <div class="three wide field">
-        <label>Difficulty</label>
-        <select class="ui selection dropdown" onchange="game.changeDifficulty()" id="difficulty">
-          <option value="0">Harder</option>
-          <option value="1" selected>Hard</option>
-          <option value="2">Medium</option>
-          <option value="3">Easy</option>
-          <option value="4">Come on</option>
-        </select>
-      </div>
-      <div class="three wide field">
-        <div class="ui checkbox">
-          <input type="checkbox" tabindex="0" class="hidden">
-          <label>Another option</label>
-        </div>
-      </div>
+    <div class="inline field">
+      <label>Difficulty</label>
+      <select class="ui selection dropdown" onchange="console.log('Pouet');" id="difficulty">
+        <option value="0">Harder</option>
+        <option value="1">Hard</option>
+        <option value="2" selected>Medium</option>
+        <option value="3">Easy</option>
+        <option value="4">Come on</option>
+      </select>
     </div>
   </div>
 
@@ -81,7 +77,7 @@
     </tr>
   </tbody></table>
 
-  <div class="ui middle aligned centered stackable grid">
+  <div class="ui middle aligned centered grid">
     <div class="center aligned five wide column">
       <span class="ui big green text" id="nextplayer">P0</span><span class="ui big text"> to play</span>
     </div>

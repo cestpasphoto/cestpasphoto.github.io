@@ -27,17 +27,18 @@ class Santorini {
     this.py = pyodide.pyimport("main_web");
     console.log('Run a game');
     let data_tuple = this.py.init_stuff().toJs({create_proxies: false});
-    this.nextPlayer = data_tuple[0];
-    this.gameEnded  = data_tuple[1];
-    this.board      = data_tuple[2];
-    this.validMoves = data_tuple[3];
+    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     updateTable();
     displayNextPlayer();
   }
 
   manual_move(action) {
     console.log('manual move:', action);
-    this._applyMove(action);
+    if (this.validMoves[action]) {
+      this._applyMove(action);
+    } else {
+      console.log('Not a valid action', this.validMoves);
+    }    
   }
 
 
@@ -53,10 +54,7 @@ class Santorini {
 
   _applyMove(action) {
     let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
-    this.nextPlayer = data_tuple[0];
-    this.gameEnded  = data_tuple[1];
-    this.board      = data_tuple[2];
-    this.validMoves = data_tuple[3];
+    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     updateTable();
     displayNextPlayer();
   }
@@ -65,6 +63,14 @@ class Santorini {
     let level = parseInt(document.getElementById('difficulty').value);
     console.log('Difficuly changed to ', level);
     this.py.changeDifficulty(level);
+  }
+
+  static decodeMove(move) {
+    let worker = Math.floor(move / (9*9));
+    let action_ = move % (9*9);
+    let move_direction = Math.floor(action_ / 9);
+    let build_direction = action_ % 9;
+    return worker, move_direction, build_direction;
   }
 }
 
@@ -139,8 +145,13 @@ function cellClick(stage, clicked_y = null, clicked_x = null) {
         let cell_class = cell.firstChild.tagName == 'SPAN' ? cell.firstChild.classList : cell.firstChild.firstChild.classList;
         if ((cell_class.contains('green') && game.nextPlayer == 0) || (cell_class.contains('red') && game.nextPlayer == 1)) {
           // Set my workers to selectable
-          cell.setAttribute('class', 'selectable warning');
-          cell.innerHTML = '<a onclick="cellClick('+((stage+1)%4)+','+y+','+x+');event.preventDefault();">'+cell_content+'</a>';
+          if (anySubmovePossible(stage, x, y)) {
+            cell.setAttribute('class', 'selectable warning');
+            cell.innerHTML = '<a onclick="cellClick('+((stage+1)%4)+','+y+','+x+');event.preventDefault();">'+cell_content+'</a>';
+          } else {
+            cell.setAttribute('class', '');
+            cell.innerHTML = cell_content;
+          }
         } else {
           cell.setAttribute('class', '');
           cell.innerHTML = cell_content;
@@ -151,8 +162,13 @@ function cellClick(stage, clicked_y = null, clicked_x = null) {
           cell.setAttribute('class', stage == 1 ? 'right blue marked' : 'right purple marked');
           cell.innerHTML = cell_content;
         } else if (Math.abs(x-clicked_x) <= 1 && Math.abs(y-clicked_y) <= 1) {
-          cell.setAttribute('class', 'selectable warning');
-          cell.innerHTML = '<a onclick="cellClick('+((stage+1)%4)+','+y+','+x+');event.preventDefault();">'+cell_content+'</a>';
+          if (anySubmovePossible(stage, x, y)) {
+            cell.setAttribute('class', 'selectable warning');
+            cell.innerHTML = '<a onclick="cellClick('+((stage+1)%4)+','+y+','+x+');event.preventDefault();">'+cell_content+'</a>';
+          } else {
+            cell.setAttribute('class', '');
+            cell.innerHTML = cell_content;
+          }
         } else {
           cell.setAttribute('class', '');
           cell.innerHTML = cell_content;
@@ -170,10 +186,7 @@ function displayAIMove(move) {
   let move_description = document.getElementById('move_description');
   move_description.innerHTML = 'AI played move ' + move;
 
-  let worker = Math.floor(move / (9*9));
-  let action_ = move % (9*9);
-  let move_direction = Math.floor(action_ / 9);
-  let build_direction = action_ % 9;
+  let [worker, move_direction, build_direction] = Santorini.decodeMove(move);
   const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘'];
   let description = 'moved worker ' + worker + ' ' + directions_char[move_direction] + ' and then build ' + directions_char[build_direction];
   move_description.innerHTML += ' = AI ' + description;
@@ -204,6 +217,29 @@ function displayNextPlayer() {
   }
 }
 
+function anySubmovePossible(level, coordX, coordY) {
+  if (level == 1) {
+    // coord = worker
+    worker_id = Math.abs(game.board[coordY][coordX][0]) - 1;
+    let moves_begin =  worker_id   *9*9;
+    let moves_end   = (worker_id+1)*9*9;
+    any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
+  } else if (level == 2) {
+    // coord = worker move direction
+    move_direction = encodeDirection(workerX, workerY, coordX, coordY);
+    let moves_begin = currentMoveTemp +  move_direction   *9;
+    let moves_end   = currentMoveTemp + (move_direction+1)*9;
+    any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
+  } else if (level == 3) {
+    // coord = build direction
+    build_direction = encodeDirection(workerNewX, workerNewY, coordX, coordY);
+    any_move_possible = game.validMoves[currentMoveTemp + build_direction];
+  } else {
+    console.log('Weird, I dont support level=', level, coordX, coordY);
+  }
+
+  return any_move_possible;
+}
 
 // init Pyodide and stuff
 async function init_code() {
