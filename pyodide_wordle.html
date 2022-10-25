@@ -2,9 +2,7 @@
 <html>
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.1/dist/jquery.min.js"></script>
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js"></script>
   <script>
     var results = new Array(0,0,0,0,0);
@@ -126,8 +124,8 @@
       </div>
     </div>
 
-    <div class="ui accordion field">
-      <div class="title"><i class="icon dropdown"></i>Réglages avancés</div>
+    <details class="ui accordion field">
+      <summary class="title"><i class="icon dropdown"></i>Réglages avancés</summary>
       <div class="content">
         <div class="four fields">
           <div class="field">
@@ -185,7 +183,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </details>
 
   </div>
 

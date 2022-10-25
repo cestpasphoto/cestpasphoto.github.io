@@ -11,7 +11,7 @@ def init_stuff():
 	global g, board, mcts, player
 
 	mcts_args = dotdict({
-		'numMCTSSims'     : 100,
+		'numMCTSSims'     : 25,
 		'cpuct'           : 1.0,
 		'prob_fullMCTS'   : 1.,
 		'forced_playouts' : False,
@@ -40,11 +40,9 @@ def getBoard():
 	global g, board, mcts, player
 	return board.tolist()
 
-# 0: max (400), 1: medium (100), 2: easy (25), 3: easier (6), 4: come on (1)
-def changeDifficulty(level):
+def changeDifficulty(numMCTSSims):
 	global g, board, mcts, player
-	level = min(4, max(0, level))
-	mcts.args.numMCTSSims = [400, 100, 25, 6, 4, 1][level]
+	mcts.args.numMCTSSims = numMCTSSims
 
 async def guessBestAction():
 	global g, board, mcts, player

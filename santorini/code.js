@@ -13,6 +13,10 @@ async function predict(canonicalBoard, valids) {
   return {pi: Array.from(results.pi.data), v: Array.from(results.v.data)}
 }
 
+/* =================== */
+/* =====  LOGIC  ===== */
+/* =================== */
+
 class Santorini {
   constructor() {
     this.py = null;
@@ -28,7 +32,7 @@ class Santorini {
     console.log('Run a game');
     let data_tuple = this.py.init_stuff().toJs({create_proxies: false});
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    updateTable();
+    updateBoardDisplay();
     displayNextPlayer();
   }
 
@@ -44,25 +48,24 @@ class Santorini {
 
   async ai_guess_and_play() {
     console.log('guessing');
-    button_ai.setAttribute('class', "ui fluid primary huge elastic loading button");
+    mainButton.setAttribute('class', "ui fluid primary huge loading button");
     var best_action = await this.py.guessBestAction();
-    // console.log('best_action:', best_action);
     this._applyMove(best_action);
     displayAIMove(best_action);
-    button_ai.setAttribute('class', "ui fluid primary huge button");
+    mainButton.setAttribute('class', "ui fluid primary huge button");
   }
 
   _applyMove(action) {
     let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    updateTable();
+    updateBoardDisplay();
     displayNextPlayer();
   }
 
   changeDifficulty() {
-    let level = parseInt(document.getElementById('difficulty').value);
-    console.log('Difficuly changed to ', level);
-    this.py.changeDifficulty(level);
+    let numMCTSSims = parseInt(document.getElementById('difficulty').value);
+    console.log('Difficuly changed to ', numMCTSSims);
+    this.py.changeDifficulty(numMCTSSims);
   }
 
   static decodeMove(move) {
@@ -70,14 +73,23 @@ class Santorini {
     let action_ = move % (9*9);
     let move_direction = Math.floor(action_ / 9);
     let build_direction = action_ % 9;
-    return worker, move_direction, build_direction;
+    return [worker, move_direction, build_direction];
   }
 }
 
+function encodeDirection(oldX, oldY, newX, newY) {
+  let diffX = newX - oldX;
+  let diffY = newY - oldY;
+  return ((diffY+1)*3 + (diffX+1));
+}
 
-function updateTable() {
+/* =================== */
+/* ===== DISPLAY ===== */
+/* =================== */
+
+function updateBoardDisplay() {
   levels_array = ['‌', '▂', '▅', '█', 'X'];
-  worker_string = '◎'; no_worker_string = '‌';
+  worker_string = '웃'; no_worker_string = '‌';
   for (let y = 0; y < 5; y++) {
     for (let x = 0; x < 5; x++) {
       let level  = game.board[y][x][1];
@@ -98,18 +110,12 @@ function updateTable() {
   }
 }
 
-function encodeDirection(oldX, oldY, newX, newY) {
-  let diffX = newX - oldX;
-  let diffY = newY - oldY;
-  return ((diffY+1)*3 + (diffX+1));
-}
-
 function cellClick(stage, clicked_y = null, clicked_x = null) {
   console.log('Clicked on cell', clicked_y, clicked_x, 'stage = ', stage);
   let move_description = document.getElementById('move_description');
 
   if (stage == 1) {
-    move_description.innerHTML = 'Move my worker';
+    move_description.innerHTML = 'Move';
     currentMoveTemp = 0;
   } else if (stage == 2) {
     move_description.innerHTML += ' from ('+clicked_y+','+clicked_x+')';
@@ -126,7 +132,7 @@ function cellClick(stage, clicked_y = null, clicked_x = null) {
     buildY = clicked_y; buildX = clicked_x;
     buildDirection = encodeDirection(workerNewX, workerNewY, buildX, buildY);
     currentMoveTemp += buildDirection;
-    move_description.innerHTML += ' action = ' + currentMoveTemp;
+    move_description.innerHTML += ', code=' + currentMoveTemp;
   } else {
     move_description.innerHTML = '';
     currentMoveTemp = 0;
@@ -182,41 +188,6 @@ function cellClick(stage, clicked_y = null, clicked_x = null) {
   }
 }
 
-function displayAIMove(move) {
-  let move_description = document.getElementById('move_description');
-  move_description.innerHTML = 'AI played move ' + move;
-
-  let [worker, move_direction, build_direction] = Santorini.decodeMove(move);
-  const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘'];
-  let description = 'moved worker ' + worker + ' ' + directions_char[move_direction] + ' and then build ' + directions_char[build_direction];
-  move_description.innerHTML += ' = AI ' + description;
-}
-
-function displayNextPlayer() {
-  if (game.gameEnded.some(x => !!x)) {
-    console.log('End of game');
-    if (game.gameEnded[0] > 0) {
-      document.getElementById('nextplayer').innerHTML = 'P0';
-      document.getElementById('nextplayer').setAttribute('class', 'ui big green text');
-    } else {
-      document.getElementById('nextplayer').innerHTML = 'P1';
-      document.getElementById('nextplayer').setAttribute('class', 'ui big red text');
-    }
-    document.getElementById('nextplayer').nextElementSibling.innerHTML = ' won';
-    document.getElementById('button_ai').setAttribute('disabled', true);
-    document.getElementById('button_human').setAttribute('disabled', true);
-  } else if (game.nextPlayer == 0) {
-    document.getElementById('nextplayer').innerHTML = 'P0';
-    document.getElementById('nextplayer').setAttribute('class', 'ui big green text');
-  } else if (game.nextPlayer == 1) {
-    document.getElementById('nextplayer').innerHTML = 'P1';
-    document.getElementById('nextplayer').setAttribute('class', 'ui big red text');
-  } else {
-    document.getElementById('nextplayer').innerHTML = 'P' + game.nextPlayer;
-    document.getElementById('nextplayer').setAttribute('class', 'ui big text');
-  }
-}
-
 function anySubmovePossible(level, coordX, coordY) {
   if (level == 1) {
     // coord = worker
@@ -241,6 +212,63 @@ function anySubmovePossible(level, coordX, coordY) {
   return any_move_possible;
 }
 
+function displayAIMove(move) {
+  let move_description = document.getElementById('move_description');
+  move_description.innerHTML = 'AI played move ' + move;
+
+  let [worker, move_direction, build_direction] = Santorini.decodeMove(move);
+  const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘'];
+  let description = 'moved worker ' + worker + ' ' + directions_char[move_direction] + ' and then build ' + directions_char[build_direction];
+  move_description.innerHTML += ' = AI ' + description;
+}
+
+function displayNextPlayer() {
+  if (game.gameEnded.some(x => !!x)) {
+    console.log('End of game');
+    if (game.gameEnded[0] > 0) {
+      document.getElementById('nextplayer').innerHTML = 'P0';
+      document.getElementById('nextplayer').setAttribute('class', 'ui large green text');
+    } else {
+      document.getElementById('nextplayer').innerHTML = 'P1';
+      document.getElementById('nextplayer').setAttribute('class', 'ui large red text');
+    }
+    document.getElementById('nextplayer').nextElementSibling.innerHTML = ' won';
+    mainButton.setAttribute('disabled', true);
+    /*document.getElementById('button_human').setAttribute('disabled', true);*/
+  } else if (game.nextPlayer == 0) {
+    document.getElementById('nextplayer').innerHTML = 'P0';
+    document.getElementById('nextplayer').setAttribute('class', 'ui large green text');
+  } else if (game.nextPlayer == 1) {
+    document.getElementById('nextplayer').innerHTML = 'P1';
+    document.getElementById('nextplayer').setAttribute('class', 'ui large red text');
+  } else {
+    document.getElementById('nextplayer').innerHTML = 'P' + game.nextPlayer;
+    document.getElementById('nextplayer').setAttribute('class', 'ui large text');
+  }
+}
+
+async function setMainButton() {
+  let humanPlayerMode = document.getElementById('humanPlayer').value;
+  console.log('setMainButton', humanPlayerMode, game.nextPlayer);
+  if ((game.nextPlayer == 0 && humanPlayerMode == 'P0') ||
+      (game.nextPlayer == 1 && humanPlayerMode == 'P1') ||
+      (humanPlayerMode == 'All')) {
+    mainButton.setAttribute('class', 'ui fluid primary huge button');
+  } else if (humanPlayerMode == 'None') {
+    mainButton.setAttribute('class', 'ui fluid primary huge disabled button');
+    while (game.gameEnded.every(x => !x)) {
+      await game.ai_guess_and_play();
+    }
+  } else {
+    mainButton.setAttribute('class', 'ui fluid primary huge disabled button');
+    await game.ai_guess_and_play();
+  }
+}
+
+/* =================== */
+/* ===== PYODIDE ===== */
+/* =================== */
+
 // init Pyodide and stuff
 async function init_code() {
   let pyodide = await loadPyodide({ fullStdLib : false });
@@ -249,16 +277,11 @@ async function init_code() {
   globalThis.onnxSession = await ort.InferenceSession.create('./exported_model.onnx');
 
   await pyodide.runPythonAsync(`
-      from pyodide.http import pyfetch
-      # response = await pyfetch("./mycode.zip")
-      # await response.unpack_archive() # by default, unpacks to the current dir
-
-      code_files = ['Game.py', 'main_web.py', 'MCTS.py', 'SantoriniConstants.py', 'SantoriniDisplay.py', 'SantoriniGame.py', 'SantoriniLogicNumba.py']
-      for filename in code_files:
-        response = await pyfetch("./"+filename)
-        with open(filename, "wb") as f:
-          f.write(await response.bytes())
-
+    from pyodide.http import pyfetch
+    for filename in ['Game.py', 'main_web.py', 'MCTS.py', 'SantoriniConstants.py', 'SantoriniDisplay.py', 'SantoriniGame.py', 'SantoriniLogicNumba.py']:
+      response = await pyfetch("./"+filename)
+      with open(filename, "wb") as f:
+        f.write(await response.bytes())
   `)
   console.log('Loaded python code, pyodide ready');
   return pyodide
@@ -267,7 +290,8 @@ async function init_code() {
 async function main() {
   let pyodide = await init_code();
   game.init_game(pyodide);
-  button_ai.setAttribute('class', "ui fluid primary huge button");
+  mainButton.setAttribute('class', "ui fluid primary huge button");
+  await setMainButton();
 }
 
 var game = new Santorini();
