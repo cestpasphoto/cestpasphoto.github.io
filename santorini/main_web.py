@@ -47,7 +47,7 @@ def changeDifficulty(numMCTSSims):
 
 async def guessBestAction():
 	global g, board, mcts, player
-	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), 1)
+	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), temp=0, force_full_search=True)
 	# print('Results', probs)
 	best_action = max(range(len(probs)), key=lambda x: probs[x])
 	print(f'best_action {best_action} with strength {int(probs[best_action]*100)}%')
