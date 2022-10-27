@@ -24,6 +24,7 @@ class Santorini {
     this.nextPlayer = 0;
     this.validMoves = Array(2*9*9); this.validMoves.fill(false);
     this.gameEnded = [0, 0];
+    this.history = []; // List all previous states from new to old, not including current one
   }
 
   init_game(pyodide) {
@@ -47,15 +48,21 @@ class Santorini {
 
 
   async ai_guess_and_play() {
+    if (game.gameEnded.some(x => !!x)) {
+      console.log('Not guessing, game is finished');
+      mainButton.setAttribute('class', "ui fluid primary big button");
+      return;
+    }
     console.log('guessing');
-    mainButton.setAttribute('class', "ui fluid primary huge loading button");
+    mainButton.setAttribute('class', "ui fluid primary big loading button");
     var best_action = await this.py.guessBestAction();
     this._applyMove(best_action);
     displayAIMove(best_action);
-    mainButton.setAttribute('class', "ui fluid primary huge button");
+    mainButton.setAttribute('class', "ui fluid primary big button");
   }
 
   _applyMove(action) {
+    this.history.unshift([this.nextPlayer, this.board]);
     let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     updateBoardDisplay();
@@ -66,6 +73,43 @@ class Santorini {
     let numMCTSSims = parseInt(document.getElementById('difficulty').value);
     console.log('Difficuly changed to ', numMCTSSims);
     this.py.changeDifficulty(numMCTSSims);
+  }
+
+  revert() {
+    if (this.history.length == 0) {
+      return;
+    }
+
+    let humanPlayerMode = document.getElementById('humanPlayer').value;
+    let player = null;
+    if (humanPlayerMode == 'P0') {
+      player = 0;
+    } else if (humanPlayerMode == 'P1') {
+      player = 1;
+    }
+
+    // find earliest move where 'player' is next player (last move if null)
+    let index = 0;
+    if (player != null) {
+      index = this.history.findIndex(x => x[0]==player);
+      if (index < 0) {
+        return;
+      }
+      // continue to find first item of sequence
+      for (; (index < this.history.length) && (this.history[index][0] == player); index++) {
+      }
+      index--;
+    }
+    console.log('index=', index, '/', this.history.length);
+
+    // Actually revert
+    console.log('board to revert:', this.history[index][1]);
+    let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
+    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+    this.history.splice(0, index+1); // remove reverted move from history and further moves
+
+    updateBoardDisplay();
+    displayNextPlayer();
   }
 
   static decodeMove(move) {
@@ -115,7 +159,7 @@ function cellClick(stage, clicked_y = null, clicked_x = null) {
   let move_description = document.getElementById('move_description');
 
   if (stage == 1) {
-    move_description.innerHTML = 'Move';
+    move_description.innerHTML = 'You move';
     currentMoveTemp = 0;
   } else if (stage == 2) {
     move_description.innerHTML += ' from ('+clicked_y+','+clicked_x+')';
@@ -165,7 +209,8 @@ function cellClick(stage, clicked_y = null, clicked_x = null) {
       } else if (stage == 2 || stage == 3) {
         // Make clicked cell blue or purple and mark neighbours as selectable
         if (x == clicked_x && y == clicked_y) {
-          cell.setAttribute('class', stage == 1 ? 'right blue marked' : 'right purple marked');
+          // cell.setAttribute('class', stage == 1 ? 'right blue marked' : 'right purple marked');
+          cell.setAttribute('class', '');
           cell.innerHTML = cell_content;
         } else if (Math.abs(x-clicked_x) <= 1 && Math.abs(y-clicked_y) <= 1) {
           if (anySubmovePossible(stage, x, y)) {
@@ -185,6 +230,7 @@ function cellClick(stage, clicked_y = null, clicked_x = null) {
 
   if (stage == 0 && clicked_y != null) {
     game.manual_move(currentMoveTemp);
+    setMainButton();
   }
 }
 
@@ -234,33 +280,38 @@ function displayNextPlayer() {
     }
     document.getElementById('nextplayer').nextElementSibling.innerHTML = ' won';
     mainButton.setAttribute('disabled', true);
-    /*document.getElementById('button_human').setAttribute('disabled', true);*/
+    mainButton.innerHTML = 'End of game';
   } else if (game.nextPlayer == 0) {
     document.getElementById('nextplayer').innerHTML = 'P0';
     document.getElementById('nextplayer').setAttribute('class', 'ui large green text');
+    mainButton.removeAttribute('disabled');
+    mainButton.innerHTML = 'Start my move';
   } else if (game.nextPlayer == 1) {
     document.getElementById('nextplayer').innerHTML = 'P1';
     document.getElementById('nextplayer').setAttribute('class', 'ui large red text');
+    mainButton.removeAttribute('disabled');
+    mainButton.innerHTML = 'Start my move';
   } else {
     document.getElementById('nextplayer').innerHTML = 'P' + game.nextPlayer;
     document.getElementById('nextplayer').setAttribute('class', 'ui large text');
+    mainButton.removeAttribute('disabled');
+    mainButton.innerHTML = 'Start my move';
   }
 }
 
 async function setMainButton() {
   let humanPlayerMode = document.getElementById('humanPlayer').value;
-  console.log('setMainButton', humanPlayerMode, game.nextPlayer);
   if ((game.nextPlayer == 0 && humanPlayerMode == 'P0') ||
       (game.nextPlayer == 1 && humanPlayerMode == 'P1') ||
       (humanPlayerMode == 'All')) {
-    mainButton.setAttribute('class', 'ui fluid primary huge button');
+    mainButton.setAttribute('class', 'ui fluid primary big button');
   } else if (humanPlayerMode == 'None') {
-    mainButton.setAttribute('class', 'ui fluid primary huge disabled button');
+    mainButton.setAttribute('class', 'ui fluid primary big disabled button');
     while (game.gameEnded.every(x => !x)) {
       await game.ai_guess_and_play();
     }
   } else {
-    mainButton.setAttribute('class', 'ui fluid primary huge disabled button');
+    mainButton.setAttribute('class', 'ui fluid primary big disabled button');
     await game.ai_guess_and_play();
   }
 }
@@ -290,7 +341,7 @@ async function init_code() {
 async function main() {
   let pyodide = await init_code();
   game.init_game(pyodide);
-  mainButton.setAttribute('class', "ui fluid primary huge button");
+  mainButton.setAttribute('class', "ui fluid primary big button");
   await setMainButton();
 }
 

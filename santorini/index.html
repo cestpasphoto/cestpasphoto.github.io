@@ -15,9 +15,9 @@
 
   <div class="ui hidden divider"></div>
   <h1 class="ui huge center aligned header">
-    Santorini AI player
+    Santorini game with AI
     <div class="ui center aligned sub header">
-      <span class="ui green text">First player in green</span> and <span class="ui red text">the other in red</span>
+      <span class="ui green text">First player in green</span> and <span class="ui red text">the other in red</span>. Here are the <a href="https://www.ultraboardgames.com/santorini/game-rules.php">rules</a>.
     </div>
   </h1>
 
@@ -31,11 +31,11 @@
             <label>Difficulty</label>
             <select class="ui selection dropdown" onchange="game.changeDifficulty()" id="difficulty">
               <option value="400">Harder</option>
-              <option value="100">Hard</option>
-              <option value="25" selected>Medium</option>
-              <option value="6">Easy</option>
-              <option value="4">Easier</option>
-              <option value="1">Come on</option>
+              <option value="200">Hard</option>
+              <option value="100">Medium</option>
+              <option value="50">Easy</option>
+              <option value="25" selected>Easier</option>
+              <option value="12">Come on</option>
             </select>
           </div>
 
@@ -96,20 +96,21 @@
   </tbody></table>
 
   <div class="ui middle aligned centered grid">
-    <div class="center aligned five wide column">
-      <span class="ui large green text" id="nextplayer">P0</span><span class="ui large text"> to play</span>
+    <div class="center aligned four wide column">
+      <span class="ui large green text" id="nextplayer">P0</span><span class="ui text"> to play</span>
     </div>
-    <div class="center aligned six wide column">
-      <button class="ui fluid primary huge loading button" id="main_button" onclick="cellClick(1)">Start my move</button>
+    <div class="center aligned eight wide column">
+      <button class="ui fluid primary big loading button" id="main_button" onclick="cellClick(1)">Start my move</button>
     </div>
-    <div class="center aligned five wide column">
-      <button class="ui big icon button" id="button_revert"><i class="undo icon"></i></button>
+    <div class="center aligned four wide column">
+      <button class="ui big icon button" id="button_revert" onclick="game.revert()"><i class="undo icon"></i></button>
     </div>
     <div class="center aligned sixteen wide column">
       <div class="ui basic segment"><p id="move_description">
       </p></div>
     </div>
   </div>
+
 </div>
 
 <script>
@@ -117,5 +118,6 @@
   mainButton = document.getElementById('main_button');
   main()
 </script>
+
 </body>
 </html>

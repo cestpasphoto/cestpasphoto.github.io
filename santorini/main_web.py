@@ -1,5 +1,6 @@
 from MCTS import MCTS
 from SantoriniGame import SantoriniGame as Game
+import numpy as np
 
 g, board, mcts, player = None, None, None, 0
 
@@ -51,3 +52,13 @@ async def guessBestAction():
 	best_action = max(range(len(probs)), key=lambda x: probs[x])
 	print(f'best_action {best_action} with strength {int(probs[best_action]*100)}%')
 	return best_action
+
+def setData(setPlayer, setBoard):
+	global g, board, mcts, player
+
+	board = g.getCanonicalForm(np.array(setBoard.to_py()), 0) # say player=0 to force-set setBoard as is
+	player = setPlayer
+	end = g.getGameEnded(board, player)
+	valids = g.getValidMoves(board, player)
+
+	return player, end, board.tolist(), valids

@@ -401,7 +401,7 @@ myscript.online_simulation_browser_best(dico_solutions, dico_n)
   }
 
    async function changeLangPython() {
-    button_guess.setAttribute('class', "fluid ui primary massive elastic loading button");
+    button_guess.setAttribute('class', "fluid ui primary massive loading button");
     let pyodide = await pyodideReadyPromise;
     await pyodide.runPythonAsync(py_load_lang);
     await pyodide.runPythonAsync(py_load_lang_opt);
@@ -416,7 +416,7 @@ myscript.online_simulation_browser_best(dico_solutions, dico_n)
   }
 
   async function guess() {
-    button_guess.setAttribute('class', "fluid ui primary massive elastic loading button");
+    button_guess.setAttribute('class', "fluid ui primary massive loading button");
     let pyodide = await pyodideReadyPromise;
     await pyodide.runPythonAsync(`dico_solutions = myscript.online_simulation_browser_filter(dico_n)`);
     let message = await pyodide.runPythonAsync(`myscript.online_simulation_browser_best(dico_solutions, dico_n)`);
@@ -426,7 +426,7 @@ myscript.online_simulation_browser_best(dico_solutions, dico_n)
   }
 
   output.value = "Initializing Pyodide, numpy, python code and loading dictionnary...\n";
-  button_guess.setAttribute('class', "fluid ui primary massive elastic loading button");
+  button_guess.setAttribute('class', "fluid ui primary massive loading button");
   let pyodideReadyPromise = main();
 </script>
 </body>
