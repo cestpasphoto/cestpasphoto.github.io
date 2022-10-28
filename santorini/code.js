@@ -27,9 +27,9 @@ class Santorini {
     this.history = []; // List all previous states from new to old, not including current one
   }
 
-  init_game(pyodide) {
+  init_game() {
     console.log('Now importing python module');
-    this.py = pyodide.pyimport("main_web");
+    this.py = pyodide.pyimport("proxy");
     console.log('Run a game');
     let data_tuple = this.py.init_stuff().toJs({create_proxies: false});
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
@@ -55,10 +55,14 @@ class Santorini {
     }
     console.log('guessing');
     mainButton.setAttribute('class', "ui fluid primary big loading button");
+    revertButton.setAttribute('disabled', true);
+    resetButton.setAttribute('disabled', true);
     var best_action = await this.py.guessBestAction();
     this._applyMove(best_action);
     displayAIMove(best_action);
     mainButton.setAttribute('class', "ui fluid primary big button");
+    revertButton.removeAttribute('disabled');
+    resetButton.removeAttribute('disabled');
   }
 
   _applyMove(action) {
@@ -107,9 +111,6 @@ class Santorini {
     let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     this.history.splice(0, index+1); // remove reverted move from history and further moves
-
-    updateBoardDisplay();
-    displayNextPlayer();
   }
 
   static decodeMove(move) {
@@ -150,6 +151,7 @@ function updateBoardDisplay() {
         cell.firstChild.innerHTML = no_worker_string + '<br>' + levels_array[level];
         cell.firstChild.setAttribute('class', 'ui text');
       }
+      cell.setAttribute('class', '');
     }
   }
 }
@@ -316,36 +318,63 @@ async function setMainButton() {
   }
 }
 
+function revert() {
+  mainButton.setAttribute('disabled', true);
+  revertButton.setAttribute('disabled', true);
+  resetButton.setAttribute('disabled', true);
+
+  game.revert();
+
+  updateBoardDisplay();
+  displayNextPlayer();
+  mainButton.removeAttribute('disabled');
+  revertButton.removeAttribute('disabled');
+  resetButton.removeAttribute('disabled');
+}
+
+function reset() {
+  mainButton.setAttribute('disabled', true);
+  revertButton.setAttribute('disabled', true);
+  resetButton.setAttribute('disabled', true);
+
+  game.init_game();
+
+  mainButton.removeAttribute('disabled');
+  revertButton.removeAttribute('disabled');
+  resetButton.removeAttribute('disabled');
+}
+
 /* =================== */
 /* ===== PYODIDE ===== */
 /* =================== */
 
 // init Pyodide and stuff
 async function init_code() {
-  let pyodide = await loadPyodide({ fullStdLib : false });
+  pyodide = await loadPyodide({ fullStdLib : false });
   await pyodide.loadPackage("numpy");
 
   globalThis.onnxSession = await ort.InferenceSession.create('./exported_model.onnx');
 
   await pyodide.runPythonAsync(`
     from pyodide.http import pyfetch
-    for filename in ['Game.py', 'main_web.py', 'MCTS.py', 'SantoriniConstants.py', 'SantoriniDisplay.py', 'SantoriniGame.py', 'SantoriniLogicNumba.py']:
+    for filename in ['Game.py', 'proxy.py', 'MCTS.py', 'SantoriniConstants.py', 'SantoriniDisplay.py', 'SantoriniGame.py', 'SantoriniLogicNumba.py']:
       response = await pyfetch("./"+filename)
       with open(filename, "wb") as f:
         f.write(await response.bytes())
   `)
   console.log('Loaded python code, pyodide ready');
-  return pyodide
 }
 
 async function main() {
-  let pyodide = await init_code();
-  game.init_game(pyodide);
+  await init_code();
+  game.init_game();
   mainButton.setAttribute('class', "ui fluid primary big button");
   await setMainButton();
 }
 
 var game = new Santorini();
+var pyodide;
+
 var workerID = 0, workerX = 0, workerY = 0;
 var moveDirection = 0, workerNewX = 0, workerNewY = 0;
 var buildDirection = 0, buildX = 0, buildY = 0;

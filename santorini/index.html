@@ -94,7 +94,7 @@
     </tr>
   </tbody></table>
 
-  <div class="ui middle aligned centered grid">
+  <div class="ui middle aligned compact centered grid">
     <div class="center aligned four wide column">
       <span class="ui large green text" id="nextplayer">P0</span><span class="ui text"> to play</span>
     </div>
@@ -102,19 +102,25 @@
       <button class="ui fluid primary big loading button" id="main_button" onclick="cellClick(1)">Start my move</button>
     </div>
     <div class="center aligned four wide column">
-      <button class="ui big icon button" id="button_revert" onclick="game.revert()"><i class="undo icon"></i></button>
+      <div class="ui icon basic buttons">
+        <button class="ui button" id="button_revert" onclick="revert()"><i class="undo icon"></i></button>
+        <button class="ui button" id="button_reset" onclick="reset()"><i class="fast backward icon"></i></button>
+      </div>
     </div>
     <div class="center aligned sixteen wide column">
       <div class="ui basic segment"><p id="move_description">
       </p></div>
     </div>
   </div>
+</div>
 
 </div>
 
 <script>
   document.getElementById('humanPlayer').onclick = async ()=>{ await setMainButton(); };
   mainButton = document.getElementById('main_button');
+  revertButton = document.getElementById('button_revert');
+  resetButton = document.getElementById('button_reset');
   main()
 </script>
 
