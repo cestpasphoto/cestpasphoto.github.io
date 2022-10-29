@@ -163,6 +163,7 @@ function cellClick(stage, clicked_y = null, clicked_x = null) {
   if (stage == 1) {
     move_description.innerHTML = 'You move';
     currentMoveTemp = 0;
+    mainButton.innerHTML = '<i class="undo icon"></i> Reset move';
   } else if (stage == 2) {
     move_description.innerHTML += ' from ('+clicked_y+','+clicked_x+')';
     workerY = clicked_y; workerX = clicked_x;
@@ -182,6 +183,7 @@ function cellClick(stage, clicked_y = null, clicked_x = null) {
   } else {
     move_description.innerHTML = '';
     currentMoveTemp = 0;
+    mainButton.innerHTML = 'Start my move';
   }
 
   for (let y = 0; y < 5; y++) {
@@ -330,6 +332,7 @@ function revert() {
   mainButton.removeAttribute('disabled');
   revertButton.removeAttribute('disabled');
   resetButton.removeAttribute('disabled');
+  mainButton.innerHTML = 'Start my move';
 }
 
 function reset() {
@@ -342,6 +345,7 @@ function reset() {
   mainButton.removeAttribute('disabled');
   revertButton.removeAttribute('disabled');
   resetButton.removeAttribute('disabled');
+  mainButton.innerHTML = 'Start my move';
 }
 
 /* =================== */
