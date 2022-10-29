@@ -23,30 +23,6 @@ function encodeDirection(oldX, oldY, newX, newY) {
   return ((diffY+1)*3 + (diffX+1));
 }
 
-function anySubmovePossible(level, coordX, coordY) {
-  if (level == 1) {
-    // coord = worker
-    worker_id = Math.abs(game.board[coordY][coordX][0]) - 1;
-    let moves_begin =  worker_id   *9*9;
-    let moves_end   = (worker_id+1)*9*9;
-    any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
-  } else if (level == 2) {
-    // coord = worker move direction
-    move_direction = encodeDirection(workerX, workerY, coordX, coordY);
-    let moves_begin = currentMoveTemp +  move_direction   *9;
-    let moves_end   = currentMoveTemp + (move_direction+1)*9;
-    any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
-  } else if (level == 3) {
-    // coord = build direction
-    build_direction = encodeDirection(workerNewX, workerNewY, coordX, coordY);
-    any_move_possible = game.validMoves[currentMoveTemp + build_direction];
-  } else {
-    console.log('Weird, I dont support level=', level, coordX, coordY);
-  }
-
-  return any_move_possible;
-}
-
 function moveToString(move, subject='One') {
   let [worker, move_direction, build_direction] = Santorini.decodeMove(move);
   const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘'];
@@ -240,8 +216,8 @@ class MoveSelector {
       for (let x = 0; x < 5; x++) {
         if (y == clicked_y && x == clicked_x) {
           this.cells[y][x] = false;
-        } else {
-          this.cells[y][x] = (Math.abs(x-clicked_x) <= 1 && Math.abs(y-clicked_y) <= 1);
+        } else if (Math.abs(x-clicked_x) <= 1 && Math.abs(y-clicked_y) <= 1) {
+          this.cells[y][x] = this._anySubmovePossible(y, x);
         }
       }
     }
@@ -250,10 +226,9 @@ class MoveSelector {
   _select_my_workers() {
     for (let y = 0; y < 5; y++) {
       for (let x = 0; x < 5; x++) {
-        if (game.nextPlayer == 0) {
-          this.cells[y][x] = (game.board[y][x][0] > 0);
-        } else {
-          this.cells[y][x] = (game.board[y][x][0] < 0);
+        if ((game.nextPlayer == 0 && game.board[y][x][0] > 0) ||
+            (game.nextPlayer == 1 && game.board[y][x][0] < 0)) {
+          this.cells[y][x] = this._anySubmovePossible(y, x);
         }
       }
     }
@@ -261,6 +236,29 @@ class MoveSelector {
 
   _select_none() {
     this.cells = Array.from(Array(5), _ => Array(5).fill(false));
+  }
+
+  _anySubmovePossible(coordY, coordX) {
+    let any_move_possible = true;
+    if (this.stage == 0) {
+      let worker_id = Math.abs(game.board[coordY][coordX][0]) - 1;
+      let moves_begin =  worker_id   *9*9;
+      let moves_end   = (worker_id+1)*9*9;
+      any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
+    } else if (this.stage == 1) {
+      // coord = worker move direction
+      let move_direction = encodeDirection(this.workerX, this.workerY, coordX, coordY);
+      let moves_begin = this.currentMove +  move_direction   *9;
+      let moves_end   = this.currentMove + (move_direction+1)*9;
+      any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
+    } else if (this.stage == 2) {
+      // coord = build direction
+      let build_direction = encodeDirection(this.workerNewX, this.workerNewY, coordX, coordY);
+      any_move_possible = game.validMoves[this.currentMove + build_direction];
+    } else {
+      console.log('Weird, I dont support this.stage=', this.stage, coordX, coordY);
+    }
+    return any_move_possible;
   }
 }
 
@@ -366,6 +364,10 @@ async function ai_play_if_needed() {
   }
 }
 
+async function changeGameMode() {
+  await ai_play_if_needed();
+}
+
 async function cellClick(clicked_y = null, clicked_x = null) {
   let move = move_sel.click(clicked_y == null ? -1 : clicked_y, clicked_x == null ? -1 : clicked_x);
 
@@ -431,6 +433,8 @@ async function init_code() {
 }
 
 async function main(usePyodide=true) {
+  refreshButtons(loading=true);
+
   if (usePyodide) {
     await init_code();
   }

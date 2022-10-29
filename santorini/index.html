@@ -40,7 +40,7 @@
 
           <div class="inline field">
             <label>Human player</label>
-            <select class="ui selection dropdown" onchange="console.log('dbg81')" id="gameMode">
+            <select class="ui selection dropdown" onchange="changeGameMode()" id="gameMode">
               <option value="P0" selected>P0 = human, P1 = computer</option>
               <option value="P1">P0 = computer, P1 = human</option>
               <option value="Human">Only human</option>
@@ -101,10 +101,10 @@
     <button class="ui button" id="previousBtn" onclick="previous()"><i class="backward icon"></i> Previous move</button>
     <button class="ui button" id="undoBtn" onclick="cancel()"><i class="undo icon"></i> Cancel</button>
   </div>
-  <button class="ui fluid large loading button" id="loadingBtn">‌</button>
+  <button class="ui fluid large active loading button" id="loadingBtn">‌</button>
 
   <div class="ui basic center aligned segment">
-    <p id="moveSgmt">Your move is worker (1,2) up and build down = action 12</p>
+    <p id="moveSgmt">Loading pyodide, numpy, onnx; please wait...</p>
   </div>
 </div>
 
@@ -116,6 +116,7 @@
   const loadingBtn  = document.getElementById('loadingBtn');
   const moveSgmt    = document.getElementById('moveSgmt');
   const gameMode    = document.getElementById('gameMode');
+
   main();
 </script>
 
