@@ -14,228 +14,13 @@ async function predict(canonicalBoard, valids) {
 }
 
 /* =================== */
-/* =====  LOGIC  ===== */
+/* =====  UTILS  ===== */
 /* =================== */
-
-class Santorini {
-  constructor() {
-    this.py = null;
-    this.board = null;
-    this.nextPlayer = 0;
-    this.validMoves = Array(2*9*9); this.validMoves.fill(false);
-    this.gameEnded = [0, 0];
-    this.history = []; // List all previous states from new to old, not including current one
-  }
-
-  init_game() {
-    console.log('Now importing python module');
-    this.py = pyodide.pyimport("proxy");
-    console.log('Run a game');
-    let data_tuple = this.py.init_stuff().toJs({create_proxies: false});
-    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    updateBoardDisplay();
-    displayNextPlayer();
-  }
-
-  manual_move(action) {
-    console.log('manual move:', action);
-    if (this.validMoves[action]) {
-      this._applyMove(action);
-    } else {
-      console.log('Not a valid action', this.validMoves);
-    }    
-  }
-
-
-  async ai_guess_and_play() {
-    if (game.gameEnded.some(x => !!x)) {
-      console.log('Not guessing, game is finished');
-      mainButton.setAttribute('class', "ui fluid primary big button");
-      return;
-    }
-    console.log('guessing');
-    mainButton.setAttribute('class', "ui fluid primary big loading button");
-    revertButton.setAttribute('disabled', true);
-    resetButton.setAttribute('disabled', true);
-    var best_action = await this.py.guessBestAction();
-    this._applyMove(best_action);
-    displayAIMove(best_action);
-    mainButton.setAttribute('class', "ui fluid primary big button");
-    revertButton.removeAttribute('disabled');
-    resetButton.removeAttribute('disabled');
-  }
-
-  _applyMove(action) {
-    this.history.unshift([this.nextPlayer, this.board]);
-    let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
-    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    updateBoardDisplay();
-    displayNextPlayer();
-  }
-
-  changeDifficulty() {
-    let numMCTSSims = parseInt(document.getElementById('difficulty').value);
-    console.log('Difficuly changed to ', numMCTSSims);
-    this.py.changeDifficulty(numMCTSSims);
-  }
-
-  revert() {
-    if (this.history.length == 0) {
-      return;
-    }
-
-    let humanPlayerMode = document.getElementById('humanPlayer').value;
-    let player = null;
-    if (humanPlayerMode == 'P0') {
-      player = 0;
-    } else if (humanPlayerMode == 'P1') {
-      player = 1;
-    }
-
-    // find earliest move where 'player' is next player (last move if null)
-    let index = 0;
-    if (player != null) {
-      index = this.history.findIndex(x => x[0]==player);
-      if (index < 0) {
-        return;
-      }
-      // continue to find first item of sequence
-      for (; (index < this.history.length) && (this.history[index][0] == player); index++) {
-      }
-      index--;
-    }
-    console.log('index=', index, '/', this.history.length);
-
-    // Actually revert
-    console.log('board to revert:', this.history[index][1]);
-    let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
-    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    this.history.splice(0, index+1); // remove reverted move from history and further moves
-  }
-
-  static decodeMove(move) {
-    let worker = Math.floor(move / (9*9));
-    let action_ = move % (9*9);
-    let move_direction = Math.floor(action_ / 9);
-    let build_direction = action_ % 9;
-    return [worker, move_direction, build_direction];
-  }
-}
 
 function encodeDirection(oldX, oldY, newX, newY) {
   let diffX = newX - oldX;
   let diffY = newY - oldY;
   return ((diffY+1)*3 + (diffX+1));
-}
-
-/* =================== */
-/* ===== DISPLAY ===== */
-/* =================== */
-
-function updateBoardDisplay() {
-  levels_array = ['‌', '▂', '▅', '█', 'X'];
-  worker_string = '웃'; no_worker_string = '‌';
-  for (let y = 0; y < 5; y++) {
-    for (let x = 0; x < 5; x++) {
-      let level  = game.board[y][x][1];
-      let cell = document.getElementById('cell_' + y + '_' + x);
-      
-      let worker = game.board[y][x][0];
-      if (worker > 0) {
-        cell.firstChild.innerHTML = worker_string + '<br>' + levels_array[level];
-        cell.firstChild.setAttribute('class', 'ui green text');
-      } else if (worker < 0) {
-        cell.firstChild.innerHTML = worker_string + '<br>' + levels_array[level];
-        cell.firstChild.setAttribute('class', 'ui red text');
-      } else {
-        cell.firstChild.innerHTML = no_worker_string + '<br>' + levels_array[level];
-        cell.firstChild.setAttribute('class', 'ui text');
-      }
-      cell.setAttribute('class', '');
-    }
-  }
-}
-
-function cellClick(stage, clicked_y = null, clicked_x = null) {
-  console.log('Clicked on cell', clicked_y, clicked_x, 'stage = ', stage);
-  let move_description = document.getElementById('move_description');
-
-  if (stage == 1) {
-    move_description.innerHTML = 'You move';
-    currentMoveTemp = 0;
-    mainButton.innerHTML = '<i class="undo icon"></i> Reset move';
-  } else if (stage == 2) {
-    move_description.innerHTML += ' from ('+clicked_y+','+clicked_x+')';
-    workerY = clicked_y; workerX = clicked_x;
-    workerID = Math.abs(game.board[workerY][workerX][0]) - 1;
-    currentMoveTemp = 1*9*9 * workerID;
-  } else if (stage == 3) {
-    move_description.innerHTML += ' to ('+clicked_y+','+clicked_x+')';
-    workerNewY = clicked_y; workerNewX = clicked_x;
-    moveDirection = encodeDirection(workerX, workerY, workerNewX, workerNewY);
-    currentMoveTemp += 9*moveDirection;
-  } else if (stage == 0 && clicked_y != null) {
-    move_description.innerHTML += ' and build on ('+clicked_y+','+clicked_x+')';
-    buildY = clicked_y; buildX = clicked_x;
-    buildDirection = encodeDirection(workerNewX, workerNewY, buildX, buildY);
-    currentMoveTemp += buildDirection;
-    move_description.innerHTML += ', code=' + currentMoveTemp;
-  } else {
-    move_description.innerHTML = '';
-    currentMoveTemp = 0;
-    mainButton.innerHTML = 'Start my move';
-  }
-
-  for (let y = 0; y < 5; y++) {
-    for (let x = 0; x < 5; x++) {
-      let cell = document.getElementById('cell_' + y + '_' + x);
-      let cell_content = cell.firstChild.tagName == 'SPAN' ? cell.innerHTML : cell.firstChild.innerHTML;
-      if (stage == 0) {
-        // default display, no selectable cell
-        cell.setAttribute('class', '');
-        cell.innerHTML = cell_content;
-      } else if (stage == 1) {
-        // Only my workers are selectable
-        let cell_class = cell.firstChild.tagName == 'SPAN' ? cell.firstChild.classList : cell.firstChild.firstChild.classList;
-        if ((cell_class.contains('green') && game.nextPlayer == 0) || (cell_class.contains('red') && game.nextPlayer == 1)) {
-          // Set my workers to selectable
-          if (anySubmovePossible(stage, x, y)) {
-            cell.setAttribute('class', 'selectable warning');
-            cell.innerHTML = '<a onclick="cellClick('+((stage+1)%4)+','+y+','+x+');event.preventDefault();">'+cell_content+'</a>';
-          } else {
-            cell.setAttribute('class', '');
-            cell.innerHTML = cell_content;
-          }
-        } else {
-          cell.setAttribute('class', '');
-          cell.innerHTML = cell_content;
-        }    
-      } else if (stage == 2 || stage == 3) {
-        // Make clicked cell blue or purple and mark neighbours as selectable
-        if (x == clicked_x && y == clicked_y) {
-          // cell.setAttribute('class', stage == 1 ? 'right blue marked' : 'right purple marked');
-          cell.setAttribute('class', '');
-          cell.innerHTML = cell_content;
-        } else if (Math.abs(x-clicked_x) <= 1 && Math.abs(y-clicked_y) <= 1) {
-          if (anySubmovePossible(stage, x, y)) {
-            cell.setAttribute('class', 'selectable warning');
-            cell.innerHTML = '<a onclick="cellClick('+((stage+1)%4)+','+y+','+x+');event.preventDefault();">'+cell_content+'</a>';
-          } else {
-            cell.setAttribute('class', '');
-            cell.innerHTML = cell_content;
-          }
-        } else {
-          cell.setAttribute('class', '');
-          cell.innerHTML = cell_content;
-        }
-      }
-    }  
-  }
-
-  if (stage == 0 && clicked_y != null) {
-    game.manual_move(currentMoveTemp);
-    setMainButton();
-  }
 }
 
 function anySubmovePossible(level, coordX, coordY) {
@@ -262,90 +47,366 @@ function anySubmovePossible(level, coordX, coordY) {
   return any_move_possible;
 }
 
-function displayAIMove(move) {
-  let move_description = document.getElementById('move_description');
-  move_description.innerHTML = 'AI played move ' + move;
-
+function moveToString(move, subject='One') {
   let [worker, move_direction, build_direction] = Santorini.decodeMove(move);
   const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘'];
-  let description = 'moved worker ' + worker + ' ' + directions_char[move_direction] + ' and then build ' + directions_char[build_direction];
-  move_description.innerHTML += ' = AI ' + description;
+  var description = subject + ' moved worker ' + worker + ' ' + directions_char[move_direction]
+  description += ' then build ' + directions_char[build_direction];
+  description += ' (move ' + move + ')';
+  return description;
 }
 
-function displayNextPlayer() {
-  if (game.gameEnded.some(x => !!x)) {
-    console.log('End of game');
-    if (game.gameEnded[0] > 0) {
-      document.getElementById('nextplayer').innerHTML = 'P0';
-      document.getElementById('nextplayer').setAttribute('class', 'ui large green text');
+/* =================== */
+/* =====  LOGIC  ===== */
+/* =================== */
+
+class Santorini {
+  constructor() {
+    this.py = null;
+    this.board = Array.from(Array(5), _ => Array.from(Array(5), _ => Array(3).fill(0)));
+    this.nextPlayer = 0;
+    this.validMoves = Array(2*9*9); this.validMoves.fill(false);
+    this.gameEnded = [0, 0];
+    this.history = []; // List all previous states from new to old, not including current one
+    this.lastMove = -1;
+  }
+
+  init_game() {
+    this.history = [];
+    this.lastMove = -1;
+    if (pyodide == null) {
+      this.board = Array.from(Array(5), _ => Array.from(Array(5), _ => Array(3).fill(0)));
+      this.validMoves.fill(true);
+      for (let y = 0; y < 5; y++) {
+        for (let x = 0; x < 5; x++) {
+          this.board[y][x][0] = Math.floor(Math.random() * 5) - 2;
+          this.board[y][x][1] = Math.floor(Math.random() * 5);
+        }
+      }
     } else {
-      document.getElementById('nextplayer').innerHTML = 'P1';
-      document.getElementById('nextplayer').setAttribute('class', 'ui large red text');
+      console.log('Now importing python module');
+      this.py = pyodide.pyimport("proxy");
+      console.log('Run a game');
+      let data_tuple = this.py.init_stuff().toJs({create_proxies: false});
+      [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     }
-    document.getElementById('nextplayer').nextElementSibling.innerHTML = ' won';
-    mainButton.setAttribute('disabled', true);
-    mainButton.innerHTML = 'End of game';
-  } else if (game.nextPlayer == 0) {
-    document.getElementById('nextplayer').innerHTML = 'P0';
-    document.getElementById('nextplayer').setAttribute('class', 'ui large green text');
-    mainButton.removeAttribute('disabled');
-    mainButton.innerHTML = 'Start my move';
-  } else if (game.nextPlayer == 1) {
-    document.getElementById('nextplayer').innerHTML = 'P1';
-    document.getElementById('nextplayer').setAttribute('class', 'ui large red text');
-    mainButton.removeAttribute('disabled');
-    mainButton.innerHTML = 'Start my move';
-  } else {
-    document.getElementById('nextplayer').innerHTML = 'P' + game.nextPlayer;
-    document.getElementById('nextplayer').setAttribute('class', 'ui large text');
-    mainButton.removeAttribute('disabled');
-    mainButton.innerHTML = 'Start my move';
+  }
+
+  manual_move(action) {
+    console.log('manual move:', action);
+    if (this.validMoves[action]) {
+      this._applyMove(action);
+    } else {
+      console.log('Not a valid action', this.validMoves);
+    }    
+  }
+
+
+  async ai_guess_and_play() {
+    if (game.gameEnded.some(x => !!x)) {
+      console.log('Not guessing, game is finished');
+      return;
+    }
+    console.log('guessing');
+    var best_action = await this.py.guessBestAction();
+    this._applyMove(best_action);
+  }
+
+  _applyMove(action) {
+    this.history.unshift([this.nextPlayer, this.board]);
+    let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
+    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+    this.lastMove = action;
+  }
+
+  changeDifficulty() {
+    let numMCTSSims = parseInt(document.getElementById('difficulty').value);
+    console.log('Difficuly changed to ', numMCTSSims);
+    this.py.changeDifficulty(numMCTSSims);
+  }
+
+  previous() {
+    if (this.history.length == 0) {
+      return;
+    }
+
+    let player = (gameMode.value == 'P0') ? 0 : 1;
+    // find earliest move where 'player' is next player (last move if null)
+    let index = 0;
+    if (player != null) {
+      index = this.history.findIndex(x => x[0]==player);
+      if (index < 0) {
+        return;
+      }
+      // continue to find first item of sequence
+      for (; (index < this.history.length) && (this.history[index][0] == player); index++) {
+      }
+      index--;
+    }
+    console.log('index=', index, '/', this.history.length);
+
+    // Actually revert
+    console.log('board to revert:', this.history[index][1]);
+    let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
+    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+    this.history.splice(0, index+1); // remove reverted move from history and further moves
+    this.lastMove = -1;
+  }
+
+  static decodeMove(move) {
+    let worker = Math.floor(move / (9*9));
+    let action_ = move % (9*9);
+    let move_direction = Math.floor(action_ / 9);
+    let build_direction = action_ % 9;
+    return [worker, move_direction, build_direction];
   }
 }
 
-async function setMainButton() {
-  let humanPlayerMode = document.getElementById('humanPlayer').value;
-  if ((game.nextPlayer == 0 && humanPlayerMode == 'P0') ||
-      (game.nextPlayer == 1 && humanPlayerMode == 'P1') ||
-      (humanPlayerMode == 'All')) {
-    mainButton.setAttribute('class', 'ui fluid primary big button');
-  } else if (humanPlayerMode == 'None') {
-    mainButton.setAttribute('class', 'ui fluid primary big disabled button');
+class MoveSelector {
+  constructor() {
+    this.resetAndStart();
+    this.stage = 0; // how many taps done, finished when 3, -1 means new game
+  }
+
+  resetAndStart() {
+    this.reset();
+    this._select_my_workers();
+  }
+
+  reset() {
+    this.cells = Array.from(Array(5), _ => Array(5).fill(false)); // 2D array containg true if cell should be selectable  
+    this.stage = 0;
+    this.workerID = 0, this.workerX = 0, this.workerY = 0;
+    this.moveDirection = 0, this.workerNewX = 0, this.workerNewY = 0;
+    this.buildDirection = 0, this.buildX = 0, this.buildY = 0;
+    this.currentMove = 0;
+  }
+
+  // return move when finished, else null
+  click(clicked_y, clicked_x) {
+    this.stage++; 
+    if (this.stage == 1) {
+      // Selecting worker
+      this.workerX = clicked_x;
+      this.workerY = clicked_y;
+      this.workerID = Math.abs(game.board[this.workerY][this.workerX][0]) - 1;
+      this.currentMove = 1*9*9 * this.workerID;
+      this._select_neighbours(clicked_y, clicked_x);
+    } else if (this.stage == 2) {
+      // Selecting worker new position
+      this.workerNewX = clicked_x;
+      this.workerNewY = clicked_y;
+      this.moveDirection = encodeDirection(this.workerX, this.workerY, this.workerNewX, this.workerNewY);
+      this.currentMove += 9*this.moveDirection;
+      this._select_neighbours(clicked_y, clicked_x);
+    } else if (this.stage == 3) {
+      // Selecting building position
+      this.buildX = clicked_x;
+      this.buildY = clicked_y;
+      this.buildDirection = encodeDirection(this.workerNewX, this.workerNewY, this.buildX, this.buildY);
+      this.currentMove += this.buildDirection;
+      return this.currentMove;
+    } else if (this.stage == 4) {
+      this.resetAndStart();
+    } else {
+      // Starting new game
+      this.resetAndStart();
+    }
+
+    return null;
+  }
+
+  isSelectable(y, x) {
+    return this.cells[y][x];
+  }
+
+  getPartialDescription() {
+    const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘'];
+    var description = '';
+    if (this.stage >= 1) {
+      description += 'You move from ('+this.workerY+','+this.workerX+')';
+    }
+    if (this.stage >= 2) {
+      description += ' in direction ' + directions_char[this.moveDirection];
+    }
+    if (this.stage >= 3) {
+      description += ' and build ' + directions_char[this.buildDirection] + ' (move ' + this.currentMove + ')';
+    }
+    return description;
+  }
+
+  _select_neighbours(clicked_y, clicked_x) {
+    for (let y = 0; y < 5; y++) {
+      for (let x = 0; x < 5; x++) {
+        if (y == clicked_y && x == clicked_x) {
+          this.cells[y][x] = false;
+        } else {
+          this.cells[y][x] = (Math.abs(x-clicked_x) <= 1 && Math.abs(y-clicked_y) <= 1);
+        }
+      }
+    }
+  }
+
+  _select_my_workers() {
+    for (let y = 0; y < 5; y++) {
+      for (let x = 0; x < 5; x++) {
+        if (game.nextPlayer == 0) {
+          this.cells[y][x] = (game.board[y][x][0] > 0);
+        } else {
+          this.cells[y][x] = (game.board[y][x][0] < 0);
+        }
+      }
+    }
+  }
+
+  _select_none() {
+    this.cells = Array.from(Array(5), _ => Array(5).fill(false));
+  }
+}
+
+/* =================== */
+/* ===== DISPLAY ===== */
+/* =================== */
+
+function refreshBoard() {
+  const levels_array = ['‌', '▂', '▅', '█', 'X'];
+  const worker_string = '웃';
+  const no_worker_string = '‌';
+  for (let y = 0; y < 5; y++) {
+    for (let x = 0; x < 5; x++) {
+      let cell = document.getElementById('cell_' + y + '_' + x);
+      let level  = game.board[y][x][1];
+      let worker = game.board[y][x][0];
+      let selectable = move_sel.isSelectable(y, x);
+
+      // set cell content and color
+      if (worker > 0) {
+        cell_content = '<span class="ui green text">' + worker_string + '<br>' + levels_array[level] + '</span>';
+      } else if (worker < 0) {
+        cell_content = '<span class="ui red text">'   + worker_string + '<br>' + levels_array[level] + '</span>';
+      } else {
+        cell_content = '<span class="ui text">'    + no_worker_string + '<br>' + levels_array[level] + '</span>';
+      }
+
+      // set cell background and ability to be clicked
+      if (selectable) {
+        cell.classList.add('selectable', 'warning');
+        cell.innerHTML = '<a onclick="cellClick('+y+','+x+');event.preventDefault();">' + cell_content + '</a>';
+      } else {
+        cell.classList.remove('selectable', 'warning');
+        cell.innerHTML = cell_content;
+      }
+    }
+  }
+}
+
+function refreshButtons(loading=false) {
+  if (loading) {
+    // Loading
+    allBtn.style = "display: none";
+    loadingBtn.style = "";
+    allBtn.classList.remove('green', 'red');
+  } else
+  {
+    allBtn.style = "";
+    loadingBtn.style = "display: none";
+    if (game.gameEnded.some(x => !!x)) {
+      // Game is finished, looking for the winner
+      console.log('End of game');
+      allBtn.classList.add((game.gameEnded[0]>0) ? 'green' : 'red');
+    } else {
+      // Ongoing game
+      allBtn.classList.remove('green', 'red');
+      if (move_sel.stage <= 0) {
+        undoBtn.classList.add('disabled');
+      } else {
+        undoBtn.classList.remove('disabled');
+      }
+      if (game.history.length <= 1) {
+        previousBtn.classList.add('disabled');
+      } else {
+        previousBtn.classList.remove('disabled');
+      }
+    }
+  }
+}
+
+function refreshDescription(text) {
+  moveSgmt.innerHTML = text;
+}
+
+
+/* =================== */
+/* ===== ACTIONS ===== */
+/* =================== */
+
+async function ai_play_one_move() {
+  refreshButtons(loading=true);
+  await game.ai_guess_and_play();
+  refreshBoard();
+  refreshButtons(loading=false);
+}
+
+async function ai_play_if_needed() {
+  if (gameMode.value == 'AI') {
     while (game.gameEnded.every(x => !x)) {
-      await game.ai_guess_and_play();
+      await ai_play_one_move();
     }
-  } else {
-    mainButton.setAttribute('class', 'ui fluid primary big disabled button');
-    await game.ai_guess_and_play();
+  } else
+  {
+    if ((game.nextPlayer == 0 && gameMode.value == 'P1') ||
+        (game.nextPlayer == 1 && gameMode.value == 'P0')) {
+      await ai_play_one_move();
+    }
+    move_sel.resetAndStart();
+
+    refreshBoard();
+    refreshButtons();
+    refreshDescription(moveToString(game.lastMove, 'AI'));
   }
 }
 
-function revert() {
-  mainButton.setAttribute('disabled', true);
-  revertButton.setAttribute('disabled', true);
-  resetButton.setAttribute('disabled', true);
+async function cellClick(clicked_y = null, clicked_x = null) {
+  let move = move_sel.click(clicked_y == null ? -1 : clicked_y, clicked_x == null ? -1 : clicked_x);
 
-  game.revert();
+  refreshBoard();
+  refreshButtons();
+  refreshDescription(move_sel.getPartialDescription());
 
-  updateBoardDisplay();
-  displayNextPlayer();
-  mainButton.removeAttribute('disabled');
-  revertButton.removeAttribute('disabled');
-  resetButton.removeAttribute('disabled');
-  mainButton.innerHTML = 'Start my move';
+  if (move !== null) {
+    game.manual_move(move);
+    move_sel.reset();
+    refreshBoard();
+    refreshButtons();
+
+    await ai_play_if_needed();
+  }
 }
 
 function reset() {
-  mainButton.setAttribute('disabled', true);
-  revertButton.setAttribute('disabled', true);
-  resetButton.setAttribute('disabled', true);
-
   game.init_game();
+  move_sel.resetAndStart();
 
-  mainButton.removeAttribute('disabled');
-  revertButton.removeAttribute('disabled');
-  resetButton.removeAttribute('disabled');
-  mainButton.innerHTML = 'Start my move';
+  refreshBoard();
+  refreshButtons();
+  refreshDescription('');
+}
+
+function previous() {
+  game.previous();
+  move_sel.resetAndStart();
+
+  refreshBoard();
+  refreshButtons();
+  refreshDescription('');
+}
+
+function cancel() {
+  move_sel.resetAndStart();
+
+  refreshBoard();
+  refreshButtons();
+  refreshDescription('');
 }
 
 /* =================== */
@@ -369,17 +430,18 @@ async function init_code() {
   console.log('Loaded python code, pyodide ready');
 }
 
-async function main() {
-  await init_code();
+async function main(usePyodide=true) {
+  if (usePyodide) {
+    await init_code();
+  }
   game.init_game();
-  mainButton.setAttribute('class', "ui fluid primary big button");
-  await setMainButton();
+  move_sel.resetAndStart();
+
+  refreshBoard();
+  refreshButtons();
+  refreshDescription('');
 }
 
 var game = new Santorini();
-var pyodide;
-
-var workerID = 0, workerX = 0, workerY = 0;
-var moveDirection = 0, workerNewX = 0, workerNewY = 0;
-var buildDirection = 0, buildX = 0, buildY = 0;
-var currentMoveTemp = 0;
+var move_sel = new MoveSelector();
+var pyodide = null;

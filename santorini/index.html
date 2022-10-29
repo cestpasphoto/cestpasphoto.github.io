@@ -17,7 +17,7 @@
   <h1 class="ui huge center aligned header">
     Santorini game with AI
     <div class="ui center aligned sub header">
-      <span class="ui green text">First player in green</span> and <span class="ui red text">the other in red</span>. Here are the <a href="https://www.ultraboardgames.com/santorini/game-rules.php">rules</a>.
+      Tap one of highlighted cells to select your move. See the <a href="https://www.ultraboardgames.com/santorini/game-rules.php">rules</a>.
     </div>
   </h1>
 
@@ -40,11 +40,11 @@
 
           <div class="inline field">
             <label>Human player</label>
-            <select class="ui selection dropdown" id="humanPlayer">
+            <select class="ui selection dropdown" onchange="console.log('dbg81')" id="gameMode">
               <option value="P0" selected>P0 = human, P1 = computer</option>
               <option value="P1">P0 = computer, P1 = human</option>
-              <option value="All">Only human</option>
-              <option value="None">WarGames mode</option>
+              <option value="Human">Only human</option>
+              <option value="AI">WarGames mode</option>
             </select>
           </div>
 
@@ -94,34 +94,29 @@
     </tr>
   </tbody></table>
 
-  <div class="ui middle aligned compact centered grid">
-    <div class="center aligned four wide column">
-      <span class="ui large green text" id="nextplayer">P0</span><span class="ui text"> to play</span>
-    </div>
-    <div class="center aligned eight wide column">
-      <button class="ui fluid primary big loading button" id="main_button" onclick="cellClick(1)">Start my move</button>
-    </div>
-    <div class="center aligned four wide column">
-      <div class="ui icon basic buttons">
-        <button class="ui button" id="button_revert" onclick="revert()"><i class="step backward icon"></i></button>
-        <button class="ui button" id="button_reset" onclick="reset()"><i class="fast backward icon"></i></button>
-      </div>
-    </div>
-    <div class="center aligned sixteen wide column">
-      <div class="ui basic segment"><p id="move_description">
-      </p></div>
-    </div>
+
+  <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
+    <button class="ui disabled icon button"><i class="edit icon"></i></button>
+    <button class="ui icon button" id="resetBtn" onclick="reset()"><i class="fast backward icon"></i></button>
+    <button class="ui button" id="previousBtn" onclick="previous()"><i class="backward icon"></i> Previous move</button>
+    <button class="ui button" id="undoBtn" onclick="cancel()"><i class="undo icon"></i> Cancel</button>
+  </div>
+  <button class="ui fluid large loading button" id="loadingBtn">‌</button>
+
+  <div class="ui basic center aligned segment">
+    <p id="moveSgmt">Your move is worker (1,2) up and build down = action 12</p>
   </div>
 </div>
 
-</div>
-
 <script>
-  document.getElementById('humanPlayer').onclick = async ()=>{ await setMainButton(); };
-  mainButton = document.getElementById('main_button');
-  revertButton = document.getElementById('button_revert');
-  resetButton = document.getElementById('button_reset');
-  main()
+  const allBtn      = document.getElementById('allBtn');
+  const resetBtn    = document.getElementById('resetBtn');
+  const previousBtn = document.getElementById('previousBtn');
+  const undoBtn     = document.getElementById('undoBtn');
+  const loadingBtn  = document.getElementById('loadingBtn');
+  const moveSgmt    = document.getElementById('moveSgmt');
+  const gameMode    = document.getElementById('gameMode');
+  main();
 </script>
 
 </body>
