@@ -218,6 +218,8 @@ class MoveSelector {
           this.cells[y][x] = false;
         } else if (Math.abs(x-clicked_x) <= 1 && Math.abs(y-clicked_y) <= 1) {
           this.cells[y][x] = this._anySubmovePossible(y, x);
+        } else {
+          this.cells[y][x] = false;
         }
       }
     }
@@ -229,6 +231,8 @@ class MoveSelector {
         if ((game.nextPlayer == 0 && game.board[y][x][0] > 0) ||
             (game.nextPlayer == 1 && game.board[y][x][0] < 0)) {
           this.cells[y][x] = this._anySubmovePossible(y, x);
+        } else {
+          this.cells[y][x] = false;
         }
       }
     }
