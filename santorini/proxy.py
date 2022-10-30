@@ -8,19 +8,18 @@ class dotdict(dict):
     def __getattr__(self, name):
         return self[name]
 
-def init_stuff():
+def init_stuff(numMCTSSims):
 	global g, board, mcts, player
 
 	mcts_args = dotdict({
-		'numMCTSSims'     : 25,
+		'numMCTSSims'     : numMCTSSims,
 		'cpuct'           : 1.0,
 		'prob_fullMCTS'   : 1.,
 		'forced_playouts' : False,
 		'no_mem_optim'    : False,
 	})
 
-	if g is None:
-		g = Game()
+	g = Game()
 	board = g.getInitBoard()
 	mcts = MCTS(g, None, mcts_args)
 	player = 0
@@ -44,10 +43,11 @@ def getBoard():
 def changeDifficulty(numMCTSSims):
 	global g, board, mcts, player
 	mcts.args.numMCTSSims = numMCTSSims
+	print('Difficuly changed to', mcts.args.numMCTSSims);
 
 async def guessBestAction():
 	global g, board, mcts, player
-	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), temp=0, force_full_search=True)
+	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), temp=1, force_full_search=True)
 	# print('Results', probs)
 	best_action = max(range(len(probs)), key=lambda x: probs[x])
 	print(f'best_action {best_action} with strength {int(probs[best_action]*100)}%')

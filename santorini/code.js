@@ -60,10 +60,13 @@ class Santorini {
         }
       }
     } else {
-      console.log('Now importing python module');
-      this.py = pyodide.pyimport("proxy");
+      if (this.py == null) {
+        console.log('Now importing python module');
+        this.py = pyodide.pyimport("proxy");
+      }
       console.log('Run a game');
-      let data_tuple = this.py.init_stuff().toJs({create_proxies: false});
+      let numMCTSSims = parseInt(document.getElementById('difficulty').value);
+      let data_tuple = this.py.init_stuff(numMCTSSims).toJs({create_proxies: false});
       [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     }
   }
@@ -97,7 +100,6 @@ class Santorini {
 
   changeDifficulty() {
     let numMCTSSims = parseInt(document.getElementById('difficulty').value);
-    console.log('Difficuly changed to ', numMCTSSims);
     this.py.changeDifficulty(numMCTSSims);
   }
 
