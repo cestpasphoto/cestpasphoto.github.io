@@ -255,12 +255,18 @@ class MoveSelector {
     } else if (this.stage == 1) {
       // coord = worker move direction
       let move_direction = encodeDirection(this.workerX, this.workerY, coordX, coordY);
+      if (move_direction < 0) {
+        return false; // Not valid move
+      }
       let moves_begin = this.currentMove +  move_direction   *9;
       let moves_end   = this.currentMove + (move_direction+1)*9;
       any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
     } else if (this.stage == 2) {
       // coord = build direction
       let build_direction = encodeDirection(this.workerNewX, this.workerNewY, coordX, coordY);
+      if (build_direction < 0) {
+        return false; // Not valid move
+      }
       any_move_possible = game.validMoves[this.currentMove + build_direction];
     } else {
       console.log('Weird, I dont support this.stage=', this.stage, coordX, coordY);
