@@ -20,6 +20,9 @@ async function predict(canonicalBoard, valids) {
 function encodeDirection(oldX, oldY, newX, newY) {
   let diffX = newX - oldX;
   let diffY = newY - oldY;
+  if (Math.abs(diffX) > 1 || Math.abs(diffY) > 1) {
+    return -1;
+  }
   return ((diffY+1)*3 + (diffX+1));
 }
 
@@ -51,12 +54,16 @@ class Santorini {
     this.history = [];
     this.lastMove = -1;
     if (pyodide == null) {
+      // Random board
       this.board = Array.from(Array(5), _ => Array.from(Array(5), _ => Array(3).fill(0)));
       this.validMoves.fill(true);
       for (let y = 0; y < 5; y++) {
         for (let x = 0; x < 5; x++) {
-          this.board[y][x][0] = Math.floor(Math.random() * 5) - 2;
-          this.board[y][x][1] = Math.floor(Math.random() * 5);
+          let worker = Math.random() * 15 - 7;
+          let level = Math.random() * 9;
+          this.board[y][x][0] = Math.floor((worker>0) ? worker-Math.min(5,worker) : worker-Math.max(-5,worker));
+          this.board[y][x][1] = Math.floor(level - Math.min(6, level));
+          /*console.log(this.board[y][x][0], this.board[y][x][1]);*/
         }
       }
     } else {
@@ -86,7 +93,7 @@ class Santorini {
       console.log('Not guessing, game is finished');
       return;
     }
-    console.log('guessing');
+    // console.log('guessing');
     var best_action = await this.py.guessBestAction();
     this._applyMove(best_action);
   }
@@ -216,13 +223,7 @@ class MoveSelector {
   _select_neighbours(clicked_y, clicked_x) {
     for (let y = 0; y < 5; y++) {
       for (let x = 0; x < 5; x++) {
-        if (y == clicked_y && x == clicked_x) {
-          this.cells[y][x] = false;
-        } else if (Math.abs(x-clicked_x) <= 1 && Math.abs(y-clicked_y) <= 1) {
-          this.cells[y][x] = this._anySubmovePossible(y, x);
-        } else {
-          this.cells[y][x] = false;
-        }
+        this.cells[y][x] = this._anySubmovePossible(y, x);
       }
     }
   }
@@ -335,7 +336,15 @@ function refreshButtons(loading=false) {
   }
 }
 
-function refreshDescription(text) {
+
+function refreshPlayersText() {
+  p0title.innerHTML = "Regular";
+  p0details.innerHTML = "You can move one of your worker to a neighbour cell, and then build one level to another neighbour cell";
+  p1title.innerHTML = "Regular";
+  p1details.innerHTML = "Your Worker may move into an opponent Worker's space, if their Worker can be forced one space straight backwards to an unoccupied space at any level.";
+}
+
+function refreshMoveText(text) {
   moveSgmt.innerHTML = text;
 }
 
@@ -366,7 +375,7 @@ async function ai_play_if_needed() {
 
     refreshBoard();
     refreshButtons();
-    refreshDescription(moveToString(game.lastMove, 'AI'));
+    refreshMoveText(moveToString(game.lastMove, 'AI'));
   }
 }
 
@@ -379,7 +388,7 @@ async function cellClick(clicked_y = null, clicked_x = null) {
 
   refreshBoard();
   refreshButtons();
-  refreshDescription(move_sel.getPartialDescription());
+  refreshMoveText(move_sel.getPartialDescription());
 
   if (move !== null) {
     game.manual_move(move);
@@ -396,8 +405,9 @@ function reset() {
   move_sel.resetAndStart();
 
   refreshBoard();
+  refreshPlayersText();
   refreshButtons();
-  refreshDescription('');
+  refreshMoveText('');
 }
 
 function previous() {
@@ -406,7 +416,7 @@ function previous() {
 
   refreshBoard();
   refreshButtons();
-  refreshDescription('');
+  refreshMoveText('');
 }
 
 function cancel() {
@@ -414,7 +424,7 @@ function cancel() {
 
   refreshBoard();
   refreshButtons();
-  refreshDescription('');
+  refreshMoveText('');
 }
 
 /* =================== */
@@ -448,8 +458,9 @@ async function main(usePyodide=true) {
   move_sel.resetAndStart();
 
   refreshBoard();
+  refreshPlayersText();
   refreshButtons();
-  refreshDescription('');
+  refreshMoveText('');
 }
 
 var game = new Santorini();

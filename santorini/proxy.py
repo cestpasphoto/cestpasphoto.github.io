@@ -51,6 +51,23 @@ async def guessBestAction():
 	# print('Results', probs)
 	best_action = max(range(len(probs)), key=lambda x: probs[x])
 	print(f'best_action {best_action} with strength {int(probs[best_action]*100)}%')
+
+	# Compute v
+	import js
+	nn_result = await js.predict(board.flat[:], g.getValidMoves(board, player).flat[:])
+	nn_result_py = nn_result.to_py()
+	Ps, v = np.exp(np.array(nn_result_py['pi'], dtype=np.float32)), np.array(nn_result_py['v'], dtype=np.float32)
+	print(f'Current value: {v} - chances that green wins = {int(100*((v[0]-v[1])/4+0.5))}%')
+	# Compute good moves
+	sorted_probs = sorted([(i,p) for i,p in enumerate(probs)], key=lambda x: x[1], reverse=True)
+	sum_probs = 0
+	for i, p in sorted_probs:
+		print(f'move {i} {int(100*p)}%,', end='')
+		sum_probs += p
+		if sum_probs > 0.75:
+			break
+	print()
+
 	return best_action
 
 def setData(setPlayer, setBoard):
