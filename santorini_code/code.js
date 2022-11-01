@@ -436,12 +436,12 @@ async function init_code() {
   pyodide = await loadPyodide({ fullStdLib : false });
   await pyodide.loadPackage("numpy");
 
-  globalThis.onnxSession = await ort.InferenceSession.create('./exported_model.onnx');
+  globalThis.onnxSession = await ort.InferenceSession.create('santorini_code/exported_model.onnx');
 
   await pyodide.runPythonAsync(`
     from pyodide.http import pyfetch
     for filename in ['Game.py', 'proxy.py', 'MCTS.py', 'SantoriniConstants.py', 'SantoriniDisplay.py', 'SantoriniGame.py', 'SantoriniLogicNumba.py']:
-      response = await pyfetch("./"+filename)
+      response = await pyfetch("santorini_code/"+filename)
       with open(filename, "wb") as f:
         f.write(await response.bytes())
   `)
