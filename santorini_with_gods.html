@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.1/dist/jquery.min.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.1/dist/jquery.min.js"></script> -->
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.js"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.js"></script> -->
 
   <script src="https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.13.1/dist/ort.min.js"></script>
@@ -29,13 +29,39 @@
 <!-- Menu -->
 
 
-<div class="ui massive borderless menu">
+<div class="ui tiny borderless menu">
   <div class="ui container">    
-    <div class="header vertically fitted item">Santorini game with AI</div>  
+    <div class="header fitted item">
+      <button class="ui tiny icon button" onclick="reset()"><i class="file outline icon"></i></button>
+    </div> 
+    <div class="fitted item"> 
+      <div class="ui simple dropdown item">
+        Difficulty <i class="dropdown icon"></i>
+        <div class="menu">
+          <div class="item" onclick="game.changeDifficulty(400)"        >Harder - native difficulty</div>
+          <div class="item" onclick="game.changeDifficulty(100)"        >Hard</div>
+          <div class="item" onclick="game.changeDifficulty(25)" selected>Medium</div>
+          <div class="item" onclick="game.changeDifficulty(6)"          >Easy</div>
+          <div class="item" onclick="game.changeDifficulty(2)"          >Come on</div>
+        </div>
+      </div>
+    </div>
+    <div class="fitted item"> 
+      <div class="ui simple dropdown item">
+        Players <i class="dropdown icon"></i>
+        <div class="menu">
+          <div class="item" onclick="changeGameMode('P0')" selected>P0 = human, P1 = computer</div>
+          <div class="item" onclick="changeGameMode('P1')"         >P0 = computer, P1 = human</div>
+          <div class="item" onclick="changeGameMode('Human')"      >Only human</div>
+          <div class="item" onclick="changeGameMode('AI')"         >WarGames mode</div>
+        </div>
+      </div>
+    </div>
     <!-- <div class="header vertically fitted item"><h1 class="ui header">Santorini game with AI</h1></div>   -->
-    <div class="right item">
+    <div class="right menu">
       <div class="ui tiny buttons">
-        <button class="ui button" onclick="reset()">New</button>
+        <!-- <button class="ui button" onclick="reset()">New</button> -->
+        <button class="ui icon button" onclick="edit()" id="editBtn"><i class="edit icon"></i></button>
         <button class="ui icon button" onclick="$('.ui.modal').modal('show');"><i class="wrench icon"></i></button>
         <div class="ui icon button" data-position="bottom right" data-html="true" data-tooltip="Tap cells to move your worker and build"><i class="help icon"></i></div>
       </div>
@@ -44,48 +70,30 @@
 </div>
 
 
-<!-- Modal -->
+<div class="ui main container">
+
+  <h1 class="ui huge center aligned header">Santorini game with AI</h1> 
+  <div class="ui hidden divider"></div>
 
 
-<div class="ui modal">
-  <div class="content">
-    <div class="ui form">
-      <div class="stackable fields">
-        <div class="inline field">
-          <label>Difficulty</label>
-          <select class="ui selection dropdown" onchange="game.changeDifficulty()" id="difficulty">
-            <option value="400">Harder - native difficulty</option>
-            <option value="100">Hard</option>
-            <option value="25" selected>Medium</option>
-            <option value="6">Easy</option>
-            <option value="2">Come on</option>
-          </select>
-        </div>
-        <div class="inline field">
-          <label>Human player</label>
-          <select class="ui selection dropdown" onchange="changeGameMode()" id="gameMode">
-            <option value="P0" selected>P0 = human, P1 = computer</option>
-            <option value="P1">P0 = computer, P1 = human</option>
-            <option value="Human">Only human</option>
-            <option value="AI">WarGames mode</option>
-          </select>
-        </div>
-        <div class="inline field">
-          <button class="ui labeled icon button" onclick="reset()"><i class="plus square outline icon"></i>New game</button>
-          <button class="ui disabled labeled icon button"><i class="edit icon"></i>Edit board</button>
-        </div>
-      </div>
+<!-- Players name and power -->
+
+
+  <div class="ui horizontal basic segments">
+    <div class="ui center aligned vertically fitted segment">
+      <span class="ui large green text" id="p0title">Player 0</span>
+      <p id="p0details">Tap cells to move your worker and build</p>
+    </div>
+    <div class="ui center aligned vertically fitted segment">
+      <span class="ui large red text" id="p1title">Player 1</span>
+      <p id="p1details">You can change AI level in settings</p>
     </div>
   </div>
-</div>
-
-<div class="ui main container">
 
 
 <!-- Table -->
-  
 
-  <div class="ui hidden divider"></div>
+  
   <table class="ui fixed unstackable celled huge table"><tbody>
     <tr class="center aligned">
       <td class="" id="cell_0_0"><span class="ui text">.</span></td>
@@ -125,57 +133,21 @@
   </tbody></table>
 
 
-<!-- Nom adversaires -->
+<!-- Button -->
 
 
-  <div class="ui horizontal basic segments">
-    <div class="ui center aligned vertically fitted segment">
-      <span class="ui large green text" id="p0title">Player 0</span>
-      <p id="p0details">Tap cells to move your worker and build</p>
-    </div>
-    <div class="ui center aligned vertically fitted segment">
-      <span class="ui large red text" id="p1title">Player 1</span>
-      <p id="p1details">You can change AI level in settings</p>
-    </div>
-  </div>
-
-
-<!-- Boutons -->
-
-
-<!--   <div class="ui fluid big compact buttons" id="allBtn" style="display: none">
-    <button class="ui blue button" id="previousBtn" onclick="previous()"><i class="backward icon"></i> Previous move</button>
-    <button class="ui teal button" id="undoBtn" onclick="cancel()"><i class="undo icon"></i> Cancel</button>
-    <button class="ui basic red labeled icon button" id="usePowerBtn" onclick="togglePower()"><i class="magic icon"></i>Use power</button>
-  </div>
-  <button class="ui fluid big active loading button" id="loadingBtn">‌</button> -->
-
-  <div class="ui fluid big compact buttons" id="allBtn" style="display: none">
+  <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
     <button class="ui icon button" id="undoBtn" onclick="cancel()"><i class="undo icon"></i></button>
     <button class="ui basic teal button" id="usePowerBtn" onclick="togglePower(false)">Without power</button>
     <button class="ui basic blue button" id="noPowerBtn" onclick="togglePower(true)">With power</button>
   </div>
-  <button class="ui fluid big active loading button" id="loadingBtn">‌</button>
-  
-<!--   <div class="ui fluid big compact buttons">
-    <button class="ui icon compact button"><i class="undo icon"></i></button>
-    <button class="ui basic teal button">Without power</button>
-    <button class="ui basic blue button">With power</button>
+  <button class="ui fluid large active loading button" id="loadingBtn">‌</button>
+  <div class="ui hidden info message" id="editMsg">
+    <div class="header">Info for editing</div>
+    <p>Tap on cells to change their heights, then tap again on edit button and tap on cells to toggle worker. Tap on god power to change them and finally tap edit button to validate</p>
   </div>
 
-  <div class="ui fluid big compact buttons">
-    <button class="ui icon compact button"><i class="undo icon"></i></button>
-    <button class="ui       teal button">Without power</button>
-    <button class="ui basic blue button">With power</button>
-  </div>
-
-  <div class="ui fluid big compact buttons">
-    <button class="ui icon compact button"><i class="undo icon"></i></button>
-    <button class="ui basic teal button">Without power</button>
-    <button class="ui       blue button">With power</button>
-  </div> -->
-
-  <div class="ui basic  aligned segment">
+  <div class="ui basic segment">
     <p id="moveSgmt">Loading pyodide, numpy, onnx; please wait...</p>
   </div>
 </div>
@@ -187,13 +159,14 @@
   const loadingBtn  = document.getElementById('loadingBtn');
   const usePowerBtn = document.getElementById('usePowerBtn');
   const noPowerBtn  = document.getElementById('noPowerBtn');
+  const editBtn     = document.getElementById('editBtn');
   const moveSgmt    = document.getElementById('moveSgmt');
-  const gameMode    = document.getElementById('gameMode');
+  /*const gameMode    = document.getElementById('gameMode');*/
   const p0title     = document.getElementById('p0title');
   const p0details   = document.getElementById('p0details');
   const p1title     = document.getElementById('p1title');
   const p1details   = document.getElementById('p1details');
-
+  const editMsg     = document.getElementById('editMsg');
 
   main(usePyodide=true);
 </script>

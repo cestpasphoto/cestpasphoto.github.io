@@ -90,6 +90,7 @@ class Santorini {
     this.lastMove = -1;
     this.powers = [0, 0];       // Which power each player has
     this.powers_data = [0, 0];  // Which data stored in power position
+    this.gameMode = 'P0';
   }
 
   init_game() {
@@ -121,8 +122,7 @@ class Santorini {
         this.py = pyodide.pyimport("proxy");
       }
       console.log('Run a game');
-      let numMCTSSims = parseInt(document.getElementById('difficulty').value);
-      let data_tuple = this.py.init_stuff(numMCTSSims).toJs({create_proxies: false});
+      let data_tuple = this.py.init_stuff(25).toJs({create_proxies: false});
       [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     }
 
@@ -167,8 +167,7 @@ class Santorini {
     this.lastMove = action;
   }
 
-  changeDifficulty() {
-    let numMCTSSims = parseInt(document.getElementById('difficulty').value);
+  changeDifficulty(numMCTSSims) {
     this.py.changeDifficulty(numMCTSSims);
   }
 
@@ -186,7 +185,7 @@ class Santorini {
       return;
     }
 
-    let player = (gameMode.value == 'P0') ? 0 : 1;
+    let player = (this.gameMode == 'P0') ? 0 : 1;
     // find earliest move where 'player' is next player (last move if null)
     let index = 0;
     if (player != null) {
@@ -208,6 +207,50 @@ class Santorini {
     this._readPowersData();
     this.history.splice(0, index+1); // remove reverted move from history and further moves
     this.lastMove = -1;
+  }
+
+  editCell(clicked_y, clicked_x, editMode) {
+    if (editMode == 1) {
+      this.board[clicked_y][clicked_x][1] = (this.board[clicked_y][clicked_x][1]+1) % 5;
+    } else if (editMode == 2) {
+      if (this.board[clicked_y][clicked_x][0] > 0) {
+         this.board[clicked_y][clicked_x][0] = -1;
+      } else if (this.board[clicked_y][clicked_x][0] < 0) {
+        this.board[clicked_y][clicked_x][0] = 0;
+      } else {
+        this.board[clicked_y][clicked_x][0] = 1;
+      }
+    } else if (editMode == 0) {
+      // Reassign worker id
+      let countP0 = 0, countP1 = 0;
+      for (let y = 0; y < 5; y++) {
+        for (let x = 0; x < 5; x++) {
+          if (this.board[y][x][0] > 0) {
+            countP0++;
+            this.board[y][x][0] = countP0;
+          } else if (this.board[y][x][0] < 0) {
+            countP1++;
+            this.board[y][x][0] = -countP1;
+          }
+        }
+      }
+      if (countP0 != 2 || countP1 != 2) {
+        console.log('Invalid board', countP0, countP1);
+      }
+      // Update all other data
+      let data_tuple = this.py.setData(this.nextPlayer, this.board).toJs({create_proxies: false});
+      [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+      this._readPowersData();
+    } else {
+      console.log('Dont know what to do in editMode', editMode);
+    }
+  }
+
+  editGod(player) {
+    this.powers[player] = (this.powers[player] + 1) % NB_GODS;
+    this.powers_data[player] = 64;
+    let power = this.powers[player] + player * NB_GODS;
+    this.board[Math.floor(power/5)][power%5][2] = 64;
   }
 
   static decodeMove(move) {
@@ -238,8 +281,9 @@ class MoveSelector {
     this.workerID = 0, this.workerX = 0, this.workerY = 0;
     this.moveDirection = 0, this.workerNewX = 0, this.workerNewY = 0;
     this.buildDirection = 0, this.buildX = 0, this.buildY = 0;
-    this.currentMoveWoPower = 0;
+    this.currentMoveWoPower = 0; // Accumulate data about move being selected
     this.power = -1; // -1 = undefined, 0 = no power used, x = power delta to add on 'currentMoveWoPower'
+    this.editMode = 0; // 0 = no edit mode, 1 = editing levels, 2 = editing workers
   }
 
   // return move when finished, else null
@@ -319,6 +363,15 @@ class MoveSelector {
       }
     }
     return -1;
+  }
+
+  edit() {
+    this._select_none();
+    this.editMode = (this.editMode+1) % 3;
+    if (this.editMode == 0) {
+      game.editCell(-1, -1, 0);
+      this._select_relevant_cells();
+    }
   }
 
   _select_relevant_cells() {
@@ -402,6 +455,7 @@ class MoveSelector {
 /* =================== */
 
 function refreshBoard() {
+  let editMode = move_sel.editMode;
   for (let y = 0; y < 5; y++) {
     for (let x = 0; x < 5; x++) {
       let cell = document.getElementById('cell_' + y + '_' + x);
@@ -419,7 +473,11 @@ function refreshBoard() {
       }
 
       // set cell background and ability to be clicked
-      if (selectable) {
+      if (editMode > 0) {
+        cell.classList.add('selectable');
+        cell.classList.remove('toselect');
+        cell.innerHTML = '<a onclick="cellClick('+y+','+x+');event.preventDefault();">' + cell_content + '</a>';
+      } else if (selectable) {
         cell.classList.add('selectable', 'toselect');
         cell.innerHTML = '<a onclick="cellClick('+y+','+x+');event.preventDefault();">' + cell_content + '</a>';
       } else {
@@ -436,8 +494,18 @@ function refreshButtons(loading=false) {
     allBtn.style = "display: none";
     loadingBtn.style = "";
     allBtn.classList.remove('green', 'red');
-  } else
-  {
+  } else if (move_sel.editMode > 0) {
+    editMsg.classList.remove('hidden');
+    allBtn.style = "display: none";
+    allBtn.classList.remove('green', 'red');
+
+    editBtn.classList.remove('secondary', 'primary', 'red');
+    if (move_sel.editMode == 1) {
+      editBtn.classList.add('secondary');
+    } else if (move_sel.editMode == 2) {
+      editBtn.classList.add('primary', 'red');
+    }
+  } else {
     allBtn.style = "";
     loadingBtn.style = "display: none";
     if (game.gameEnded.some(x => !!x)) {
@@ -452,7 +520,7 @@ function refreshButtons(loading=false) {
       } else {
         undoBtn.classList.remove('disabled');
       }
-/*      if (game.history.length <= 1) {
+      /* if (game.history.length <= 1) {
         previousBtn.classList.add('disabled');
       } else {
         previousBtn.classList.remove('disabled');
@@ -472,6 +540,9 @@ function refreshButtons(loading=false) {
     } else {
       noPowerBtn.classList.add('basic');
     }
+
+    editMsg.classList.add('hidden');
+    editBtn.classList.remove('secondary', 'primary', 'red');
   }
 }
 
@@ -483,6 +554,18 @@ function refreshPlayersText() {
   power = game.powers[1];
   p1title.innerHTML = gods_name[power];
   p1details.innerHTML = gods_descr[power];
+
+  if (move_sel.editMode > 0) {
+    p0title.setAttribute('onclick', 'godClick(0)');
+    p0details.setAttribute('onclick', 'godClick(0)');
+    p1title.setAttribute('onclick', 'godClick(1)');
+    p1details.setAttribute('onclick', 'godClick(1)');
+  } else {
+    p0title.removeAttribute('onclick');
+    p0details.removeAttribute('onclick');
+    p1title.removeAttribute('onclick');
+    p1details.removeAttribute('onclick');
+  }
 }
 
 function refreshMoveText(text) {
@@ -496,20 +579,23 @@ function refreshMoveText(text) {
 
 async function ai_play_one_move() {
   refreshButtons(loading=true);
-  await game.ai_guess_and_play();
-  refreshBoard();
+  let aiPlayer = game.nextPlayer;
+  while (game.nextPlayer == aiPlayer) {
+    await game.ai_guess_and_play();
+    refreshBoard();
+  }
   refreshButtons(loading=false);
 }
 
 async function ai_play_if_needed() {
-  if (gameMode.value == 'AI') {
+  if (game.gameMode == 'AI') {
     while (game.gameEnded.every(x => !x)) {
       await ai_play_one_move();
     }
   } else
   {
-    if ((game.nextPlayer == 0 && gameMode.value == 'P1') ||
-        (game.nextPlayer == 1 && gameMode.value == 'P0')) {
+    if ((game.nextPlayer == 0 && game.gameMode == 'P1') ||
+        (game.nextPlayer == 1 && game.gameMode == 'P0')) {
       await ai_play_one_move();
     }
     move_sel.resetAndStart();
@@ -520,26 +606,37 @@ async function ai_play_if_needed() {
   }
 }
 
-async function changeGameMode() {
+async function changeGameMode(mode) {
+  game.gameMode = mode;
   await ai_play_if_needed();
 }
 
-async function cellClick(clicked_y = null, clicked_x = null) {
-  move_sel.click(clicked_y == null ? -1 : clicked_y, clicked_x == null ? -1 : clicked_x);
-  let move = move_sel.getMove();
+function cellClick(clicked_y = null, clicked_x = null) {
+  if (move_sel.editMode > 0) {
+    game.editCell(clicked_y, clicked_x, move_sel.editMode);
+    refreshBoard();
+  } else {
+    move_sel.click(clicked_y == null ? -1 : clicked_y, clicked_x == null ? -1 : clicked_x);
+    let move = move_sel.getMove();
 
-  refreshBoard();
-  refreshButtons();
-  refreshMoveText(move_sel.getPartialDescription());
-
-  if (move >= 0) {
-    game.manual_move(move);
-    move_sel.reset();
     refreshBoard();
     refreshButtons();
+    refreshMoveText(move_sel.getPartialDescription());
 
-    await ai_play_if_needed();
+    if (move >= 0) {
+      game.manual_move(move);
+      move_sel.reset();
+      refreshBoard();
+      refreshButtons();
+
+      ai_play_if_needed();
+    }
   }
+}
+
+function godClick(player) {
+  game.editGod(player);
+  refreshPlayersText();
 }
 
 function reset() {
@@ -569,7 +666,7 @@ function cancel() {
   refreshMoveText('');
 }
 
-async function togglePower(state) {
+function togglePower(state) {
   move_sel.togglePower(state);
   refreshButtons();
   refreshBoard();
@@ -581,8 +678,15 @@ async function togglePower(state) {
     refreshBoard();
     refreshButtons();
 
-    await ai_play_if_needed();
+    ai_play_if_needed();
   }
+}
+
+function edit() {
+  move_sel.edit();
+  refreshBoard();
+  refreshButtons();
+  refreshPlayersText();
 }
 
 /* =================== */
