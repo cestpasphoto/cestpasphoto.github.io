@@ -3,13 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.1/dist/jquery.min.js"></script> -->
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.css">
-  <!-- <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.js"></script> -->
-
   <script src="https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.13.1/dist/ort.min.js"></script>
+  
   <script src="./santorinigods_code/code.js"></script>
   <style>
 /*#fffaf3 bgound*/
@@ -25,15 +22,12 @@
 </head>
 <body>
 
-
-<!-- Menu -->
-
-
-<div class="ui tiny borderless menu">
+<div class="ui borderless menu">
   <div class="ui container">    
-    <div class="header fitted item">
-      <button class="ui tiny icon button" onclick="reset()"><i class="file outline icon"></i></button>
+    <div class="fitted item">
+      <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
     </div> 
+    
     <div class="fitted item"> 
       <div class="ui simple dropdown item">
         Difficulty <i class="dropdown icon"></i>
@@ -59,10 +53,10 @@
     </div>
     <!-- <div class="header vertically fitted item"><h1 class="ui header">Santorini game with AI</h1></div>   -->
     <div class="right menu">
-      <div class="ui tiny buttons">
+      <div class="ui buttons">
         <!-- <button class="ui button" onclick="reset()">New</button> -->
         <button class="ui icon button" onclick="edit()" id="editBtn"><i class="edit icon"></i></button>
-        <button class="ui icon button" onclick="$('.ui.modal').modal('show');"><i class="wrench icon"></i></button>
+        <!-- <button class="ui icon button" onclick="$('.ui.modal').modal('show');"><i class="wrench icon"></i></button> -->
         <div class="ui icon button" data-position="bottom right" data-html="true" data-tooltip="Tap cells to move your worker and build"><i class="help icon"></i></div>
       </div>
     </div>
@@ -152,16 +146,15 @@
   </div>
 </div>
 
+
 <script>
   const allBtn      = document.getElementById('allBtn');
-  /*const previousBtn = document.getElementById('previousBtn');*/
   const undoBtn     = document.getElementById('undoBtn');
   const loadingBtn  = document.getElementById('loadingBtn');
   const usePowerBtn = document.getElementById('usePowerBtn');
   const noPowerBtn  = document.getElementById('noPowerBtn');
   const editBtn     = document.getElementById('editBtn');
   const moveSgmt    = document.getElementById('moveSgmt');
-  /*const gameMode    = document.getElementById('gameMode');*/
   const p0title     = document.getElementById('p0title');
   const p0details   = document.getElementById('p0details');
   const p1title     = document.getElementById('p1title');

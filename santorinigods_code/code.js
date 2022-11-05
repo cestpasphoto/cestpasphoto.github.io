@@ -84,7 +84,7 @@ class Santorini {
     this.py = null;
     this.board = Array.from(Array(5), _ => Array.from(Array(5), _ => Array(3).fill(0)));
     this.nextPlayer = 0;
-    this.validMoves = Array(2*11*9*9); this.validMoves.fill(false);
+    this.validMoves = Array(2*NB_GODS*9*9); this.validMoves.fill(false);
     this.gameEnded = [0, 0];
     this.history = [];          // List all previous states from new to old, not including current one
     this.lastMove = -1;
@@ -347,7 +347,11 @@ class MoveSelector {
       if (this.power >= 0) {
         return this.currentMoveWoPower + this.power;
       }
-      // If power undefined, check if single option possible
+      if (game.powers[game.nextPlayer] == 0) {
+        this.power = 0;
+        return this.currentMoveWoPower;
+      }
+      // If power undefined, check how many options possible
       let doableWithOutPower = game.validMoves[this.currentMoveWoPower                                   ];
       let doableWithPower    = game.validMoves[this.currentMoveWoPower + game.powers[game.nextPlayer]*9*9];
       if        ( doableWithOutPower &&  doableWithPower) {

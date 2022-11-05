@@ -1,3 +1,16 @@
+/* =================== */
+/* =====  CONST  ===== */
+/* =================== */
+
+const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘'];
+const levels_array = ['‌', '▂', '▅', '█', 'X'];
+const worker_string = '웃';
+const no_worker_string = '‌';
+
+/* =================== */
+/* =====  ONNX   ===== */
+/* =================== */
+
 var onnxSession;
 
 // Function called by python code
@@ -28,7 +41,6 @@ function encodeDirection(oldX, oldY, newX, newY) {
 
 function moveToString(move, subject='One') {
   let [worker, move_direction, build_direction] = Santorini.decodeMove(move);
-  const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘'];
   var description = subject + ' moved worker ' + worker + ' ' + directions_char[move_direction]
   description += ' then build ' + directions_char[build_direction];
   description += ' (move ' + move + ')';
@@ -48,6 +60,7 @@ class Santorini {
     this.gameEnded = [0, 0];
     this.history = []; // List all previous states from new to old, not including current one
     this.lastMove = -1;
+    this.gameMode = 'P0';
   }
 
   init_game() {
@@ -72,8 +85,7 @@ class Santorini {
         this.py = pyodide.pyimport("proxy");
       }
       console.log('Run a game');
-      let numMCTSSims = parseInt(document.getElementById('difficulty').value);
-      let data_tuple = this.py.init_stuff(numMCTSSims).toJs({create_proxies: false});
+      let data_tuple = this.py.init_stuff(25).toJs({create_proxies: false});
       [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     }
   }
@@ -105,8 +117,7 @@ class Santorini {
     this.lastMove = action;
   }
 
-  changeDifficulty() {
-    let numMCTSSims = parseInt(document.getElementById('difficulty').value);
+  changeDifficulty(numMCTSSims) {
     this.py.changeDifficulty(numMCTSSims);
   }
 
@@ -115,7 +126,7 @@ class Santorini {
       return;
     }
 
-    let player = (gameMode.value == 'P0') ? 0 : 1;
+    let player = (this.gameMode == 'P0') ? 0 : 1;
     // find earliest move where 'player' is next player (last move if null)
     let index = 0;
     if (player != null) {
@@ -138,6 +149,49 @@ class Santorini {
     this.lastMove = -1;
   }
 
+  editCell(clicked_y, clicked_x, editMode) {
+    if (editMode == 1) {
+      this.board[clicked_y][clicked_x][1] = (this.board[clicked_y][clicked_x][1]+1) % 5;
+    } else if (editMode == 2) {
+      if (this.board[clicked_y][clicked_x][0] > 0) {
+         this.board[clicked_y][clicked_x][0] = -1;
+      } else if (this.board[clicked_y][clicked_x][0] < 0) {
+        this.board[clicked_y][clicked_x][0] = 0;
+      } else {
+        this.board[clicked_y][clicked_x][0] = 1;
+      }
+    } else if (editMode == 0) {
+      // Reassign worker id
+      let countP0 = 0, countP1 = 0;
+      for (let y = 0; y < 5; y++) {
+        for (let x = 0; x < 5; x++) {
+          if (this.board[y][x][0] > 0) {
+            countP0++;
+            this.board[y][x][0] = countP0;
+          } else if (this.board[y][x][0] < 0) {
+            countP1++;
+            this.board[y][x][0] = -countP1;
+          }
+        }
+      }
+      if (countP0 != 2 || countP1 != 2) {
+        console.log('Invalid board', countP0, countP1);
+      }
+      // Update all other data
+      let data_tuple = this.py.setData(this.nextPlayer, this.board).toJs({create_proxies: false});
+      [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+    } else {
+      console.log('Dont know what to do in editMode', editMode);
+    }
+  }
+
+  editGod(player) {
+    this.powers[player] = (this.powers[player] + 1) % NB_GODS;
+    this.powers_data[player] = 64;
+    let power = this.powers[player] + player * NB_GODS;
+    this.board[Math.floor(power/5)][power%5][2] = 64;
+  }
+
   static decodeMove(move) {
     let worker = Math.floor(move / (9*9));
     let action_ = move % (9*9);
@@ -155,7 +209,7 @@ class MoveSelector {
 
   resetAndStart() {
     this.reset();
-    this._select_my_workers();
+    this._select_relevant_cells();
   }
 
   reset() {
@@ -164,7 +218,8 @@ class MoveSelector {
     this.workerID = 0, this.workerX = 0, this.workerY = 0;
     this.moveDirection = 0, this.workerNewX = 0, this.workerNewY = 0;
     this.buildDirection = 0, this.buildX = 0, this.buildY = 0;
-    this.currentMove = 0;
+    this.currentMoveWoPower = 0; // Accumulate data about move being selected
+    this.editMode = 0; // 0 = no edit mode, 1 = editing levels, 2 = editing workers
   }
 
   // return move when finished, else null
@@ -175,30 +230,33 @@ class MoveSelector {
       this.workerX = clicked_x;
       this.workerY = clicked_y;
       this.workerID = Math.abs(game.board[this.workerY][this.workerX][0]) - 1;
-      this.currentMove = 1*9*9 * this.workerID;
-      this._select_neighbours(clicked_y, clicked_x);
+      this.currentMoveWoPower = 1*9*9 * this.workerID;
     } else if (this.stage == 2) {
       // Selecting worker new position
       this.workerNewX = clicked_x;
       this.workerNewY = clicked_y;
       this.moveDirection = encodeDirection(this.workerX, this.workerY, this.workerNewX, this.workerNewY);
-      this.currentMove += 9*this.moveDirection;
-      this._select_neighbours(clicked_y, clicked_x);
+      this.currentMoveWoPower += 9*this.moveDirection;
     } else if (this.stage == 3) {
       // Selecting building position
       this.buildX = clicked_x;
       this.buildY = clicked_y;
       this.buildDirection = encodeDirection(this.workerNewX, this.workerNewY, this.buildX, this.buildY);
-      this.currentMove += this.buildDirection;
-      return this.currentMove;
+      this.currentMoveWoPower += this.buildDirection;
     } else if (this.stage == 4) {
-      this.resetAndStart();
+      console.log('We are on stage 4');
+      this.reset();
     } else {
+      console.log('We are on stage', this.stage);
       // Starting new game
-      this.resetAndStart();
+      this.reset();
     }
 
-    return null;
+    this._select_relevant_cells();
+  }
+
+  togglePower(usePower) {
+    this.power = (usePower ? game.powers[game.nextPlayer]*9*9 : 0);
   }
 
   isSelectable(y, x) {
@@ -206,7 +264,6 @@ class MoveSelector {
   }
 
   getPartialDescription() {
-    const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘'];
     var description = '';
     if (this.stage >= 1) {
       description += 'You move from ('+this.workerY+','+this.workerX+')';
@@ -215,20 +272,31 @@ class MoveSelector {
       description += ' in direction ' + directions_char[this.moveDirection];
     }
     if (this.stage >= 3) {
-      description += ' and build ' + directions_char[this.buildDirection] + ' (move ' + this.currentMove + ')';
+      description += ' and build ' + directions_char[this.buildDirection] + ' (move ' + this.currentMoveWoPower + ')';
     }
     return description;
   }
 
-  _select_neighbours(clicked_y, clicked_x) {
-    for (let y = 0; y < 5; y++) {
-      for (let x = 0; x < 5; x++) {
-        this.cells[y][x] = this._anySubmovePossible(y, x);
-      }
+  // return move, or -1 if move is undefined
+  getMove() {
+    if (this.stage >= 3) {
+      return this.currentMoveWoPower;
     }
   }
 
-  _select_my_workers() {
+  edit() {
+    this._select_none();
+    this.editMode = (this.editMode+1) % 3;
+    if (this.editMode == 0) {
+      game.editCell(-1, -1, 0);
+      this._select_relevant_cells();
+    }
+  }
+
+  _select_relevant_cells() {
+    if (this.stage >= 3) {
+      this._select_none();
+    } else if (this.stage < 1) {
     for (let y = 0; y < 5; y++) {
       for (let x = 0; x < 5; x++) {
         if ((game.nextPlayer == 0 && game.board[y][x][0] > 0) ||
@@ -236,6 +304,13 @@ class MoveSelector {
           this.cells[y][x] = this._anySubmovePossible(y, x);
         } else {
           this.cells[y][x] = false;
+          }
+        }
+      }
+    } else {
+      for (let y = 0; y < 5; y++) {
+        for (let x = 0; x < 5; x++) {
+          this.cells[y][x] = this._anySubmovePossible(y, x);
         }
       }
     }
@@ -245,6 +320,7 @@ class MoveSelector {
     this.cells = Array.from(Array(5), _ => Array(5).fill(false));
   }
 
+  // Whole function ignore value of this.power on purpose, consider both options
   _anySubmovePossible(coordY, coordX) {
     let any_move_possible = true;
     if (this.stage == 0) {
@@ -258,8 +334,8 @@ class MoveSelector {
       if (move_direction < 0) {
         return false; // Not valid move
       }
-      let moves_begin = this.currentMove +  move_direction   *9;
-      let moves_end   = this.currentMove + (move_direction+1)*9;
+      let moves_begin = this.currentMoveWoPower +  move_direction   *9;
+      let moves_end   = this.currentMoveWoPower + (move_direction+1)*9;
       any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
     } else if (this.stage == 2) {
       // coord = build direction
@@ -267,10 +343,11 @@ class MoveSelector {
       if (build_direction < 0) {
         return false; // Not valid move
       }
-      any_move_possible = game.validMoves[this.currentMove + build_direction];
+      any_move_possible = game.validMoves[this.currentMoveWoPower + build_direction];
     } else {
       console.log('Weird, I dont support this.stage=', this.stage, coordX, coordY);
     }
+
     return any_move_possible;
   }
 }
@@ -280,9 +357,7 @@ class MoveSelector {
 /* =================== */
 
 function refreshBoard() {
-  const levels_array = ['‌', '▂', '▅', '█', 'X'];
-  const worker_string = '웃';
-  const no_worker_string = '‌';
+  let editMode = move_sel.editMode;
   for (let y = 0; y < 5; y++) {
     for (let x = 0; x < 5; x++) {
       let cell = document.getElementById('cell_' + y + '_' + x);
@@ -300,11 +375,15 @@ function refreshBoard() {
       }
 
       // set cell background and ability to be clicked
-      if (selectable) {
-        cell.classList.add('selectable', 'warning');
+      if (editMode > 0) {
+        cell.classList.add('selectable');
+        cell.classList.remove('toselect');
+        cell.innerHTML = '<a onclick="cellClick('+y+','+x+');event.preventDefault();">' + cell_content + '</a>';
+      } else if (selectable) {
+        cell.classList.add('selectable', 'toselect');
         cell.innerHTML = '<a onclick="cellClick('+y+','+x+');event.preventDefault();">' + cell_content + '</a>';
       } else {
-        cell.classList.remove('selectable', 'warning');
+        cell.classList.remove('selectable', 'toselect');
         cell.innerHTML = cell_content;
       }
     }
@@ -317,8 +396,18 @@ function refreshButtons(loading=false) {
     allBtn.style = "display: none";
     loadingBtn.style = "";
     allBtn.classList.remove('green', 'red');
-  } else
-  {
+  } else if (move_sel.editMode > 0) {
+    editMsg.classList.remove('hidden');
+    allBtn.style = "display: none";
+    allBtn.classList.remove('green', 'red');
+
+    editBtn.classList.remove('secondary', 'primary', 'red');
+    if (move_sel.editMode == 1) {
+      editBtn.classList.add('secondary');
+    } else if (move_sel.editMode == 2) {
+      editBtn.classList.add('primary', 'red');
+    }
+  } else {
     allBtn.style = "";
     loadingBtn.style = "display: none";
     if (game.gameEnded.some(x => !!x)) {
@@ -333,21 +422,33 @@ function refreshButtons(loading=false) {
       } else {
         undoBtn.classList.remove('disabled');
       }
-      if (game.history.length <= 1) {
+      /* if (game.history.length <= 1) {
         previousBtn.classList.add('disabled');
       } else {
         previousBtn.classList.remove('disabled');
+      }*/
       }
+
+    usePowerBtn.classList.remove('basic', 'disabled');
+    noPowerBtn.classList.remove('basic', 'disabled');
+    if (move_sel.stage <= 2) {
+      usePowerBtn.classList.add('disabled', 'basic');
+      noPowerBtn.classList.add('disabled', 'basic');
+    } else if (move_sel.power < 0) {
+      usePowerBtn.classList.add('basic');
+      noPowerBtn.classList.add('basic');
+    } else if (move_sel.power == 0) {
+      usePowerBtn.classList.add('basic');
+    } else {
+      noPowerBtn.classList.add('basic');
     }
+
+    editMsg.classList.add('hidden');
+    editBtn.classList.remove('secondary', 'primary', 'red');
   }
 }
 
-
 function refreshPlayersText() {
-  p0title.innerHTML = "Regular";
-  p0details.innerHTML = "You can move one of your worker to a neighbour cell, and then build one level to another neighbour cell";
-  p1title.innerHTML = "Regular";
-  p1details.innerHTML = "Your Worker may move into an opponent Worker's space, if their Worker can be forced one space straight backwards to an unoccupied space at any level.";
 }
 
 function refreshMoveText(text) {
@@ -361,20 +462,23 @@ function refreshMoveText(text) {
 
 async function ai_play_one_move() {
   refreshButtons(loading=true);
+  let aiPlayer = game.nextPlayer;
+  while (game.nextPlayer == aiPlayer) {
   await game.ai_guess_and_play();
   refreshBoard();
+  }
   refreshButtons(loading=false);
 }
 
 async function ai_play_if_needed() {
-  if (gameMode.value == 'AI') {
+  if (game.gameMode == 'AI') {
     while (game.gameEnded.every(x => !x)) {
       await ai_play_one_move();
     }
   } else
   {
-    if ((game.nextPlayer == 0 && gameMode.value == 'P1') ||
-        (game.nextPlayer == 1 && gameMode.value == 'P0')) {
+    if ((game.nextPlayer == 0 && game.gameMode == 'P1') ||
+        (game.nextPlayer == 1 && game.gameMode == 'P0')) {
       await ai_play_one_move();
     }
     move_sel.resetAndStart();
@@ -385,24 +489,31 @@ async function ai_play_if_needed() {
   }
 }
 
-async function changeGameMode() {
+async function changeGameMode(mode) {
+  game.gameMode = mode;
   await ai_play_if_needed();
 }
 
-async function cellClick(clicked_y = null, clicked_x = null) {
-  let move = move_sel.click(clicked_y == null ? -1 : clicked_y, clicked_x == null ? -1 : clicked_x);
+function cellClick(clicked_y = null, clicked_x = null) {
+  if (move_sel.editMode > 0) {
+    game.editCell(clicked_y, clicked_x, move_sel.editMode);
+    refreshBoard();
+  } else {
+    move_sel.click(clicked_y == null ? -1 : clicked_y, clicked_x == null ? -1 : clicked_x);
+    let move = move_sel.getMove();
 
-  refreshBoard();
-  refreshButtons();
-  refreshMoveText(move_sel.getPartialDescription());
-
-  if (move !== null) {
-    game.manual_move(move);
-    move_sel.reset();
     refreshBoard();
     refreshButtons();
+    refreshMoveText(move_sel.getPartialDescription());
 
-    await ai_play_if_needed();
+    if (move >= 0) {
+      game.manual_move(move);
+      move_sel.reset();
+      refreshBoard();
+      refreshButtons();
+
+      ai_play_if_needed();
+    }
   }
 }
 
@@ -431,6 +542,13 @@ function cancel() {
   refreshBoard();
   refreshButtons();
   refreshMoveText('');
+}
+
+function edit() {
+  move_sel.edit();
+  refreshBoard();
+  refreshButtons();
+  refreshPlayersText();
 }
 
 /* =================== */

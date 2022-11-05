@@ -2,9 +2,6 @@ from MCTS import MCTS
 from SantoriniGame import SantoriniGame as Game
 import numpy as np
 
-
-# from SantoriniConstants import NB_GODS
-
 g, board, mcts, player = None, None, None, 0
 
 class dotdict(dict):
@@ -28,13 +25,6 @@ def init_stuff(numMCTSSims):
 	player = 0
 	valids = g.getValidMoves(board, player)
 	end = [0,0]
-
-	# print(g.board.gods_power)
-	# print(g.board.gods_power.flat[:])
-	# for p in range(2):
-	# 	for i in range(NB_GODS):
-	# 		if (g.board.gods_power.flat[p*NB_GODS+i] > 0):
-	# 			print(f'Player {p} has power {i}')
 
 	return player, end, board.tolist(), valids
 
