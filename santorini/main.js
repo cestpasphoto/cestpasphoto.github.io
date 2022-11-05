@@ -2,6 +2,9 @@
 /* =====  CONST  ===== */
 /* =================== */
 
+// Here are common constants between nogod and god modes.
+// Check also constants_*.js
+
 const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘'];
 const levels_array = ['‌', '▂', '▅', '█', 'X'];
 const worker_string = '웃';
@@ -18,7 +21,7 @@ async function predict(canonicalBoard, valids) {
   const cb_js = Float32Array.from(canonicalBoard.toJs({create_proxies: false}));
   const vs_js = Uint8Array.from(valids.toJs({create_proxies: false}));
   const tensor_board = new ort.Tensor('float32', cb_js, [1, 25, 3]);
-  const tensor_valid = new ort.Tensor('bool'   , vs_js, [1, 162  ]);
+  const tensor_valid = new ort.Tensor('bool'   , vs_js, [1, onnxOutputSize]);
   // console.log('canonicalboard:', tensor_board);
   // console.log('valid:', tensor_valid);
   const results = await globalThis.onnxSession.run({ board: tensor_board, valid_actions: tensor_valid });
@@ -40,9 +43,10 @@ function encodeDirection(oldX, oldY, newX, newY) {
 }
 
 function moveToString(move, subject='One') {
-  let [worker, move_direction, build_direction] = Santorini.decodeMove(move);
+  let [worker, power, move_direction, build_direction] = Santorini.decodeMove(move);
   var description = subject + ' moved worker ' + worker + ' ' + directions_char[move_direction]
   description += ' then build ' + directions_char[build_direction];
+  description += (power > 0) ? (' using power of god' + power) : '';
   description += ' (move ' + move + ')';
   return description;
 }
@@ -56,10 +60,12 @@ class Santorini {
     this.py = null;
     this.board = Array.from(Array(5), _ => Array.from(Array(5), _ => Array(3).fill(0)));
     this.nextPlayer = 0;
-    this.validMoves = Array(2*9*9); this.validMoves.fill(false);
+    this.validMoves = Array(2*NB_GODS*9*9); this.validMoves.fill(false);
     this.gameEnded = [0, 0];
-    this.history = []; // List all previous states from new to old, not including current one
+    this.history = [];          // List all previous states from new to old, not including current one
     this.lastMove = -1;
+    this.powers = [0, 0];       // Which power each player has
+    this.powers_data = [0, 0];  // Which data stored in power position
     this.gameMode = 'P0';
   }
 
@@ -79,6 +85,13 @@ class Santorini {
           /*console.log(this.board[y][x][0], this.board[y][x][1]);*/
         }
       }
+      // Random powers
+      let power = Math.floor(Math.random()*NB_GODS);
+      console.log('Random power 1 = ', power);
+      this.board[Math.floor(power/5)][power%5][2] = 64;
+      power = Math.floor(Math.random()*NB_GODS) + NB_GODS;
+      console.log('Random power 2 = ', power-NB_GODS);
+      this.board[Math.floor(power/5)][power%5][2] = 64;      
     } else {
       if (this.py == null) {
         console.log('Now importing python module');
@@ -88,6 +101,18 @@ class Santorini {
       let data_tuple = this.py.init_stuff(25).toJs({create_proxies: false});
       [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     }
+
+    // Find powers of each player
+    for (let p = 0; p < 2; p++) {
+      for (let i = p*NB_GODS; i < (p+1)*NB_GODS; i++) {
+        let y = Math.floor(i/5), x = i%5;
+        if (this.board[y][x][2] > 0) {
+          this.powers[p] = i - p*NB_GODS;
+          console.log('Player', p, 'has power', this.powers[p]);
+        }
+      }
+    }
+    this._readPowersData();
   }
 
   manual_move(action) {
@@ -114,11 +139,21 @@ class Santorini {
     this.history.unshift([this.nextPlayer, this.board]);
     let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+    this._readPowersData();
     this.lastMove = action;
   }
 
   changeDifficulty(numMCTSSims) {
     this.py.changeDifficulty(numMCTSSims);
+  }
+
+  _readPowersData() {
+    for (let p = 0; p < 2; p++) {
+      let index = this.powers[p] + p * NB_GODS;
+      let y = Math.floor(index/5), x = index%5;
+      this.powers_data[p] = this.board[y][x][2];
+      console.log('Power data for player', p, 'is', this.powers_data[p]);
+    }
   }
 
   previous() {
@@ -145,6 +180,7 @@ class Santorini {
     console.log('board to revert:', this.history[index][1]);
     let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+    this._readPowersData();
     this.history.splice(0, index+1); // remove reverted move from history and further moves
     this.lastMove = -1;
   }
@@ -180,6 +216,7 @@ class Santorini {
       // Update all other data
       let data_tuple = this.py.setData(this.nextPlayer, this.board).toJs({create_proxies: false});
       [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+      this._readPowersData();
     } else {
       console.log('Dont know what to do in editMode', editMode);
     }
@@ -193,11 +230,13 @@ class Santorini {
   }
 
   static decodeMove(move) {
-    let worker = Math.floor(move / (9*9));
-    let action_ = move % (9*9);
+    let worker = Math.floor(move / (NB_GODS*9*9));
+    let action_ = move % (NB_GODS*9*9);
+    let power = Math.floor(action_ / (9*9));
+    action_ = action_ % (9*9);
     let move_direction = Math.floor(action_ / 9);
     let build_direction = action_ % 9;
-    return [worker, move_direction, build_direction];
+    return [worker, power, move_direction, build_direction];
   }
 }
 
@@ -219,6 +258,7 @@ class MoveSelector {
     this.moveDirection = 0, this.workerNewX = 0, this.workerNewY = 0;
     this.buildDirection = 0, this.buildX = 0, this.buildY = 0;
     this.currentMoveWoPower = 0; // Accumulate data about move being selected
+    this.power = -1; // -1 = undefined, 0 = no power used, x = power delta to add on 'currentMoveWoPower'
     this.editMode = 0; // 0 = no edit mode, 1 = editing levels, 2 = editing workers
   }
 
@@ -230,7 +270,7 @@ class MoveSelector {
       this.workerX = clicked_x;
       this.workerY = clicked_y;
       this.workerID = Math.abs(game.board[this.workerY][this.workerX][0]) - 1;
-      this.currentMoveWoPower = 1*9*9 * this.workerID;
+      this.currentMoveWoPower = NB_GODS*9*9 * this.workerID;
     } else if (this.stage == 2) {
       // Selecting worker new position
       this.workerNewX = clicked_x;
@@ -280,8 +320,29 @@ class MoveSelector {
   // return move, or -1 if move is undefined
   getMove() {
     if (this.stage >= 3) {
-      return this.currentMoveWoPower;
+      if (this.power >= 0) {
+        return this.currentMoveWoPower + this.power;
+      }
+      if (game.powers[game.nextPlayer] == 0) {
+        this.power = 0;
+        return this.currentMoveWoPower;
+      }
+      // If power undefined, check how many options possible
+      let doableWithOutPower = game.validMoves[this.currentMoveWoPower                                   ];
+      let doableWithPower    = game.validMoves[this.currentMoveWoPower + game.powers[game.nextPlayer]*9*9];
+      if        ( doableWithOutPower &&  doableWithPower) {
+        console.log('2 moves possible, need user to decide whether s.he wants power or not');
+      } else if (!doableWithOutPower && !doableWithPower) {
+        console.log('No move possible, that should not happen');
+      } else if (!doableWithOutPower &&  doableWithPower) {
+        this.power = game.powers[game.nextPlayer]*9*9;
+        return this.currentMoveWoPower + game.powers[game.nextPlayer]*9*9;
+      } else if ( doableWithOutPower && !doableWithPower) {
+        this.power = 0;
+        return this.currentMoveWoPower;
+      }
     }
+    return -1;
   }
 
   edit() {
@@ -297,13 +358,13 @@ class MoveSelector {
     if (this.stage >= 3) {
       this._select_none();
     } else if (this.stage < 1) {
-    for (let y = 0; y < 5; y++) {
-      for (let x = 0; x < 5; x++) {
-        if ((game.nextPlayer == 0 && game.board[y][x][0] > 0) ||
-            (game.nextPlayer == 1 && game.board[y][x][0] < 0)) {
-          this.cells[y][x] = this._anySubmovePossible(y, x);
-        } else {
-          this.cells[y][x] = false;
+      for (let y = 0; y < 5; y++) {
+        for (let x = 0; x < 5; x++) {
+          if ((game.nextPlayer == 0 && game.board[y][x][0] > 0) ||
+              (game.nextPlayer == 1 && game.board[y][x][0] < 0)) {
+            this.cells[y][x] = this._anySubmovePossible(y, x);
+          } else {
+            this.cells[y][x] = false;
           }
         }
       }
@@ -323,11 +384,18 @@ class MoveSelector {
   // Whole function ignore value of this.power on purpose, consider both options
   _anySubmovePossible(coordY, coordX) {
     let any_move_possible = true;
+    let power = game.powers[game.nextPlayer]*9*9;
     if (this.stage == 0) {
       let worker_id = Math.abs(game.board[coordY][coordX][0]) - 1;
-      let moves_begin =  worker_id   *9*9;
-      let moves_end   = (worker_id+1)*9*9;
+      let moves_begin = (worker_id*NB_GODS    )*9*9;
+      let moves_end   = (worker_id*NB_GODS + 1)*9*9;
       any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
+      if (!any_move_possible && power>0) {
+        // Check if any move with power
+        moves_begin += power;
+        moves_end   += power;
+        any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
+      }
     } else if (this.stage == 1) {
       // coord = worker move direction
       let move_direction = encodeDirection(this.workerX, this.workerY, coordX, coordY);
@@ -337,6 +405,12 @@ class MoveSelector {
       let moves_begin = this.currentMoveWoPower +  move_direction   *9;
       let moves_end   = this.currentMoveWoPower + (move_direction+1)*9;
       any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
+      if (!any_move_possible && power>0) {
+        // Check if any move with power
+        moves_begin += power;
+        moves_end   += power;
+        any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
+      }
     } else if (this.stage == 2) {
       // coord = build direction
       let build_direction = encodeDirection(this.workerNewX, this.workerNewY, coordX, coordY);
@@ -344,6 +418,10 @@ class MoveSelector {
         return false; // Not valid move
       }
       any_move_possible = game.validMoves[this.currentMoveWoPower + build_direction];
+      if (!any_move_possible && power>0) {
+        // Check if any move with power
+        any_move_possible = game.validMoves[this.currentMoveWoPower + build_direction + power];
+      }
     } else {
       console.log('Weird, I dont support this.stage=', this.stage, coordX, coordY);
     }
@@ -427,7 +505,7 @@ function refreshButtons(loading=false) {
       } else {
         previousBtn.classList.remove('disabled');
       }*/
-      }
+    }
 
     usePowerBtn.classList.remove('basic', 'disabled');
     noPowerBtn.classList.remove('basic', 'disabled');
@@ -449,6 +527,25 @@ function refreshButtons(loading=false) {
 }
 
 function refreshPlayersText() {
+  let power = game.powers[0];
+  p0title.innerHTML = gods_name[power];
+  p0details.innerHTML = gods_descr[power];
+
+  power = game.powers[1];
+  p1title.innerHTML = gods_name[power];
+  p1details.innerHTML = gods_descr[power];
+
+  if (move_sel.editMode > 0) {
+    p0title.setAttribute('onclick', 'godClick(0)');
+    p0details.setAttribute('onclick', 'godClick(0)');
+    p1title.setAttribute('onclick', 'godClick(1)');
+    p1details.setAttribute('onclick', 'godClick(1)');
+  } else {
+    p0title.removeAttribute('onclick');
+    p0details.removeAttribute('onclick');
+    p1title.removeAttribute('onclick');
+    p1details.removeAttribute('onclick');
+  }
 }
 
 function refreshMoveText(text) {
@@ -464,8 +561,8 @@ async function ai_play_one_move() {
   refreshButtons(loading=true);
   let aiPlayer = game.nextPlayer;
   while (game.nextPlayer == aiPlayer) {
-  await game.ai_guess_and_play();
-  refreshBoard();
+    await game.ai_guess_and_play();
+    refreshBoard();
   }
   refreshButtons(loading=false);
 }
@@ -517,6 +614,11 @@ function cellClick(clicked_y = null, clicked_x = null) {
   }
 }
 
+function godClick(player) {
+  game.editGod(player);
+  refreshPlayersText();
+}
+
 function reset() {
   game.init_game();
   move_sel.resetAndStart();
@@ -544,6 +646,22 @@ function cancel() {
   refreshMoveText('');
 }
 
+function togglePower(state) {
+  move_sel.togglePower(state);
+  refreshButtons();
+  refreshBoard();
+
+  let move = move_sel.getMove();
+  if (move >= 0) {
+    game.manual_move(move);
+    move_sel.reset();
+    refreshBoard();
+    refreshButtons();
+
+    ai_play_if_needed();
+  }
+}
+
 function edit() {
   move_sel.edit();
   refreshBoard();
@@ -560,14 +678,18 @@ async function init_code() {
   pyodide = await loadPyodide({ fullStdLib : false });
   await pyodide.loadPackage("numpy");
 
-  globalThis.onnxSession = await ort.InferenceSession.create('santorini_code/exported_model.onnx');
+  globalThis.onnxSession = await ort.InferenceSession.create(modelFileName);
 
   await pyodide.runPythonAsync(`
     from pyodide.http import pyfetch
-    for filename in ['Game.py', 'proxy.py', 'MCTS.py', 'SantoriniConstants.py', 'SantoriniDisplay.py', 'SantoriniGame.py', 'SantoriniLogicNumba.py']:
-      response = await pyfetch("santorini_code/"+filename)
+    for filename in ['Game.py', 'proxy.py', 'MCTS.py', 'SantoriniDisplay.py', 'SantoriniGame.py', 'SantoriniLogicNumba.py']:
+      response = await pyfetch('santorini/'+filename)
       with open(filename, "wb") as f:
         f.write(await response.bytes())
+
+    response = await pyfetch('`+pyConstantsFileName+`')
+    with open('SantoriniConstants.py', "wb") as f:
+      f.write(await response.bytes())
   `)
   console.log('Loaded python code, pyodide ready');
 }
