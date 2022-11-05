@@ -7,10 +7,20 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.1/dist/jquery.min.js"></script>
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.css">
   <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.js"></script>
+
   <script src="https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.13.1/dist/ort.min.js"></script>
-  
-  <script src="./santorini_code/code.js"></script>
+  <script src="./santorinigods_code/code.js"></script>
+  <style>
+/*#fffaf3 bgound*/
+    .toselect {
+      background-color: #f3f8ff;
+    }
+
+    .toselect :hover {
+      background-color: #dae9ff;
+    }
+  </style>
 </head>
 </head>
 <body>
@@ -21,16 +31,15 @@
 
 <div class="ui massive borderless menu">
   <div class="ui container">    
-    <div class="header vertically fitted item"><i class="microchip icon"></i>Santorini game with AI</div>  
-    <div class="right vertically fitted item">
-      <div class="ui icon buttons">
-        <!-- <button class="ui primary button" onclick="$('.ui.modal').modal('show');"><i class="help icon"></i></button> -->
-        <div class="ui icon primary button" data-position="bottom right" data-html="true" data-tooltip="Tap cells to move your worker and build"><i class="help icon"></i></div>
-        <button class="ui icon button" onclick="reset()"><i class="plus square outline icon"></i></button>
-        <button class="ui button" ><i class="wrench icon" onclick="$('.ui.modal').modal('show');"></i></button>
+    <div class="header vertically fitted item">Santorini game with AI</div>  
+    <!-- <div class="header vertically fitted item"><h1 class="ui header">Santorini game with AI</h1></div>   -->
+    <div class="right item">
+      <div class="ui tiny buttons">
+        <button class="ui button" onclick="reset()">New</button>
+        <button class="ui icon button" onclick="$('.ui.modal').modal('show');"><i class="wrench icon"></i></button>
+        <div class="ui icon button" data-position="bottom right" data-html="true" data-tooltip="Tap cells to move your worker and build"><i class="help icon"></i></div>
       </div>
     </div>
-
   </div>
 </div>
 
@@ -134,23 +143,50 @@
 <!-- Boutons -->
 
 
+<!--   <div class="ui fluid big compact buttons" id="allBtn" style="display: none">
+    <button class="ui blue button" id="previousBtn" onclick="previous()"><i class="backward icon"></i> Previous move</button>
+    <button class="ui teal button" id="undoBtn" onclick="cancel()"><i class="undo icon"></i> Cancel</button>
+    <button class="ui basic red labeled icon button" id="usePowerBtn" onclick="togglePower()"><i class="magic icon"></i>Use power</button>
+  </div>
+  <button class="ui fluid big active loading button" id="loadingBtn">‌</button> -->
+
   <div class="ui fluid big compact buttons" id="allBtn" style="display: none">
-    <button class="ui button" id="previousBtn" onclick="previous()"><i class="backward icon"></i> Previous move</button>
-    <button class="ui button" id="undoBtn" onclick="cancel()"><i class="undo icon"></i> Cancel</button>
-    <button class="ui disabled primary icon button"><i class="magic icon"></i></button>
+    <button class="ui icon button" id="undoBtn" onclick="cancel()"><i class="undo icon"></i></button>
+    <button class="ui basic teal button" id="usePowerBtn" onclick="togglePower(false)">Without power</button>
+    <button class="ui basic blue button" id="noPowerBtn" onclick="togglePower(true)">With power</button>
   </div>
   <button class="ui fluid big active loading button" id="loadingBtn">‌</button>
+  
+<!--   <div class="ui fluid big compact buttons">
+    <button class="ui icon compact button"><i class="undo icon"></i></button>
+    <button class="ui basic teal button">Without power</button>
+    <button class="ui basic blue button">With power</button>
+  </div>
 
-  <div class="ui basic center aligned segment">
+  <div class="ui fluid big compact buttons">
+    <button class="ui icon compact button"><i class="undo icon"></i></button>
+    <button class="ui       teal button">Without power</button>
+    <button class="ui basic blue button">With power</button>
+  </div>
+
+  <div class="ui fluid big compact buttons">
+    <button class="ui icon compact button"><i class="undo icon"></i></button>
+    <button class="ui basic teal button">Without power</button>
+    <button class="ui       blue button">With power</button>
+  </div> -->
+
+  <div class="ui basic  aligned segment">
     <p id="moveSgmt">Loading pyodide, numpy, onnx; please wait...</p>
   </div>
 </div>
 
 <script>
   const allBtn      = document.getElementById('allBtn');
-  const previousBtn = document.getElementById('previousBtn');
+  /*const previousBtn = document.getElementById('previousBtn');*/
   const undoBtn     = document.getElementById('undoBtn');
   const loadingBtn  = document.getElementById('loadingBtn');
+  const usePowerBtn = document.getElementById('usePowerBtn');
+  const noPowerBtn  = document.getElementById('noPowerBtn');
   const moveSgmt    = document.getElementById('moveSgmt');
   const gameMode    = document.getElementById('gameMode');
   const p0title     = document.getElementById('p0title');
@@ -159,8 +195,7 @@
   const p1details   = document.getElementById('p1details');
 
 
-  main();
+  main(usePyodide=true);
 </script>
-
 </body>
 </html>
