@@ -31,14 +31,16 @@
     <div class="fitted item"> 
       <div class="ui small form">
         <div class="field">
-          <select onchange="game.changeDifficulty(this.value)">
+          <select onchange="game.changeDifficulty(this.value)" id="difficultyForm">
+            <optgroup label="Above optimal">
+            <option value="6400"       >God-like</option>
+            <option value="1600"       >Boosted</option>
             <optgroup label="Level used during training">
-            <option value="400"        >Harder</option>
+            <option value="400"        >Native</option>
             <optgroup label="No optimal levels">
-            <option value="100"        >Hard</option>
-            <option value="25" selected>Medium</option>
-            <option value="6"          >Easy</option>
-            <option value="2"          >Come on</option>
+            <option value="100"        >Medium</option>
+            <option value="25" selected>Easy</option>
+            <option value="6"          >Easier</option>
           </select>
         </div>
       </div>

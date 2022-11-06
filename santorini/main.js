@@ -99,6 +99,7 @@ class Santorini {
       }
       console.log('Run a game');
       let data_tuple = this.py.init_stuff(25).toJs({create_proxies: false});
+      this.changeDifficulty(document.getElementById('difficultyForm').value);
       [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     }
 
