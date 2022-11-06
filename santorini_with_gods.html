@@ -28,37 +28,38 @@
     <div class="fitted item">
       <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
     </div> 
-    
     <div class="fitted item"> 
-      <div class="ui simple dropdown item">
-        Difficulty <i class="dropdown icon"></i>
-        <div class="menu">
-          <div class="item" onclick="game.changeDifficulty(400)"        >Harder - native difficulty</div>
-          <div class="item" onclick="game.changeDifficulty(100)"        >Hard</div>
-          <div class="item" onclick="game.changeDifficulty(25)" selected>Medium</div>
-          <div class="item" onclick="game.changeDifficulty(6)"          >Easy</div>
-          <div class="item" onclick="game.changeDifficulty(2)"          >Come on</div>
+      <div class="ui small form">
+        <div class="field">
+          <select onchange="game.changeDifficulty(this.value)">
+            <optgroup label="Level used during training">
+            <option value="400"        >Harder</option>
+            <optgroup label="No optimal levels">
+            <option value="100"        >Hard</option>
+            <option value="25" selected>Medium</option>
+            <option value="6"          >Easy</option>
+            <option value="2"          >Come on</option>
+          </select>
         </div>
       </div>
     </div>
     <div class="fitted item"> 
-      <div class="ui simple dropdown item">
-        Players <i class="dropdown icon"></i>
-        <div class="menu">
-          <div class="item" onclick="changeGameMode('P0')" selected>P0 = human, P1 = computer</div>
-          <div class="item" onclick="changeGameMode('P1')"         >P0 = computer, P1 = human</div>
-          <div class="item" onclick="changeGameMode('Human')"      >Only human</div>
-          <div class="item" onclick="changeGameMode('AI')"         >WarGames mode</div>
+      <div class="ui small form">
+        <div class="field">
+          <select onchange="changeGameMode(this.value)">
+            <option value="P0" selected>You vs AI</option>
+            <option value="P1"         >AI vs you</option>
+            <option value="Human"      >No AI</option>
+            <option value="AI"         >WarGames</option>
+          </select>
         </div>
       </div>
     </div>
-    <!-- <div class="header vertically fitted item"><h1 class="ui header">Santorini game with AI</h1></div>   -->
-    <div class="right menu">
+
+    <div class="right fitted menu">
       <div class="ui buttons">
-        <!-- <button class="ui button" onclick="reset()">New</button> -->
         <button class="ui icon button" onclick="edit()" id="editBtn"><i class="edit icon"></i></button>
-        <!-- <button class="ui icon button" onclick="$('.ui.modal').modal('show');"><i class="wrench icon"></i></button> -->
-        <div class="ui icon button" data-position="bottom right" data-html="true" data-tooltip="Tap cells to move your worker and build"><i class="help icon"></i></div>
+        <div class="ui icon button" data-position="bottom right" data-html="true" data-tooltip="Tap highlighted cells to move and build"><i class="help icon"></i></div>
       </div>
     </div>
   </div>

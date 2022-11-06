@@ -144,7 +144,7 @@ class Santorini {
   }
 
   changeDifficulty(numMCTSSims) {
-    this.py.changeDifficulty(numMCTSSims);
+    this.py.changeDifficulty(Number(numMCTSSims));
   }
 
   _readPowersData() {
@@ -495,30 +495,30 @@ function refreshButtons(loading=false) {
     } else {
       // Ongoing game
       allBtn.classList.remove('green', 'red');
-      if (move_sel.stage <= 0) {
+      if (game.history.length < 1 && move_sel.stage <= 0) {
         undoBtn.classList.add('disabled');
       } else {
         undoBtn.classList.remove('disabled');
       }
-      /* if (game.history.length <= 1) {
-        previousBtn.classList.add('disabled');
-      } else {
-        previousBtn.classList.remove('disabled');
-      }*/
     }
 
-    usePowerBtn.classList.remove('basic', 'disabled');
-    noPowerBtn.classList.remove('basic', 'disabled');
-    if (move_sel.stage <= 2) {
-      usePowerBtn.classList.add('disabled', 'basic');
-      noPowerBtn.classList.add('disabled', 'basic');
-    } else if (move_sel.power < 0) {
-      usePowerBtn.classList.add('basic');
-      noPowerBtn.classList.add('basic');
-    } else if (move_sel.power == 0) {
-      usePowerBtn.classList.add('basic');
+    if (NB_GODS == 1) {
+      usePowerBtn.classList.remove('basic', 'teal'); usePowerBtn.classList.add('disabled');
+      noPowerBtn.classList.remove('basic', 'blue'); noPowerBtn.classList.add('disabled');
     } else {
-      noPowerBtn.classList.add('basic');
+      usePowerBtn.classList.remove('basic', 'disabled');
+      noPowerBtn.classList.remove('basic', 'disabled');
+      if (move_sel.stage <= 2) {
+        usePowerBtn.classList.add('disabled', 'basic');
+        noPowerBtn.classList.add('disabled', 'basic');
+      } else if (move_sel.power < 0) {
+        usePowerBtn.classList.add('basic');
+        noPowerBtn.classList.add('basic');
+      } else if (move_sel.power == 0) {
+        usePowerBtn.classList.add('basic');
+      } else {
+        noPowerBtn.classList.add('basic');
+      }
     }
 
     editMsg.classList.add('hidden');
@@ -560,7 +560,7 @@ function refreshMoveText(text) {
 async function ai_play_one_move() {
   refreshButtons(loading=true);
   let aiPlayer = game.nextPlayer;
-  while (game.nextPlayer == aiPlayer) {
+  while ((game.nextPlayer == aiPlayer) && game.gameEnded.every(x => !x)) {
     await game.ai_guess_and_play();
     refreshBoard();
   }
@@ -629,16 +629,10 @@ function reset() {
   refreshMoveText('');
 }
 
-function previous() {
-  game.previous();
-  move_sel.resetAndStart();
-
-  refreshBoard();
-  refreshButtons();
-  refreshMoveText('');
-}
-
-function cancel() {
+function cancel_and_undo() {
+  if (move_sel.stage == 0) {
+    game.previous();
+  }
   move_sel.resetAndStart();
 
   refreshBoard();
