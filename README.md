@@ -2,22 +2,37 @@
 
 All AI are running on client side, need 10\~20s to load it first time.
 
+### Links
+
+**Santorini**
+- https://cestpasphoto.github.io/santorini.html
+- https://cestpasphoto.github.io/santorini_with_gods.html
+
+**Wordle**
+- https://cestpasphoto.github.io/pyodide_wordle.html
+
 ## Online Santorini AI
-This AI is based on AlphaZero training. I have reused an existing training engine and significantly modified it, I fully implemented everything else from game logic, ML network design, training tuning, port to browser and JS/HTML interface. The training has been fully done on GPU, check [my repo]((https://github.com/cestpasphoto/alpha-zero-general) and [this ReadMe](https://github.com/cestpasphoto/alpha-zero-general/blob/master/santorini/README.md).
+
+This AI is based on AlphaZero training. I have reused an existing training engine and significantly modified it, I fully implemented everything else from game logic, ML network design, training tuning, port to browser and JS/HTML interface.
 
 ### Strength
+
 Compared to other AI I found (using no god power, other AI always starting first, my AI choose random player position)
 * about 70% winrate against [Ai Ai](http://mrraow.com/index.php/aiai-home/aiai/), set with a timelimit of 10sec/move + 10sec/build
 * 90+% win rate against [BoardSpace AI](https://www.boardspace.net/english/index.shtml), using BestBot
 
+The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general) and [this ReadMe](https://github.com/cestpasphoto/alpha-zero-general/blob/master/santorini/README.md).
+
 The UI also propose "undervolted" settings: instead of exploring 400 future positions, it explores 100 or 25 or 5 of them to reduce strength. If AI was trained with these lower numbers, it could have been stronger but that wasn't the purpose.
 
 ### Speed
+
 About 5 to 10sec per turn when using AI native level. See other details in (#common-technical-details).
 You can find higher performance application on this [repo](https://github.com/cestpasphoto/alpha-zero-general), requiring you to install python and many other modules.
 
 
 ## Online wordle solver
+
 Based on entropy method from the 3Blue1Brown [video](https://www.youtube.com/watch?v=v68zYyaEmEA), I developed this AI compatible with not only English dictionary but also French one.
 
 You can find higher performance application on this [repo](https://github.com/cestpasphoto/wordle_solver_french), requiring you to install python.
