@@ -620,6 +620,7 @@ async function ai_play_if_needed() {
 
 async function changeGameMode(mode) {
   game.gameMode = mode;
+  move_sel.resetAndStart();
   await ai_play_if_needed();
 }
 
