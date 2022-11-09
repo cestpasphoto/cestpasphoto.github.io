@@ -104,11 +104,14 @@ class Santorini {
     this.powers = [0, 0];       // Which power each player has
     this.powers_data = [0, 0];  // Which data stored in power position
     this.gameMode = 'P0';
+    this.cellsOfLastMove = [];
   }
 
   init_game() {
     this.history = [];
     this.lastMove = -1;
+    this.cellsOfLastMove = [];
+
     if (pyodide == null) {
       // Random board
       this.board = Array.from(Array(5), _ => Array.from(Array(5), _ => Array(3).fill(0)));
@@ -156,7 +159,7 @@ class Santorini {
   manual_move(action) {
     console.log('manual move:', action);
     if (this.validMoves[action]) {
-      this._applyMove(action);
+      this._applyMove(action, true);
     } else {
       console.log('Not a valid action', this.validMoves);
     }    
@@ -170,15 +173,44 @@ class Santorini {
     }
     // console.log('guessing');
     var best_action = await this.py.guessBestAction();
-    this._applyMove(best_action);
+    this._applyMove(best_action, false);
   }
 
-  _applyMove(action) {
+  _applyMove(action, manualMove) {
     this.history.unshift([this.nextPlayer, this.board]);
+    if (manualMove) {
+      this.cellsOfLastMove = [];
+    } else {
+      this._updateLastCells(action);
+    }
+    this.lastMove = action;
+
+    // Actually move
     let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     this._readPowersData();
-    this.lastMove = action;
+    
+  }
+
+  _findWorker(worker) {
+    for (let y = 0; y < 5; y++) {
+      for (let x = 0; x < 5; x++) {
+        if (this.board[y][x][0] == worker) {
+          return [y,x];
+        }
+      }
+    }
+    return [-1, -1];
+  }
+
+  _updateLastCells(action) {
+    let [worker, power, move_direction, build_direction] = Santorini.decodeMove(action);
+    let worker_id = (worker+1) * ((this.nextPlayer==0) ? 1 : -1);
+    let [workerY, workerX] = this._findWorker(worker_id);
+    let [moveY, moveX] = Santorini._applyDirection(workerY, workerX, move_direction);
+    let [buildY, buildX] = Santorini._applyDirection(moveY, moveX, build_direction);
+    //this.cellsOfLastMove = [[workerY, workerX], [moveY, moveX], [buildY, buildX]];
+    this.cellsOfLastMove = [[workerY, workerX]];
   }
 
   changeDifficulty(numMCTSSims) {
@@ -221,6 +253,7 @@ class Santorini {
     this._readPowersData();
     this.history.splice(0, index+1); // remove reverted move from history and further moves
     this.lastMove = -1;
+    this.cellsOfLastMove = [];
   }
 
   editCell(clicked_y, clicked_x, editMode) {
@@ -267,6 +300,10 @@ class Santorini {
     this.board[Math.floor(power/5)][power%5][2] = 64;
   }
 
+  isALastCell(y, x) {
+    return this.cellsOfLastMove.some(e => e[0]==y && e[1]==x);
+  }
+
   static decodeMove(move) {
     let worker = Math.floor(move / (NB_GODS*9*9));
     let action_ = move % (NB_GODS*9*9);
@@ -275,6 +312,12 @@ class Santorini {
     let move_direction = Math.floor(action_ / 9);
     let build_direction = action_ % 9;
     return [worker, power, move_direction, build_direction];
+  }
+
+  static _applyDirection(startY, startX, direction) {
+    let deltaY = Math.floor(direction / 3) - 1;
+    let deltaX = (direction % 3) - 1;
+    return [startY+deltaY, startX+deltaX];
   }
 }
 
@@ -482,18 +525,24 @@ function refreshBoard() {
       let selectable = move_sel.isSelectable(y, x);
 
       // generateSvg deals with nb of levels, dome, worker and color
-      cell_content = '<div class="ui middle aligned tiny image">' + generateSvg(level, worker) + '</div>';
+      cell_content = '<div class="ui middle aligned tiny image">';
+      if (game.isALastCell(y,x)) {
+        // Since dot only shows for AI, making it red if human is P0 else green
+        let dotColor = (game.gameMode == 'P0') ? 'red' : 'green';
+        cell_content += `<div class="ui tiny ${dotColor} corner empty circular label"></div>`;
+      }
+      cell_content += generateSvg(level, worker) + '</div>';
+      
 
       // set cell background and ability to be clicked
       if (editMode > 0) {
         cell.classList.add('selectable');
-        cell.classList.remove('toselect');
         cell.innerHTML = '<a onclick="cellClick('+y+','+x+');event.preventDefault();">' + cell_content + '</a>';
       } else if (selectable) {
-        cell.classList.add('selectable', 'toselect');
+        cell.classList.add('selectable');
         cell.innerHTML = '<a onclick="cellClick('+y+','+x+');event.preventDefault();">' + cell_content + '</a>';
       } else {
-        cell.classList.remove('selectable', 'toselect');
+        cell.classList.remove('selectable');
         cell.innerHTML = cell_content;
       }
     }
