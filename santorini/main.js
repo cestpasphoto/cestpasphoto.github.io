@@ -46,8 +46,8 @@ function moveToString(move, subject='One') {
   let [worker, power, move_direction, build_direction] = Santorini.decodeMove(move);
   var description = subject + ' moved worker ' + worker + ' ' + directions_char[move_direction]
   description += ' then build ' + directions_char[build_direction];
-  description += (power > 0) ? (' using power of god' + power) : '';
-  description += ' (move ' + move + ')';
+  description += (power > 0) ? ' with power' : '';
+  description += ' [' + move + ']';
   return description;
 }
 
@@ -388,7 +388,7 @@ class MoveSelector {
       description += ' in direction ' + directions_char[this.moveDirection];
     }
     if (this.stage >= 3) {
-      description += ' and build ' + directions_char[this.buildDirection] + ' (move ' + this.currentMoveWoPower + ')';
+      description += ' and build ' + directions_char[this.buildDirection] + ' [' + this.currentMoveWoPower + ']';
     }
     return description;
   }
@@ -625,8 +625,18 @@ function refreshPlayersText() {
   }
 }
 
-function refreshMoveText(text) {
-  moveSgmt.innerHTML = text;
+var movesText = [];
+function changeMoveText(text, mode='reset') {
+  if (mode == 'reset') {
+    movesText = [];
+  } else if (mode == 'edit') {
+    movesText[0] = text;
+  } else if (mode == 'add') {
+    movesText[1] = movesText[0];
+    movesText[0] = text;
+  }
+
+  moveSgmt.innerHTML = movesText.join('<br>');
 }
 
 
@@ -659,7 +669,7 @@ async function ai_play_if_needed() {
 
     refreshBoard();
     refreshButtons();
-    refreshMoveText(moveToString(game.lastMove, 'AI'));
+    changeMoveText(moveToString(game.lastMove, 'AI'), 'add');
   }
 }
 
@@ -679,7 +689,7 @@ function cellClick(clicked_y = null, clicked_x = null) {
 
     refreshBoard();
     refreshButtons();
-    refreshMoveText(move_sel.getPartialDescription());
+    changeMoveText(move_sel.getPartialDescription(), move_sel.stage == 1 ? 'add' : 'edit');
 
     if (move >= 0) {
       game.manual_move(move);
@@ -704,7 +714,7 @@ function reset() {
   refreshBoard();
   refreshPlayersText();
   refreshButtons();
-  refreshMoveText('');
+  changeMoveText();
 }
 
 function cancel_and_undo() {
@@ -715,7 +725,7 @@ function cancel_and_undo() {
 
   refreshBoard();
   refreshButtons();
-  refreshMoveText('');
+  changeMoveText();
 }
 
 function togglePower(state) {
@@ -778,7 +788,7 @@ async function main(usePyodide=true) {
   refreshBoard();
   refreshPlayersText();
   refreshButtons();
-  refreshMoveText('');
+  changeMoveText();
 }
 
 var game = new Santorini();
