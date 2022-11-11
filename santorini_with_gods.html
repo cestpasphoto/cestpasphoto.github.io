@@ -10,13 +10,12 @@
   <script src="./santorini/constants_withgods.js"></script>
   <script src="./santorini/main.js"></script>
   <style>
-/*#fffaf3 bgound*/
-    .toselect {
+    .ui.table tbody tr td.selectable {
       background-color: #f3f8ff;
     }
 
-    .toselect :hover {
-      background-color: #dae9ff;
+    .ui.table tbody tr td.selectable:hover {
+      background-color: #e8f1ff;
     }
   </style>
 </head>
@@ -27,6 +26,9 @@
   <div class="ui container">    
     <div class="fitted item">
       <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
+    </div>
+    <div class="fitted item">
+      <button class="ui icon button" onclick="edit()" id="editBtn"><i class="edit icon"></i></button>
     </div> 
     <div class="fitted item"> 
       <div class="ui small form">
@@ -57,13 +59,6 @@
         </div>
       </div>
     </div>
-
-    <div class="right fitted menu">
-      <div class="ui buttons">
-        <button class="ui icon button" onclick="edit()" id="editBtn"><i class="edit icon"></i></button>
-        <div class="ui icon button" data-position="bottom right" data-html="true" data-tooltip="Tap highlighted cells to move and build"><i class="help icon"></i></div>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -79,12 +74,12 @@
 
   <div class="ui horizontal basic segments">
     <div class="ui center aligned vertically fitted segment">
-      <span class="ui large green text" id="p0title">Player 0</span>
-      <p id="p0details">Tap cells to move your worker and build</p>
+      <span class="ui large green text" id="p0title">You</span>
+      <p id="p0details">Click highlighted cells to select where to move/build</p>
     </div>
     <div class="ui center aligned vertically fitted segment">
-      <span class="ui large red text" id="p1title">Player 1</span>
-      <p id="p1details">You can change AI level in settings</p>
+      <span class="ui large red text" id="p1title">AI</span>
+      <p id="p1details">Will run automatically after your move</p>
     </div>
   </div>
 
@@ -94,39 +89,39 @@
   
   <table class="ui fixed unstackable celled huge compact table"><tbody>
     <tr class="center aligned">
-      <td class="" id="cell_0_0"><span class="ui text">.</span></td>
-      <td class="" id="cell_0_1"><span class="ui text">.</span></td>
-      <td class="" id="cell_0_2"><span class="ui text">.</span></td>
-      <td class="" id="cell_0_3"><span class="ui text">.</span></td>
-      <td class="" id="cell_0_4"><span class="ui text">.</span></td>
+      <td class="" id="cell_0_0"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_0_1"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_0_2"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_0_3"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_0_4"><div class="ui middle aligned tiny image"></div></td>
     </tr>
     <tr class="center aligned">
-      <td class="" id="cell_1_0"><span class="ui text">.</span></td>
-      <td class="" id="cell_1_1"><span class="ui text">.</span></td>
-      <td class="" id="cell_1_2"><span class="ui text">.</span></td>
-      <td class="" id="cell_1_3"><span class="ui text">.</span></td>
-      <td class="" id="cell_1_4"><span class="ui text">.</span></td>
+      <td class="" id="cell_1_0"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_1_1"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_1_2"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_1_3"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_1_4"><div class="ui middle aligned tiny image"></div></td>
     </tr>
     <tr class="center aligned">
-      <td class="" id="cell_2_0"><span class="ui text">.</span></td>
-      <td class="" id="cell_2_1"><span class="ui text">.</span></td>
-      <td class="" id="cell_2_2"><span class="ui text">.</span></td>
-      <td class="" id="cell_2_3"><span class="ui text">.</span></td>
-      <td class="" id="cell_2_4"><span class="ui text">.</span></td>
+      <td class="" id="cell_2_0"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_2_1"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_2_2"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_2_3"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_2_4"><div class="ui middle aligned tiny image"></div></td>
     </tr>
     <tr class="center aligned">
-      <td class="" id="cell_3_0"><span class="ui text">.</span></td>
-      <td class="" id="cell_3_1"><span class="ui text">.</span></td>
-      <td class="" id="cell_3_2"><span class="ui text">.</span></td>
-      <td class="" id="cell_3_3"><span class="ui text">.</span></td>
-      <td class="" id="cell_3_4"><span class="ui text">.</span></td>
+      <td class="" id="cell_3_0"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_3_1"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_3_2"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_3_3"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_3_4"><div class="ui middle aligned tiny image"></div></td>
     </tr>
     <tr class="center aligned">
-      <td class="" id="cell_4_0"><span class="ui text">.</span></td>
-      <td class="" id="cell_4_1"><span class="ui text">.</span></td>
-      <td class="" id="cell_4_2"><span class="ui text">.</span></td>
-      <td class="" id="cell_4_3"><span class="ui text">.</span></td>
-      <td class="" id="cell_4_4"><span class="ui text">.</span></td>
+      <td class="" id="cell_4_0"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_4_1"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_4_2"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_4_3"><div class="ui middle aligned tiny image"></div></td>
+      <td class="" id="cell_4_4"><div class="ui middle aligned tiny image"></div></td>
     </tr>
   </tbody></table>
 
@@ -135,7 +130,7 @@
 
 
   <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
-    <button class="ui icon button" id="undoBtn" onclick="cancel()"><i class="undo icon"></i></button>
+    <button class="ui icon button" id="undoBtn" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
     <button class="ui basic teal button" id="usePowerBtn" onclick="togglePower(false)">Without power</button>
     <button class="ui basic blue button" id="noPowerBtn" onclick="togglePower(true)">With power</button>
   </div>

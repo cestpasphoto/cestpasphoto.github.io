@@ -232,19 +232,14 @@ class Santorini {
     }
 
     let player = (this.gameMode == 'P0') ? 0 : 1;
-    // find earliest move where 'player' is next player (last move if null)
-    let index = 0;
-    if (player != null) {
-      index = this.history.findIndex(x => x[0]==player);
-      if (index < 0) {
-        return;
+    // Revert to the previous 0 before a 1, or first 0 from game
+    let index;
+    for (index = 0; index < this.history.length; ++index) {
+      if ((this.history[index][0] == player) && (index+1 == this.history.length || this.history[index+1][0] != player)) {
+        break;
       }
-      // continue to find first item of sequence
-      for (; (index < this.history.length) && (this.history[index][0] == player); index++) {
-      }
-      index--;
     }
-    console.log('index=', index, '/', this.history.length);
+    console.log('index=', index, '/', this.history.length-1);
 
     // Actually revert
     console.log('board to revert:', this.history[index][1]);
@@ -611,6 +606,7 @@ function refreshPlayersText() {
   let power = game.powers[0];
   p0title.innerHTML = gods_name[power];
   p0details.innerHTML = gods_descr[power];
+  p0details.innerHTML += '<span class="ui grey text"> ' + gods_instructions[power] + '</span>';
 
   power = game.powers[1];
   p1title.innerHTML = gods_name[power];
