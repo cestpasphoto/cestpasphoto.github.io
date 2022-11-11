@@ -1,5 +1,6 @@
 from MCTS import MCTS
 from SantoriniGame import SantoriniGame as Game
+from SantoriniDisplay import move_to_str
 import numpy as np
 
 g, board, mcts, player = None, None, None, 0
@@ -33,8 +34,7 @@ def getNextState(action):
 	board, player = g.getNextState(board, player, action)
 	end = g.getGameEnded(board, player)
 	valids = g.getValidMoves(board, player)
-
-	print('Next player is', player)
+	# print('Next player is', player)
 
 	return player, end, board.tolist(), valids
 
@@ -45,25 +45,22 @@ def getBoard():
 def changeDifficulty(numMCTSSims):
 	global g, board, mcts, player
 	mcts.args.numMCTSSims = numMCTSSims
-	print('Difficuly changed to', mcts.args.numMCTSSims);
+	print('Difficulty changed to', mcts.args.numMCTSSims);
 
 async def guessBestAction():
 	global g, board, mcts, player
 	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), temp=1, force_full_search=True)
 	# print('Results', probs)
 	best_action = max(range(len(probs)), key=lambda x: probs[x])
-	print(f'best_action {best_action} with strength {int(probs[best_action]*100)}%')
 
 	import js
 	# Compute good moves
-	sorted_probs = sorted([(i,p) for i,p in enumerate(probs)], key=lambda x: x[1], reverse=True)
-	sum_probs = 0
-	for i, p in sorted_probs:
-		print(f'move {i} {int(100*p)}%,', end='')
-		sum_probs += p
-		if sum_probs > 0.75:
+	print('List of main moves:')
+	sorted_probs = sorted([(action,p) for action,p in enumerate(probs)], key=lambda x: x[1], reverse=True)
+	for action, p in sorted_probs:
+		if p < sorted_probs[0][1] / 5.:
 			break
-	print()
+		print(f'{int(100*p)}% [{action}] {move_to_str(action, player)}')
 
 	return best_action
 

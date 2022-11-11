@@ -222,7 +222,9 @@ class Santorini {
       let index = this.powers[p] + p * NB_GODS;
       let y = Math.floor(index/5), x = index%5;
       this.powers_data[p] = this.board[y][x][2];
-      console.log('Power data for player', p, 'is', this.powers_data[p]);
+      if (this.powers_data[p] != 64) {
+        console.log('Power data for player', p, 'is', this.powers_data[p]);
+      }
     }
   }
 

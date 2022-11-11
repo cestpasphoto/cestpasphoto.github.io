@@ -10,7 +10,7 @@ const PAN        = 8;
 const ATHENA     = 9;
 const PROMETHEUS = 10;
 const NB_GODS = 11; // Modify this to 1 to disable use of any god, or 11 to enable all of them
-const gods_name = ['Regular', 'Apollo', 'Minotaur', 'Atlas', 'Hephaestus', 'Artemis', 'Demeter', 'Hermes', 'Pan', 'Athena', 'Prometheus'];
+const gods_name = ['No power', 'Apollo', 'Minotaur', 'Atlas', 'Hephaestus', 'Artemis', 'Demeter', 'Hermes', 'Pan', 'Athena', 'Prometheus'];
 const gods_descr = [
   "Move and build",
   "It may move into an opponent's space by forcing it to the space Apollo just vacated.", // Apollo
