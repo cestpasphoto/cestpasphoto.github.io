@@ -15,6 +15,8 @@ const red   = '#DB2828';
 /* =================== */
 
 var onnxSession;
+var onnxSessionDefault;
+var onnxModel;
 
 // Function called by python code
 async function predict(canonicalBoard, valids) {
@@ -27,6 +29,34 @@ async function predict(canonicalBoard, valids) {
   const results = await globalThis.onnxSession.run({ board: tensor_board, valid_actions: tensor_valid });
   // console.log('results:', results);
   return {pi: Array.from(results.pi.data), v: Array.from(results.v.data)}
+}
+
+async function loadONNX(model=[]) {
+  if (onnxModel != undefined && model.every((v,i)=> v === globalThis.onnxModel[i])) {
+    return;
+  }
+
+  if (NB_GODS > 1 && model.length == 2) {
+    let modelToLoad = `${customModelBaseName}${Math.min.apply(null, model)}_${Math.max.apply(null, model)}.onnx`
+    try {
+      let tempSession = await ort.InferenceSession.create(modelToLoad);
+      globalThis.onnxSession = tempSession; // Change onnxSession only if previous line succeeded
+      console.log('Loaded ONNX', modelToLoad);
+    } catch {
+      globalThis.onnxSession = globalThis.onnxSessionDefault
+      console.log('Failed to load ONNX', modelToLoad, ', revert to default');
+    }
+  } else {
+    globalThis.onnxSessionDefault = await ort.InferenceSession.create(defaultModelFileName);
+    globalThis.onnxSession = globalThis.onnxSessionDefault;
+    console.log('Loaded default ONNX');
+  }
+
+  if (NB_GODS == 1) {
+    globalThis.onnxModel = [0,0];
+  } else {
+    globalThis.onnxModel = model.slice(0); // Copy array
+  }
 }
 
 /* =================== */
@@ -689,6 +719,7 @@ function cellClick(clicked_y = null, clicked_x = null) {
     move_sel.click(clicked_y == null ? -1 : clicked_y, clicked_x == null ? -1 : clicked_x);
     let move = move_sel.getMove();
 
+    loadONNX(game.powers);
     refreshBoard();
     refreshButtons();
     changeMoveText(move_sel.getPartialDescription(), move_sel.stage == 1 ? 'add' : 'edit');
@@ -762,8 +793,6 @@ async function init_code() {
   pyodide = await loadPyodide({ fullStdLib : false });
   await pyodide.loadPackage("numpy");
 
-  globalThis.onnxSession = await ort.InferenceSession.create(modelFileName);
-
   await pyodide.runPythonAsync(`
     from pyodide.http import pyfetch
     for filename in ['Game.py', 'proxy.py', 'MCTS.py', 'SantoriniDisplay.py', 'SantoriniGame.py', 'SantoriniLogicNumba.py']:
@@ -775,7 +804,8 @@ async function init_code() {
     with open('SantoriniConstants.py', "wb") as f:
       f.write(await response.bytes())
   `)
-  console.log('Loaded python code, pyodide ready');
+  loadONNX(); // Not "await" on purpose
+  console.log('Loaded python code, pyodide ready');  
 }
 
 async function main(usePyodide=true) {

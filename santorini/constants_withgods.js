@@ -41,4 +41,5 @@ const gods_instructions = [
 
 const onnxOutputSize = 1782;
 const pyConstantsFileName = 'santorini/SantoriniConstantsWithGods.py';
-const modelFileName = 'santorini/model_with_gods.onnx';
+const defaultModelFileName = 'santorini/model_with_gods.onnx';
+const customModelBaseName = 'santorini/model_with_gods_';
