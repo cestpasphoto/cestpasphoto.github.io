@@ -55,7 +55,7 @@ async def guessBestAction():
 
 	import js
 	# Compute good moves
-	print('List of main moves:')
+	print('List of best moves found by AI:')
 	sorted_probs = sorted([(action,p) for action,p in enumerate(probs)], key=lambda x: x[1], reverse=True)
 	for action, p in sorted_probs:
 		if p < sorted_probs[0][1] / 5.:
