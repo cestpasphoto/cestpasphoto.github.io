@@ -34,7 +34,6 @@ def getNextState(action):
 	board, player = g.getNextState(board, player, action)
 	end = g.getGameEnded(board, player)
 	valids = g.getValidMoves(board, player)
-	# print('Next player is', player)
 
 	return player, end, board.tolist(), valids
 
@@ -50,10 +49,8 @@ def changeDifficulty(numMCTSSims):
 async def guessBestAction():
 	global g, board, mcts, player
 	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), temp=1, force_full_search=True)
-	# print('Results', probs)
 	best_action = max(range(len(probs)), key=lambda x: probs[x])
 
-	import js
 	# Compute good moves
 	print('List of best moves found by AI:')
 	sorted_probs = sorted([(action,p) for action,p in enumerate(probs)], key=lambda x: x[1], reverse=True)
