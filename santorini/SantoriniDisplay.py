@@ -1,4 +1,6 @@
 import numpy as np
+import random
+import itertools
 from SantoriniConstants import _decode_action, NB_GODS, NO_GOD
 
 my_workers_color    = ['', '', '']

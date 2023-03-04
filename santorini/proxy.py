@@ -14,7 +14,8 @@ def init_stuff(numMCTSSims):
 
 	mcts_args = dotdict({
 		'numMCTSSims'     : numMCTSSims,
-		'cpuct'           : 1.0,
+		'fpu'             : 0.03,
+		'cpuct'           : 2.75,
 		'prob_fullMCTS'   : 1.,
 		'forced_playouts' : False,
 		'no_mem_optim'    : False,

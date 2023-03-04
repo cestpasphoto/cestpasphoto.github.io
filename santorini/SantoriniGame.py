@@ -1,5 +1,5 @@
 from Game import Game
-from SantoriniLogicNumba import Board, observation_size, action_size, max_score_diff
+from SantoriniLogicNumba import Board, observation_size, action_size
 from SantoriniDisplay import move_to_str, print_board
 import numpy as np
 
@@ -19,9 +19,6 @@ class SantoriniGame(Game):
 
     def getActionSize(self):
         return action_size()
-
-    def getMaxScoreDiff(self):
-        return max_score_diff()
 
     def getNextState(self, board, player, action, deterministic=False):
         self.board.copy_state(board, True)
