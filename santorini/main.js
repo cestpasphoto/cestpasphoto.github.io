@@ -37,11 +37,11 @@ async function loadONNX(model=[]) {
   }
 
   if (NB_GODS > 1 && model.length == 2) {
-    let modelToLoad = `${customModelBaseName}${Math.min.apply(null, model)}_${Math.max.apply(null, model)}.onnx`
+    let modelToLoad = selectModel(model);
     try {
       let tempSession = await ort.InferenceSession.create(modelToLoad);
       globalThis.onnxSession = tempSession; // Change onnxSession only if previous line succeeded
-      console.log('Loaded ONNX', modelToLoad);
+      console.log('Loaded custom ONNX', modelToLoad);
     } catch {
       globalThis.onnxSession = globalThis.onnxSessionDefault
       console.log('Failed to load ONNX', modelToLoad, ', revert to default');
