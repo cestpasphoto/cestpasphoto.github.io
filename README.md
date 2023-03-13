@@ -5,11 +5,11 @@ All AI are running on client side, need 10\~20s to load it first time.
 ### Links
 
 **Santorini**
-- https://cestpasphoto.github.io/santorini.html
-- https://cestpasphoto.github.io/santorini_with_gods.html
+- <https://cestpasphoto.github.io/santorini.html>
+- <https://cestpasphoto.github.io/santorini_with_gods.html>
 
 **Wordle**
-- https://cestpasphoto.github.io/pyodide_wordle.html
+- <https://cestpasphoto.github.io/pyodide_wordle.html>
 
 ## Online Santorini AI
 
@@ -17,13 +17,16 @@ This AI is based on AlphaZero training. I have reused an existing training engin
 
 ### Strength
 
-Compared to other AI I found (using no god power, other AI always starting first, my AI choose random player position)
-* about 70% winrate against [Ai Ai](http://mrraow.com/index.php/aiai-home/aiai/), set with a timelimit of 10sec/move + 10sec/build
-* 90+% win rate against [BoardSpace AI](https://www.boardspace.net/english/index.shtml), using BestBot
+Compared to best AI I found:
+* >95% winrate against [Ai Ai](http://mrraow.com/index.php/aiai-home/aiai/) - 20 wins in 20 games
+  * Even running a degraded version of mine leads to >90% winrate - 10 wins in 10 games
+* 98+% win rate against [BoardSpace AI](https://www.boardspace.net/english/index.shtml), using BestBot
+
+Details: games use no god power, other AI always starting first, both with random initial positions. Mine was running at 800 rollouts per move (50 for degraded version), Ai Ai was set with a timelimit of 15+15sec/move (about 900k iterations on my computer). 
 
 The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general) and [this ReadMe](https://github.com/cestpasphoto/alpha-zero-general/blob/master/santorini/README.md).
 
-The UI also propose "undervolted" settings: instead of exploring 400 future positions, it explores 100 or 25 or 5 of them to reduce strength. If AI was trained with these lower numbers, it could have been stronger but that wasn't the purpose.
+The UI also propose "undervolted" settings: instead of exploring 800 future positions, it explores 200 or 50 or 10 of them to reduce strength. If AI was trained with these lower numbers, it could have been stronger but that wasn't the purpose.
 
 ### Speed
 
