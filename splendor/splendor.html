@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.0/dist/semantic.min.css">
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.22.1/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
+</head>
+<script src="splendor.js"></script>
+<style>
+  @media only screen and (max-width: 767px) {
+  .ui.stackable.grid > .column:not(.row) {
+    padding: 3px !important;
+  }
+  .ui.stackable.grid > .column:first-child {
+    padding-top: 1rem !important;
+  }
+  .ui.stackable.grid > .column:last-child {
+    padding-bottom: 1rem !important;
+  }
+}
+</style>
+<body>
+
+<div class="ui borderless menu">
+  <div class="ui container">    
+    <div class="fitted item">
+      <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
+    </div> 
+    <div class="fitted item"> 
+      <button class="ui icon button" onclick="edit()" id="editBtn"><i class="edit icon"></i></button>
+    </div>
+    <div class="fitted item"> 
+      <div class="ui small form">
+        <div class="field">
+          <select onchange="game.changeDifficulty(this.value)" id="difficultyForm">
+            <optgroup label="Above optimal">
+            <option value="12800"       >God-like</option>
+            <option value="3200"       >Boosted</option>
+            <optgroup label="Level used during training">
+            <option value="800"        >Native</option>
+            <optgroup label="Sub optimal levels">
+            <option value="200"        >Medium</option>
+            <option value="50" selected>Easy</option>
+            <option value="12"         >Easier</option>
+            <option value="3"          >Come on</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="fitted item"> 
+      <div class="ui small form">
+        <div class="field">
+          <select onchange="changeGameMode(this.value)">
+            <option value="P0" selected>You vs AI</option>
+            <option value="P1"         >AI vs you</option>
+            <option value="Human"      >No AI</option>
+            <option value="AI"         >WarGames</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ui main text container">
+
+  <h1 class="ui huge center aligned header">Splendor test UI</h1> 
+  <div class="ui hidden divider"></div>
+
+  <div class="ui five column compact centered grid">
+    <div class="column" id="lv2_deck"></div>
+    <div class="column" id="lv2_0"></div>
+    <div class="column" id="lv2_1"></div>
+    <div class="column" id="lv2_2"></div>
+    <div class="column" id="lv2_3"></div>
+
+    <div class="column" id="lv1_deck">
+      <svg viewBox="0 0 60 60">
+        <polygon points="0,0 60,0 60,60 0,60" fill="black"/>
+        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" fill="darkgray">9 cards</text>
+      </svg>
+    </div>
+    <div class="column" id="lv1_0"></div>
+    <div class="column" id="lv1_1"></div>
+    <div class="column" id="lv1_2"></div>
+    <div class="column" id="lv1_3"></div>
+
+    <div class="column" id="lv0_deck">
+      <svg viewBox="0 0 60 60">
+        <polygon points="0,0 60,0 60,60 0,60" fill="black"/>
+        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" fill="darkgray">8 cards</text>
+      </svg>
+    </div>
+    <div class="column" id="lv0_0"></div>
+    <div class="column" id="lv0_1"></div>
+    <div class="column" id="lv0_2"></div>
+    <div class="column" id="lv0_3"></div>
+  </div>
+
+  <div class="ui nine column compact grid">
+    <div class="column" id="bank_c0"></div>
+    <div class="column" id="bank_c1"></div>
+    <div class="column" id="bank_c2"></div>
+    <div class="column" id="bank_c3"></div>
+    <div class="column" id="bank_c4"></div>
+    <div class="column" id="bank_c5"></div>
+    <div class="column" id="noble0"></div>
+    <div class="column" id="noble1"></div>
+    <div class="column" id="noble2"></div>
+  </div>
+
+  <div class="ui hidden divider"></div>
+
+
+  <button class="fluid ui primary disabled basic button" id="btn_confirm" onclick="confirmSelect()">Click a card or gem to select action</button>
+
+  <div class="ui hidden divider"></div>
+
+
+  <div class="ui equal width very compact grid">
+    <div class="five wide column">
+      <div class="ui segments">
+        <div class="ui segment">
+          P0: 12 pts
+        </div>
+      </div>
+    </div>
+    <div class="column">
+      <div id="p0_g0"></div>
+      <div id="p0_c0"></div>
+    </div>
+    <div class="column">
+      <div id="p0_g1"></div>
+      <div id="p0_c1"></div>
+    </div>
+    <div class="column">
+      <div id="p0_g2"></div>
+      <div id="p0_c2"></div>
+    </div>
+    <div class="column">
+      <div id="p0_g3"></div>
+      <div id="p0_c3"></div>
+    </div>
+    <div class="column">
+      <div id="p0_g4"></div>
+      <div id="p0_c4"></div>
+    </div>
+    <div class="column">
+      <div id="p0_g5"></div>
+      <div id="p0_r2"></div>
+    </div>
+    <div class="column">
+      <div id="p0_r0"></div>
+      <div id="p0_r1"></div>
+    </div>
+  </div>
+
+  <div class="ui hidden divider"></div>
+
+  <div class="ui equal width very compact grid">
+    <div class="five wide column">
+      <div class="ui segments">
+        <div class="ui segment">
+          P1: 11 pts
+        </div>
+      </div>
+    </div>
+    <div class="column">
+      <div id="p1_g0"></div>
+      <div id="p1_c0"></div>
+    </div>
+    <div class="column">
+      <div id="p1_g1"></div>
+      <div id="p1_c1"></div>
+    </div>
+    <div class="column">
+      <div id="p1_g2"></div>
+      <div id="p1_c2"></div>
+    </div>
+    <div class="column">
+      <div id="p1_g3"></div>
+      <div id="p1_c3"></div>
+    </div>
+    <div class="column">
+      <div id="p1_g4"></div>
+      <div id="p1_c4"></div>
+    </div>
+    <div class="column">
+      <div id="p1_g5"></div>
+      <div id="p1_r2"></div>
+    </div>
+    <div class="column">
+      <div id="p1_r0"></div>
+      <div id="p1_r1"></div>
+    </div>
+  </div>
+
+</div>
+</div>
+<script>main();</script>
+</body>
+</html>
