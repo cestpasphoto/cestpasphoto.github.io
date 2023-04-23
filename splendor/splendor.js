@@ -82,7 +82,7 @@ class Splendor {
     }
     console.log('Run a game');
     let data_tuple = this.py.init_stuff(25).toJs({create_proxies: false});
-    this.py.changeDifficulty(Number(document.getElementById('difficultyForm').value));
+    this.updateDifficulty();
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
   }
 
@@ -180,6 +180,10 @@ class Splendor {
             tokens.push([c, this.board[i][c]]);
     }
     return tokens
+  }
+
+  updateDifficulty() {
+    this.py.changeDifficulty(Number(document.getElementById('difficultyForm').value));
   }
 }
 
@@ -491,9 +495,12 @@ function confirmSelect() {
 
     // Do move
     console.log('Move = ', move);
+    game.manual_move(move);
 
     refreshBoard();
     refreshButtons();
+
+    ai_play_if_needed();
 }
 
 async function ai_play_one_move() {
