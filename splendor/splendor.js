@@ -463,9 +463,9 @@ function generateDeck(number, selected) {
 
 function generateTxtPoints(player, scoreDetails) {
 	let result = ``;
-	result += `P${player}: ${scoreDetails[0]} pts`;
+	result += `<div class="ui header">P${player}: ${scoreDetails[0]} points</div>`;
 	if (scoreDetails[2] > 0) {
-		result += ` (dont ${scoreDetails[2]} avec nobles)`;
+		result += ` (incl. ${scoreDetails[2]} by nobles)`;
 	}
 	return result;
 }
@@ -530,13 +530,21 @@ function refreshBoard() {
 }
 
 function refreshButtons() {
-	let move_str = move_sel.getMoveShortDesc();
-	if (move_str == 'none') {
-		document.getElementById('btn_confirm').innerHTML = `Click a card or gem to select action`;
-		document.getElementById('btn_confirm').classList.add('disabled');
+	if (game.gameEnded.some(x => !!x)) {
+		// Game is finished, looking for the winner
+		console.log('End of game');
+		document.getElementById('btn_confirm').classList.add((game.gameEnded[0]>0) ? 'green' : 'red');
+		document.getElementById('btn_confirm').innerHTML = `END OF GAME`;
 	} else {
-		document.getElementById('btn_confirm').innerHTML = `Confirm to ${move_str}`;
-		document.getElementById('btn_confirm').classList.remove('disabled');
+		let move_str = move_sel.getMoveShortDesc();
+		if (move_str == 'none') {
+			document.getElementById('btn_confirm').innerHTML = `Click a card or gem to select action`;
+			document.getElementById('btn_confirm').classList.add('disabled');
+		} else {
+			document.getElementById('btn_confirm').innerHTML = `Confirm to ${move_str}`;
+			document.getElementById('btn_confirm').classList.remove('disabled');
+		}
+		document.getElementById('btn_confirm').classList.remove('green', 'red');
 	}
 }
 

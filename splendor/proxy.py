@@ -58,7 +58,7 @@ async def guessBestAction():
 	for action, p in sorted_probs:
 		if p < sorted_probs[0][1] / 5.:
 			break
-		print(f'{int(100*p)}% [{action}] {move_to_str(action, player)}')
+		print(f'{int(100*p)}% [{action}] {move_to_str(action, short=False)}')
 
 	return best_action
 
