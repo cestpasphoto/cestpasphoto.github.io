@@ -15,8 +15,6 @@ const red   = '#DB2828';
 /* =================== */
 
 var onnxSession;
-var onnxSessionDefault;
-var onnxModel;
 
 // Function called by python code
 async function predict(canonicalBoard, valids) {
@@ -32,31 +30,8 @@ async function predict(canonicalBoard, valids) {
 }
 
 async function loadONNX(model=[]) {
-  if (onnxModel != undefined && model.every((v,i)=> v === globalThis.onnxModel[i])) {
-    return;
-  }
-
-  if (NB_GODS > 1 && model.length == 2) {
-    let modelToLoad = selectModel(model);
-    try {
-      let tempSession = await ort.InferenceSession.create(modelToLoad);
-      globalThis.onnxSession = tempSession; // Change onnxSession only if previous line succeeded
-      console.log('Loaded custom ONNX', modelToLoad);
-    } catch {
-      globalThis.onnxSession = globalThis.onnxSessionDefault
-      console.log('Failed to load ONNX', modelToLoad, ', revert to default');
-    }
-  } else {
-    globalThis.onnxSessionDefault = await ort.InferenceSession.create(defaultModelFileName);
-    globalThis.onnxSession = globalThis.onnxSessionDefault;
-    console.log('Loaded default ONNX');
-  }
-
-  if (NB_GODS == 1) {
-    globalThis.onnxModel = [0,0];
-  } else {
-    globalThis.onnxModel = model.slice(0); // Copy array
-  }
+  globalThis.onnxSession = await ort.InferenceSession.create(defaultModelFileName);
+  console.log('Loaded default ONNX');
 }
 
 /* =================== */
