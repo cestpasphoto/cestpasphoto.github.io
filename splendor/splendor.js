@@ -17,10 +17,15 @@ const colors = [
 	["gray"       , "gray"      , "black"] // For noble
 ];
 
+const different_gems_up_to_2 = [
+	[0], [1], [2], [3], [4],
+	[0,1], [0,2], [0,3], [0,4], [1,2], [1,3], [1,4], [2,3], [2,4], [3,4],
+];
+
 const different_gems_up_to_3 = [
 	[0], [1], [2], [3], [4],
 	[0,1], [0,2], [0,3], [0,4], [1,2], [1,3], [1,4], [2,3], [2,4], [3,4],
-	[0,1,2], [0,1,3], [0,1,4], [0,2,3], [0,2,4], [0,3,4], [1,2,3], [1,2,4], [1,3,4], [2,3,4]
+	[0,1,2], [0,1,3], [0,1,4], [0,2,3], [0,2,4], [0,3,4], [1,2,3], [1,2,4], [1,3,4], [2,3,4],
 ];
 
 /* =================== */
@@ -207,13 +212,14 @@ class MoveSelector {
 
 	click(itemType, index) {
 		if (this.selectedType == itemType) {
-			if (itemType == 'gem') {
+			if (itemType == 'gem' || itemType == 'mygem') {
 				if (this.selectedIndex.includes(index) && this.regularSelection) {
 					this.selectedIndex = [index];
 					this.regularSelection = false;
 				} else {
 					this.selectedIndex.push(index);
-					this.selectedIndex = [...new Set(this.selectedIndex)].slice(-3); // keep up to 3 unique values
+					let maxGems = (itemType == 'gem') ? 3 : 2;
+					this.selectedIndex = [...new Set(this.selectedIndex)].slice(-maxGems); // keep up to 3 unique values
 					this.regularSelection = true;
 				}
 			} else {
@@ -260,6 +266,8 @@ class MoveSelector {
 			return 27 + this.selectedIndex[0]; // buy reserved card
 		} else if (this.selectedType == 'gem') {
 			return 30 + this._gemsEncode(); // get gems
+		} else if (this.selectedType == 'mygem') {
+			return 60 + this._giveGemsEncode(); // give back gems
 		}
 
 		return -1;
@@ -280,9 +288,23 @@ class MoveSelector {
 			return 'buy a reserved card';
 		} else if (this.selectedType == 'gem') {
 			if (this.regularSelection) {
-				return 'take ' + (this.selectedIndex.length) + ' gems of different color';
+				if (this.selectedIndex.length == 1) {
+					return 'take 1 gem';
+				} else {
+					return 'take ' + (this.selectedIndex.length) + ' gems of different color';
+				}
 			} else {
 				return 'take 2 gems of same color';
+			}
+		} else if (this.selectedType == 'mygem') {
+			if (this.regularSelection) {
+				if (this.selectedIndex.length == 1) {
+					return 'give back 1 gem';
+				} else {
+					return 'give back ' + (this.selectedIndex.length) + ' gems of different color';
+				}
+			} else {
+				return 'give back 2 gems of same color';
 			}
 		}
 
@@ -305,6 +327,21 @@ class MoveSelector {
 		return result;
 	}
 
+	_giveGemsEncode() {
+		console.assert(this.selectedType == 'mygem', 'wrong call');
+		if (!this.regularSelection) {
+			// Same color of gems, 2 times
+			return this.selectedIndex[0] + different_gems_up_to_2.length;
+		}
+		// Different colors
+		let toFind = this.selectedIndex.slice().sort().toString();
+		let result = different_gems_up_to_2.findIndex(x => x.toString() == toFind);
+		if (result < 0) {
+			console.log('Cant find ', this.selectedIndex);
+			return 0;
+		}
+		return result;
+	}
 
 /*    isSelectable(itemType, index) {
 	}*/
@@ -465,7 +502,12 @@ function refreshBoard() {
 			if (color < 5) {
 				document.getElementById('p' + player + '_c' + color).innerHTML = generateSvgNbCards(color, game.getPlayerCard(player, color));
 			}
-			document.getElementById('p' + player + '_g' + color).innerHTML = generateSvgGem(color, game.getPlayerGems(player, color));
+			if (player == 0) {
+				let isSelected = move_sel.isSelected('mygem', color);
+				document.getElementById('p' + player + '_g' + color).innerHTML = `<a onclick="clickToSelect('mygem', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getPlayerGems(player, color), isSelected)} </a>`;
+			} else {
+				document.getElementById('p' + player + '_g' + color).innerHTML = generateSvgGem(color, game.getPlayerGems(player, color), false);
+			}
 		}
 	}
 
