@@ -8,6 +8,9 @@ All AI are running on client side, need 10\~20s to load it first time.
 - <https://cestpasphoto.github.io/santorini.html>
 - <https://cestpasphoto.github.io/santorini_with_gods.html>
 
+**Santorini**
+- <https://cestpasphoto.github.io/splendor.html>
+
 **Wordle**
 - <https://cestpasphoto.github.io/pyodide_wordle.html>
 
@@ -32,6 +35,19 @@ The UI also propose "undervolted" settings: instead of exploring 800 future posi
 
 About 5 to 10sec per turn when using AI native level. See other details in (#common-technical-details).
 You can find higher performance application on this [repo](https://github.com/cestpasphoto/alpha-zero-general), requiring you to install python and many other modules.
+
+
+## Online Splendor AI
+
+Using same AI as Santorini, described above.
+
+### Strength
+
+(tbc)
+
+The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
+
+The UI also propose "undervolted" settings: instead of exploring 400 future positions, it explores 200 or 50 or 10 of them to reduce strength. If AI was trained with these lower numbers, it could have been stronger but that wasn't the purpose.
 
 
 ## Online wordle solver
