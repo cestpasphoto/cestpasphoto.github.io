@@ -2,7 +2,7 @@
 /* =====  CONST  ===== */
 /* =================== */
 
-const defaultModelFileName = 'model.onnx';
+const defaultModelFileName = 'splendor/model.onnx';
 
 const tokensCoord      = [["20%", "83%"], ["20%", "53%"], ["50%", "83%"], ["50%", "53%"]];
 const tokensCoordSmall = [["20%", "83%"], ["20%", "50%"], ["50%", "83%"], ["50%", "50%"]];
@@ -551,7 +551,7 @@ async function init_code() {
   await pyodide.runPythonAsync(`
     from pyodide.http import pyfetch
     for filename in ['Game.py', 'proxy.py', 'MCTS.py', 'SplendorGame.py', 'SplendorLogic.py', 'SplendorLogicNumba.py']:
-      response = await pyfetch(filename)
+      response = await pyfetch('splendor/'+filename)
       with open(filename, "wb") as f:
         f.write(await response.bytes())
   `)
