@@ -76,23 +76,13 @@
     <div class="column" id="lv2_2"></div>
     <div class="column" id="lv2_3"></div>
 
-    <div class="column" id="lv1_deck">
-      <svg viewBox="0 0 60 60">
-        <polygon points="0,0 60,0 60,60 0,60" fill="black"/>
-        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" fill="darkgray">9 cards</text>
-      </svg>
-    </div>
+    <div class="column" id="lv1_deck"></div>
     <div class="column" id="lv1_0"></div>
     <div class="column" id="lv1_1"></div>
     <div class="column" id="lv1_2"></div>
     <div class="column" id="lv1_3"></div>
 
-    <div class="column" id="lv0_deck">
-      <svg viewBox="0 0 60 60">
-        <polygon points="0,0 60,0 60,60 0,60" fill="black"/>
-        <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" fill="darkgray">8 cards</text>
-      </svg>
-    </div>
+    <div class="column" id="lv0_deck"></div>
     <div class="column" id="lv0_0"></div>
     <div class="column" id="lv0_1"></div>
     <div class="column" id="lv0_2"></div>
@@ -114,7 +104,10 @@
   <div class="ui hidden divider"></div>
 
 
-  <button class="fluid ui primary disabled basic button" id="btn_confirm" onclick="confirmSelect()">Click a card or gem to select action</button>
+  <div class="ui fluid primary basic large compact buttons" id="allBtn">
+    <button class="ui disabled button" id="btn_confirm" onclick="confirmSelect()">Click a card or gem to select action</button>
+    <button class="ui icon button" id="btn_undo" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
+  </div>
 
   <div class="ui hidden divider"></div>
 
@@ -123,7 +116,6 @@
     <div class="five wide column">
       <div class="ui segments">
         <div class="ui segment" id="p0_details">
-          P0: 12 pts
         </div>
       </div>
     </div>
@@ -163,7 +155,6 @@
     <div class="five wide column">
       <div class="ui segments">
         <div class="ui segment" id="p1_details">
-          P1: 11 pts
         </div>
       </div>
     </div>

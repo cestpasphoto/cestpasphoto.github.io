@@ -65,143 +65,148 @@ async function loadONNX(model=[]) {
 
 class Splendor {
   constructor() {
-	this.py = null;
-	this.board = Array.from(Array(56), _ => Array(7).fill(0));
-	this.nextPlayer = 0;
-	this.gameEnded = [0, 0];
-	this.validMoves = Array(81); this.validMoves.fill(false);
-	this.gameMode = 'P0';
+		this.py = null;
+		this.board = Array.from(Array(56), _ => Array(7).fill(0));
+		this.nextPlayer = 0;
+		this.gameEnded = [0, 0];
+		this.history = [];          // List all previous states from new to old, not including current one
+		this.validMoves = Array(81); this.validMoves.fill(false);
+		this.gameMode = 'P0';
   }
 
   init_game() {
-	if (this.py == null) {
-		console.log('Now importing python module');
-		this.py = pyodide.pyimport("proxy");
-	}
-	console.log('Run a game');
-	let data_tuple = this.py.init_stuff(25).toJs({create_proxies: false});
-	this.updateDifficulty();
-	[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+		if (this.py == null) {
+			console.log('Now importing python module');
+			this.py = pyodide.pyimport("proxy");
+		}
+		console.log('Run a game');
+		let data_tuple = this.py.init_stuff(25).toJs({create_proxies: false});
+		this.updateDifficulty();
+		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
   }
 
   manual_move(action) {
-	if (this.validMoves[action]) {
-	  this._applyMove(action, true);
-	} else {
-	  console.log('Not a valid action', this.validMoves);
-	}    
+		if (this.validMoves[action]) {
+		  this._applyMove(action, true);
+		} else {
+		  console.log('Not a valid action', this.validMoves);
+		}    
   }
 
   async ai_guess_and_play() {
-	if (game.gameEnded.some(x => !!x)) {
-	  console.log('Not guessing, game is finished');
-	  return;
-	}
-	// console.log('guessing');
-	var best_action = await this.py.guessBestAction();
-	this._applyMove(best_action, false);
+		if (game.gameEnded.some(x => !!x)) {
+		  console.log('Not guessing, game is finished');
+		  return;
+		}
+		// console.log('guessing');
+		var best_action = await this.py.guessBestAction();
+		this._applyMove(best_action, false);
   }
 
   _applyMove(action, manualMove) {
-	//this.history.unshift([this.nextPlayer, this.board]);
-	/*if (manualMove) {
-	  this.cellsOfLastMove = [];
-	} else {
-	  this._updateLastCells(action);
-	}
-	this.lastMove = action;*/
+		this.history.unshift([this.nextPlayer, this.board]);
 
-	// Actually move
-	let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
-	[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;    
+		// Actually move
+		let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
+		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;    
   }
 
   getBank(color) {
-	return this.board[0][color];
+		return this.board[0][color];
   }
 
   getPlayerCard(player, color) {
-	return this.board[42+player][color];
+		return this.board[42+player][color];
   }
 
   getPlayerReserved(player, index) {
-	let i = 44 + 6*player + 2*index;
-	let tokens = this._getTokens(i, 4);
-	// card reward
-	let cardColor = this.board[i+1].findIndex(x=>x>0);
-	let cardPoints = this.board[i+1][cardColor];
+		let i = 44 + 6*player + 2*index;
+		let tokens = this._getTokens(i, 4);
+		// card reward
+		let cardColor = this.board[i+1].findIndex(x=>x>0);
+		let cardPoints = this.board[i+1][cardColor];
 
-	if (cardColor < 0) {
-		return null;
-	}
-	return [cardColor, cardPoints, tokens]; 
+		if (cardColor < 0) {
+			return null;
+		}
+		return [cardColor, cardPoints, tokens]; 
   }
 
   getPlayerGems(player, color) {
-	return this.board[34+player][color];
+		return this.board[34+player][color];
   }
 
-/*  getPlayerNobles(player) {
-	let i = 36 + 3*player;
-	let noblesPoint = 0;
-	for (let noble=0; noble<3; noble++) {
-		let cardColor = this.board[i+2*noble+1].findIndex(x=>x>0);
-		if (cardColor > 0) {
-			noblesPoint += this.board[i+2*noble+1][cardColor];
-		}
-	}
-	return noblesPoint;
-  }*/
-
   getTierCard(tier, index) {
-	let i = 1 + 8*tier + 2*index;
-	let tokens = this._getTokens(i, 4);
-	// card reward
-	let cardColor = this.board[i+1].findIndex(x=>x>0);
-	let cardPoints = this.board[i+1][6];
+		let i = 1 + 8*tier + 2*index;
+		let tokens = this._getTokens(i, 4);
+		// card reward
+		let cardColor = this.board[i+1].findIndex(x=>x>0);
+		let cardPoints = this.board[i+1][6];
 
-	return [cardColor, cardPoints, tokens]; 
+		return [cardColor, cardPoints, tokens]; 
   }
 
   getNbCardsInDeck(tier) {
-	let result = 0;
-	for (let c = 0; c < 5; c++) {
-		result += this.board[25 + 2*tier][c];
-	}
-	return result;
+		let result = 0;
+		for (let c = 0; c < 5; c++) {
+			result += this.board[25 + 2*tier][c];
+		}
+		return result;
   }
 
   getNoble(index) {
-	let i = 31 + index;
-	return this._getTokens(i, 3); 
+		let i = 31 + index;
+		return this._getTokens(i, 3); 
   }
 
   getPoints(player, details=false) {
-	let card_points  = this.board[42 + player][6];
-	let noble_points = 0;
-	for (let i = player*3; i < player*3+3; i++) {
-		noble_points += this.board[36 + i][6];
-	}
+		let card_points  = this.board[42 + player][6];
+		let noble_points = 0;
+		for (let i = player*3; i < player*3+3; i++) {
+			noble_points += this.board[36 + i][6];
+		}
 
-	if (details) {
-		return [card_points + noble_points, card_points, noble_points];
-	} else {
-		return card_points + noble_points;
-	}
+		if (details) {
+			return [card_points + noble_points, card_points, noble_points];
+		} else {
+			return card_points + noble_points;
+		}
   }
 
   _getTokens(i, maxi) {
-	// card cost
-	let tokens = [];
-	for (let c = 0; c < 5; c++) {
-		if (this.board[i][c] > 0 && tokens.length < maxi)
-			tokens.push([c, this.board[i][c]]);
-	}
-	return tokens
+		// card cost
+		let tokens = [];
+		for (let c = 0; c < 5; c++) {
+			if (this.board[i][c] > 0 && tokens.length < maxi)
+				tokens.push([c, this.board[i][c]]);
+		}
+		return tokens
   }
 
   updateDifficulty() {
-	this.py.changeDifficulty(Number(document.getElementById('difficultyForm').value));
+		this.py.changeDifficulty(Number(document.getElementById('difficultyForm').value));
+  }
+
+  previous() {
+    if (this.history.length == 0) {
+      return;
+    }
+
+    let player = (this.gameMode == 'P0') ? 0 : 1;
+    // Revert to the previous 0 before a 1, or first 0 from game
+    let index;
+    for (index = 0; index < this.history.length; ++index) {
+      if ((this.history[index][0] == player) && (index+1 == this.history.length || this.history[index+1][0] != player)) {
+        break;
+      }
+    }
+    console.log('index=', index, '/', this.history.length-1);
+
+    // Actually revert
+    console.log('board to revert:', this.history[index][1]);
+    let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
+    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+    this.history.splice(0, index+1); // remove reverted move from history and further moves
   }
 }
 
@@ -291,20 +296,20 @@ class MoveSelector {
 				if (this.selectedIndex.length == 1) {
 					return 'take 1 gem';
 				} else {
-					return 'take ' + (this.selectedIndex.length) + ' gems of different color';
+					return 'take ' + (this.selectedIndex.length) + ' different gems';
 				}
 			} else {
-				return 'take 2 gems of same color';
+				return 'take 2 similar gems';
 			}
 		} else if (this.selectedType == 'mygem') {
 			if (this.regularSelection) {
 				if (this.selectedIndex.length == 1) {
 					return 'give back 1 gem';
 				} else {
-					return 'give back ' + (this.selectedIndex.length) + ' gems of different color';
+					return 'give back ' + (this.selectedIndex.length) + ' different gems';
 				}
 			} else {
-				return 'give back 2 gems of same color';
+				return 'give back 2 similar gems';
 			}
 		}
 
@@ -549,7 +554,7 @@ function refreshButtons() {
 		let move_str = move_sel.getMoveShortDesc();
 		let move = move_sel.getMoveIndex();
 		if (move_str == 'none') {
-			document.getElementById('btn_confirm').innerHTML = `Click a card or gem to select action`;
+			document.getElementById('btn_confirm').innerHTML = `CLICK ON A CARD OR A GEM`;
 			document.getElementById('btn_confirm').classList.add('disabled');
 		} else if (game.validMoves[move]) {
 			document.getElementById('btn_confirm').innerHTML = `Confirm to ${move_str}`;
@@ -584,6 +589,16 @@ function confirmSelect() {
 	refreshButtons();
 
 	ai_play_if_needed();
+}
+
+function cancel_and_undo() {
+  if (move_sel.selectedType == 'none') {
+    game.previous();
+  }
+  move_sel.reset();
+
+  refreshBoard();
+  refreshButtons();
 }
 
 async function ai_play_one_move() {
