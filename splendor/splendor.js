@@ -104,11 +104,11 @@ class Splendor {
   }
 
   _applyMove(action, manualMove) {
-		this.history.unshift([this.nextPlayer, this.board]);
+		this.history.unshift([this.nextPlayer, this.board, action]);
 
 		// Actually move
 		let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
-		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;    
+		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
   }
 
   getBank(color) {
@@ -124,7 +124,7 @@ class Splendor {
 		let tokens = this._getTokens(i, 4);
 		// card reward
 		let cardColor = this.board[i+1].findIndex(x=>x>0);
-		let cardPoints = this.board[i+1][cardColor];
+		let cardPoints = this.board[i+1][6];
 
 		if (cardColor < 0) {
 			return null;
@@ -208,6 +208,27 @@ class Splendor {
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
     this.history.splice(0, index+1); // remove reverted move from history and further moves
   }
+
+  getLastActionDetails() {
+  	if (this.history.length == 0) {
+      return ['first', -1];
+    }
+  	let lastMove = this.history[0][2];
+  	if (0 <= lastMove && lastMove < 12) {
+  		return ['card', lastMove-0];
+  	} else if (12 <= lastMove && lastMove < 12+12) {
+  		return ['rsv', lastMove-12];
+  	} else if (12+12 <= lastMove && lastMove < 12+15) {
+  		return ['deck', lastMove-12-12];
+  	} else if (12+15 <= lastMove && lastMove < 12+15+3) {
+  		return ['buyrsv', lastMove-12-15];
+  	} else if (12+15+3 <= lastMove && lastMove < 12+15+3+30) {
+  		return ['gem', different_gems_up_to_3[lastMove-12-15-3]];
+  	} else if (12+15+3+30 <= lastMove) {
+  		return ['gemback', different_gems_up_to_2[lastMove-12-15-3-30]];
+  	}
+  }
+
 }
 
 class MoveSelector {
@@ -217,7 +238,7 @@ class MoveSelector {
 
 	click(itemType, index) {
 		if (this.selectedType == itemType) {
-			if (itemType == 'gem' || itemType == 'mygem') {
+			if (itemType == 'gem' || itemType == 'gemback') {
 				if (this.selectedIndex.includes(index) && this.regularSelection) {
 					this.selectedIndex = [index];
 					this.regularSelection = false;
@@ -247,7 +268,7 @@ class MoveSelector {
 		if (this.selectedType == itemType && this.selectedIndex.includes(index)) {
 			return this.regularSelection ? 1 : 2;
 		}
-		return false;
+		return 0;
 	}
 
 	reset() {
@@ -266,12 +287,12 @@ class MoveSelector {
 		} else if (this.selectedType == 'deck') {
 			console.assert(!(this.regularSelection), 'wrong value with deck');
 			return 24 + this.selectedIndex[0]; // reserve card from deck
-		} else if (this.selectedType == 'rsv') {
-			console.assert(this.regularSelection, 'wrong value with rsv');
+		} else if (this.selectedType == 'buyrsv') {
+			console.assert(this.regularSelection, 'wrong value with buyrsv');
 			return 27 + this.selectedIndex[0]; // buy reserved card
 		} else if (this.selectedType == 'gem') {
 			return 30 + this._gemsEncode(); // get gems
-		} else if (this.selectedType == 'mygem') {
+		} else if (this.selectedType == 'gemback') {
 			return 60 + this._giveGemsEncode(); // give back gems
 		}
 
@@ -288,8 +309,8 @@ class MoveSelector {
 		} else if (this.selectedType == 'deck') {
 			console.assert(!(this.regularSelection), 'wrong value with deck');
 			return 'reserve a card from deck'
-		} else if (this.selectedType == 'rsv') {
-			console.assert(this.regularSelection, 'wrong value with rsv');
+		} else if (this.selectedType == 'buyrsv') {
+			console.assert(this.regularSelection, 'wrong value with buyrsv');
 			return 'buy a reserved card';
 		} else if (this.selectedType == 'gem') {
 			if (this.regularSelection) {
@@ -301,7 +322,7 @@ class MoveSelector {
 			} else {
 				return 'take 2 similar gems';
 			}
-		} else if (this.selectedType == 'mygem') {
+		} else if (this.selectedType == 'gemback') {
 			if (this.regularSelection) {
 				if (this.selectedIndex.length == 1) {
 					return 'give back 1 gem';
@@ -333,7 +354,7 @@ class MoveSelector {
 	}
 
 	_giveGemsEncode() {
-		console.assert(this.selectedType == 'mygem', 'wrong call');
+		console.assert(this.selectedType == 'gemback', 'wrong call');
 		if (!this.regularSelection) {
 			// Same color of gems, 2 times
 			return this.selectedIndex[0] + different_gems_up_to_2.length;
@@ -347,9 +368,6 @@ class MoveSelector {
 		}
 		return result;
 	}
-
-/*    isSelectable(itemType, index) {
-	}*/
 }
 
 /* =================== */
@@ -357,11 +375,11 @@ class MoveSelector {
 /* =================== */
 
 function _svgIfSelected(selected) {
-	if (!selected) {
+	if (selected == 0) {
 		return "";
 	}
 
-	let color = (selected == 2) ? 'turquoise' : 'deeppink';
+	let color = (selected == 2) ? 'turquoise' : ((selected == 1) ? 'deeppink' : 'chocolate');
 	return `<circle cx="85%" cy="15%" r="5px" fill="${color}"/>`;
 }
 
@@ -405,7 +423,7 @@ function generateSvgNbCards(colorIndex, nbCards) {
 
 function generateSvgGem(colorIndex, nbGems, selected) {
 	if (nbGems <= 0) {
-		return `<svg viewBox="0 0 32 32"></svg>`;
+		return `<svg viewBox="0 0 32 32">${_svgIfSelected(selected)}</svg>`;
 	}
 	let [bgColor, mainColor, fontColor] = colors[colorIndex]
 	let svg = `<svg viewBox="0 0 32 32">`;
@@ -475,16 +493,47 @@ function generateTxtPoints(player, scoreDetails) {
 	return result;
 }
 
+// Return 1 if main action, 2 if secondary action, 3 if previous action
+// 0 otherwise
+// lastAction=null: don't check previous action (never returns 3)
+// currentMove=false: don't check current move (never returns 1 nor 2)
+function _getSelectMode(itemType, index, lastAction=null, currentMove=true) {
+	let result = 0;
+	if (currentMove) {
+		result = move_sel.isSelected(itemType, index);
+	}
+
+	if (lastAction !== null && result == 0) {
+		if (lastAction[0] == itemType || (itemType == 'gemback' && lastAction[0] == 'gem') || (itemType == 'card' && lastAction[0] == 'rsv')) {
+			if (Array.isArray(lastAction[1])) {
+				if (lastAction[1].includes(index)) {
+					result = 3;
+				}
+			} else if (lastAction[1] == index) {
+				result = 3;
+			}
+		}
+	}
+
+	return result;
+}
+
 function refreshBoard() {
+	let lastAction = ['none', -1];
+	if (move_sel.selectedType == 'none') {
+		// Display last action only if user is not selecting a move
+		lastAction = game.getLastActionDetails();
+	}
+
 	for (let tier = 2; tier >= 0; tier--) {
 		for (let index = 0; index < 4; index++) {
 			let cardInfo = game.getTierCard(tier, index);
-			let isSelected = move_sel.isSelected('card', tier*4+index);
-			document.getElementById('lv' + tier + '_' + index).innerHTML = `<a onclick="clickToSelect('card', ${tier*4+index});event.preventDefault();"> ${generateSvgCard(cardInfo[0], cardInfo[1], cardInfo[2], isSelected)} </a>`;
+			let selectMode = _getSelectMode('card', tier*4+index, lastAction);
+			document.getElementById('lv' + tier + '_' + index).innerHTML = `<a onclick="clickToSelect('card', ${tier*4+index});event.preventDefault();"> ${generateSvgCard(cardInfo[0], cardInfo[1], cardInfo[2], selectMode)} </a>`;
 		}
-		let isSelected = move_sel.isSelected('deck', tier);
+		let selectMode = _getSelectMode('deck', tier, lastAction);
 		let nbCardsInDeck = game.getNbCardsInDeck(tier);
-		document.getElementById('lv' + tier + '_deck').innerHTML = `<a onclick="clickToSelect('deck', ${tier});event.preventDefault();"> ${generateDeck(nbCardsInDeck, isSelected)} </a>`;
+		document.getElementById('lv' + tier + '_deck').innerHTML = `<a onclick="clickToSelect('deck', ${tier});event.preventDefault();"> ${generateDeck(nbCardsInDeck, selectMode)} </a>`;
 	}
 
 	for (let noble = 0; noble < 3; noble++) {
@@ -492,12 +541,12 @@ function refreshBoard() {
 	}
 
 	for (let color = 0; color < 6; color++) {
-		let isSelected = move_sel.isSelected('gem', color);
+		let selectMode = _getSelectMode('gem', color);
 		if (color < 5) {
-			document.getElementById('bank_c' + color).innerHTML = `<a onclick="clickToSelect('gem', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getBank(color), isSelected)} </a>`;
+			document.getElementById('bank_c' + color).innerHTML = `<a onclick="clickToSelect('gem', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getBank(color), selectMode)} </a>`;
 		} else 
 		{
-			document.getElementById('bank_c' + color).innerHTML = generateSvgGem(color, game.getBank(color), isSelected);
+			document.getElementById('bank_c' + color).innerHTML = generateSvgGem(color, game.getBank(color), selectMode);
 		}
 	}
 
@@ -508,10 +557,11 @@ function refreshBoard() {
 				document.getElementById('p' + player + '_c' + color).innerHTML = generateSvgNbCards(color, game.getPlayerCard(player, color));
 			}
 			if (player == 0) {
-				let isSelected = move_sel.isSelected('mygem', color);
-				document.getElementById('p' + player + '_g' + color).innerHTML = `<a onclick="clickToSelect('mygem', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getPlayerGems(player, color), isSelected)} </a>`;
+				let selectMode = _getSelectMode('gemback', color);
+				document.getElementById('p' + player + '_g' + color).innerHTML = `<a onclick="clickToSelect('gemback', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getPlayerGems(player, color), selectMode)} </a>`;
 			} else {
-				document.getElementById('p' + player + '_g' + color).innerHTML = generateSvgGem(color, game.getPlayerGems(player, color), false);
+				let selectMode = _getSelectMode('gemback', color, lastAction, currentMove=false);
+				document.getElementById('p' + player + '_g' + color).innerHTML = generateSvgGem(color, game.getPlayerGems(player, color), selectMode);
 			}
 		}
 	}
@@ -519,13 +569,26 @@ function refreshBoard() {
 	for (let player = 0; player < 2; player++) {
 		for (let rsvIndex = 0; rsvIndex < 3; rsvIndex++) {
 			let cardInfo = game.getPlayerReserved(player, rsvIndex);
-			if (cardInfo === null) {
-				document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = ``;
-			} else if (player == 0) {
-				let isSelected = move_sel.isSelected('rsv', rsvIndex);
-				document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = `<a onclick="clickToSelect('rsv', ${rsvIndex});event.preventDefault();"> ${generateSvgSmall(cardInfo[0], cardInfo[1], cardInfo[2], isSelected)} </a>`;
+			
+				
+			if (player == 0) {
+				if (cardInfo === null) {
+					document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = ``;
+				} else {
+					let selectMode = _getSelectMode('buyrsv', rsvIndex);
+					document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = `<a onclick="clickToSelect('buyrsv', ${rsvIndex});event.preventDefault();"> ${generateSvgSmall(cardInfo[0], cardInfo[1], cardInfo[2], selectMode)} </a>`;
+				}
 			} else {
-				document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = generateSvgSmall(cardInfo[0], cardInfo[1], cardInfo[2], false);
+				let selectMode = _getSelectMode('buyrsv', rsvIndex, lastAction, currentMove=false);
+				if (cardInfo === null) {
+					if (selectMode == 0) {
+						document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = ``;
+					} else {
+						document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = `<svg viewBox="0 0 32 32">${_svgIfSelected(selectMode)}</svg>`;
+					}
+				} else {
+					document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = generateSvgSmall(cardInfo[0], cardInfo[1], cardInfo[2], selectMode);
+				}
 			}
 		}
 
@@ -553,17 +616,18 @@ function refreshButtons() {
 	} else {
 		let move_str = move_sel.getMoveShortDesc();
 		let move = move_sel.getMoveIndex();
+		document.getElementById('btn_confirm').classList.remove('green', 'red', 'gray');
 		if (move_str == 'none') {
 			document.getElementById('btn_confirm').innerHTML = `CLICK ON A CARD OR A GEM`;
-			document.getElementById('btn_confirm').classList.add('disabled');
+			document.getElementById('btn_confirm').classList.add('disabled', 'green');
 		} else if (game.validMoves[move]) {
 			document.getElementById('btn_confirm').innerHTML = `Confirm to ${move_str}`;
 			document.getElementById('btn_confirm').classList.remove('disabled');
+			document.getElementById('btn_confirm').classList.add('green');
 		} else {
 			document.getElementById('btn_confirm').innerHTML = `Cannot ${move_str}`;
 			document.getElementById('btn_confirm').classList.add('disabled');
 		}
-		document.getElementById('btn_confirm').classList.remove('green', 'red', 'gray');
 	}
 }
 
@@ -579,10 +643,11 @@ function clickToSelect(itemType, index) {
 
 function confirmSelect() {
 	let move = move_sel.getMoveIndex();
+	let descr = move_sel.getMoveShortDesc();
 	move_sel.reset();
 
 	// Do move
-	console.log('Move = ', move);
+	console.log('Move = ', move, ' = ', descr);
 	game.manual_move(move);
 
 	refreshBoard();
@@ -602,11 +667,11 @@ function cancel_and_undo() {
 }
 
 async function ai_play_one_move() {
-  refreshButtons(); // Loading
+  refreshButtons(); // Loading = true
   let aiPlayer = game.nextPlayer;
   while ((game.nextPlayer == aiPlayer) && game.gameEnded.every(x => !x)) {
-	await game.ai_guess_and_play();
-	refreshBoard();
+		await game.ai_guess_and_play();
+		refreshBoard();
   }
   refreshButtons(); // Loading = false
 }
