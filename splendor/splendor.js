@@ -533,18 +533,32 @@ function refreshButtons() {
 	if (game.gameEnded.some(x => !!x)) {
 		// Game is finished, looking for the winner
 		console.log('End of game');
-		document.getElementById('btn_confirm').classList.add((game.gameEnded[0]>0) ? 'green' : 'red');
-		document.getElementById('btn_confirm').innerHTML = `END OF GAME`;
+		let color; let message;
+		if (game.gameEnded[0]>0) {
+			if (game.gameEnded[1]>0) {
+				color = 'gray'; message = 'TIE';
+			} else {
+				color = 'green'; message = 'P0 wins';
+			}
+		} else {
+			color = 'red'; message = 'P1 wins';
+		}
+		document.getElementById('btn_confirm').classList.add(color, 'disabled');
+		document.getElementById('btn_confirm').innerHTML = `END OF GAME - ` + message;
 	} else {
 		let move_str = move_sel.getMoveShortDesc();
+		let move = move_sel.getMoveIndex();
 		if (move_str == 'none') {
 			document.getElementById('btn_confirm').innerHTML = `Click a card or gem to select action`;
 			document.getElementById('btn_confirm').classList.add('disabled');
-		} else {
+		} else if (game.validMoves[move]) {
 			document.getElementById('btn_confirm').innerHTML = `Confirm to ${move_str}`;
 			document.getElementById('btn_confirm').classList.remove('disabled');
+		} else {
+			document.getElementById('btn_confirm').innerHTML = `Cannot ${move_str}`;
+			document.getElementById('btn_confirm').classList.add('disabled');
 		}
-		document.getElementById('btn_confirm').classList.remove('green', 'red');
+		document.getElementById('btn_confirm').classList.remove('green', 'red', 'gray');
 	}
 }
 
