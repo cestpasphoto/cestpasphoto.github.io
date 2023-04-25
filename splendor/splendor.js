@@ -597,7 +597,17 @@ function refreshBoard() {
 	}
 }
 
-function refreshButtons() {
+function refreshButtons(loading=false) {
+	if (loading) {
+		document.getElementById('allBtn').style = "display: none";
+		document.getElementById('loadingBtn').style = "";
+		return;
+	} else {
+		document.getElementById('allBtn').style = "";
+		document.getElementById('loadingBtn').style = "display: none";
+	}
+	document.getElementById('btn_confirm').classList.remove('green', 'red', 'gray');
+
 	if (game.gameEnded.some(x => !!x)) {
 		// Game is finished, looking for the winner
 		console.log('End of game');
@@ -616,7 +626,7 @@ function refreshButtons() {
 	} else {
 		let move_str = move_sel.getMoveShortDesc();
 		let move = move_sel.getMoveIndex();
-		document.getElementById('btn_confirm').classList.remove('green', 'red', 'gray');
+		
 		if (move_str == 'none') {
 			document.getElementById('btn_confirm').innerHTML = `CLICK ON A CARD OR A GEM`;
 			document.getElementById('btn_confirm').classList.add('disabled', 'green');
@@ -667,13 +677,13 @@ function cancel_and_undo() {
 }
 
 async function ai_play_one_move() {
-  refreshButtons(); // Loading = true
+  refreshButtons(loading=true);
   let aiPlayer = game.nextPlayer;
   while ((game.nextPlayer == aiPlayer) && game.gameEnded.every(x => !x)) {
 		await game.ai_guess_and_play();
 		refreshBoard();
   }
-  refreshButtons(); // Loading = false
+  refreshButtons(loading=false);
 }
 
 async function ai_play_if_needed() {
