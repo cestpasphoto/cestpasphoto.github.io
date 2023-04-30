@@ -59,6 +59,11 @@ async function loadONNX(model=[]) {
 /* =================== */
 
 
+function humanPlayer() {
+	let player = (this.gameMode == 'P0') ? 0 : 1;
+	return player;
+}
+
 /* =================== */
 /* =====  LOGIC  ===== */
 /* =================== */
@@ -486,7 +491,7 @@ function generateDeck(number, selected) {
 
 function generateTxtPoints(player, scoreDetails) {
 	let result = ``;
-	result += `<div class="ui header">P${player}: ${scoreDetails[0]} points</div>`;
+	result += `<div class="ui header">${scoreDetails[0]} point(s)</div>`;
 	if (scoreDetails[2] > 0) {
 		result += ` (incl. ${scoreDetails[2]} by nobles)`;
 	}
@@ -556,7 +561,7 @@ function refreshBoard() {
 			if (color < 5) {
 				document.getElementById('p' + player + '_c' + color).innerHTML = generateSvgNbCards(color, game.getPlayerCard(player, color));
 			}
-			if (player == 0) {
+			if (player == humanPlayer()) {
 				let selectMode = _getSelectMode('gemback', color);
 				document.getElementById('p' + player + '_g' + color).innerHTML = `<a onclick="clickToSelect('gemback', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getPlayerGems(player, color), selectMode)} </a>`;
 			} else {
@@ -571,7 +576,7 @@ function refreshBoard() {
 			let cardInfo = game.getPlayerReserved(player, rsvIndex);
 			
 				
-			if (player == 0) {
+			if (player == humanPlayer()) {
 				if (cardInfo === null) {
 					document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = ``;
 				} else {
