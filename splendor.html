@@ -7,6 +7,7 @@
   <script src="https://cdn.jsdelivr.net/pyodide/v0.22.1/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
 </head>
+<script src="common.js"></script>
 <script src="splendor/splendor.js"></script>
 <style>
   @media only screen and (max-width: 767px) {
@@ -34,7 +35,7 @@
     <div class="fitted item"> 
       <div class="ui small form">
         <div class="field">
-          <select onchange="game.updateDifficulty()" id="difficultyForm">
+          <select onchange="game.changeDifficulty(this.value)" id="difficultyForm">
             <optgroup label="Above optimal">
             <option value="6400"       >God-like</option>
             <option value="1600"       >Boosted</option>

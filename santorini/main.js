@@ -1,3 +1,5 @@
+// Import common.js before this file
+
 /* =================== */
 /* =====  CONST  ===== */
 /* =================== */
@@ -10,29 +12,18 @@ const directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', 
 const green = '#21BA45';
 const red   = '#DB2828';
 
-/* =================== */
-/* =====  ONNX   ===== */
-/* =================== */
+const list_of_files = [
+  ['santorini/Game.py', 'Game.py'],
+  ['santorini/proxy.py', 'proxy.py'],
+  ['santorini/MCTS.py', 'MCTS.py'],
+  ['santorini/SantoriniDisplay.py', 'SantoriniDisplay.py'],
+  ['santorini/SantoriniGame.py', 'SantoriniGame.py'],
+  ['santorini/SantoriniLogicNumba.py', 'SantoriniLogicNumba.py'],
+  [pyConstantsFileName, 'SantoriniConstants.py'],
+];
 
-var onnxSession;
-
-// Function called by python code
-async function predict(canonicalBoard, valids) {
-  const cb_js = Float32Array.from(canonicalBoard.toJs({create_proxies: false}));
-  const vs_js = Uint8Array.from(valids.toJs({create_proxies: false}));
-  const tensor_board = new ort.Tensor('float32', cb_js, [1, 25, 3]);
-  const tensor_valid = new ort.Tensor('bool'   , vs_js, [1, onnxOutputSize]);
-  // console.log('canonicalboard:', tensor_board);
-  // console.log('valid:', tensor_valid);
-  const results = await globalThis.onnxSession.run({ board: tensor_board, valid_actions: tensor_valid });
-  // console.log('results:', results);
-  return {pi: Array.from(results.pi.data), v: Array.from(results.v.data)}
-}
-
-async function loadONNX(model=[]) {
-  globalThis.onnxSession = await ort.InferenceSession.create(defaultModelFileName);
-  console.log('Loaded default ONNX');
-}
+const sizeCB = [1, 25, 3];
+const sizeV = [1, onnxOutputSize];
 
 /* =================== */
 /* =====  UTILS  ===== */
@@ -97,8 +88,9 @@ function generateSvg(nb_levels, worker) {
 /* =====  LOGIC  ===== */
 /* =================== */
 
-class Santorini {
+class Santorini extends AbstractGame {
   constructor() {
+    super()
     this.py = null;
     this.board = Array.from(Array(5), _ => Array.from(Array(5), _ => Array(3).fill(0)));
     this.nextPlayer = 0;
@@ -161,26 +153,6 @@ class Santorini {
     this._readPowersData();
   }
 
-  manual_move(action) {
-    console.log('manual move:', action);
-    if (this.validMoves[action]) {
-      this._applyMove(action, true);
-    } else {
-      console.log('Not a valid action', this.validMoves);
-    }    
-  }
-
-
-  async ai_guess_and_play() {
-    if (game.gameEnded.some(x => !!x)) {
-      console.log('Not guessing, game is finished');
-      return;
-    }
-    // console.log('guessing');
-    var best_action = await this.py.guessBestAction();
-    this._applyMove(best_action, false);
-  }
-
   _applyMove(action, manualMove) {
     this.history.unshift([this.nextPlayer, this.board]);
     if (manualMove) {
@@ -218,10 +190,6 @@ class Santorini {
     this.cellsOfLastMove = [[workerY, workerX]];
   }
 
-  changeDifficulty(numMCTSSims) {
-    this.py.changeDifficulty(Number(numMCTSSims));
-  }
-
   _readPowersData() {
     for (let p = 0; p < 2; p++) {
       let index = this.powers[p] + p * NB_GODS;
@@ -231,31 +199,6 @@ class Santorini {
         console.log('Power data for player', p, 'is', this.powers_data[p]);
       }
     }
-  }
-
-  previous() {
-    if (this.history.length == 0) {
-      return;
-    }
-
-    let player = (this.gameMode == 'P0') ? 0 : 1;
-    // Revert to the previous 0 before a 1, or first 0 from game
-    let index;
-    for (index = 0; index < this.history.length; ++index) {
-      if ((this.history[index][0] == player) && (index+1 == this.history.length || this.history[index+1][0] != player)) {
-        break;
-      }
-    }
-    console.log('index=', index, '/', this.history.length-1);
-
-    // Actually revert
-    console.log('board to revert:', this.history[index][1]);
-    let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
-    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    this._readPowersData();
-    this.history.splice(0, index+1); // remove reverted move from history and further moves
-    this.lastMove = -1;
-    this.cellsOfLastMove = [];
   }
 
   editCell(clicked_y, clicked_x, editMode) {
@@ -323,15 +266,11 @@ class Santorini {
   }
 }
 
-class MoveSelector {
+class MoveSelector extends AbstractMoveSelector {
   constructor() {
+    super()
     this.resetAndStart();
     this.stage = 0; // how many taps done, finished when 3, -1 means new game
-  }
-
-  resetAndStart() {
-    this.reset();
-    this._select_relevant_cells();
   }
 
   reset() {
@@ -651,41 +590,6 @@ function changeMoveText(text, mode='reset') {
 /* ===== ACTIONS ===== */
 /* =================== */
 
-async function ai_play_one_move() {
-  refreshButtons(loading=true);
-  let aiPlayer = game.nextPlayer;
-  while ((game.nextPlayer == aiPlayer) && game.gameEnded.every(x => !x)) {
-    await game.ai_guess_and_play();
-    refreshBoard();
-  }
-  refreshButtons(loading=false);
-}
-
-async function ai_play_if_needed() {
-  if (game.gameMode == 'AI') {
-    while (game.gameEnded.every(x => !x)) {
-      await ai_play_one_move();
-    }
-  } else
-  {
-    if ((game.nextPlayer == 0 && game.gameMode == 'P1') ||
-        (game.nextPlayer == 1 && game.gameMode == 'P0')) {
-      await ai_play_one_move();
-    }
-    move_sel.resetAndStart();
-
-    refreshBoard();
-    refreshButtons();
-    changeMoveText(moveToString(game.lastMove, 'AI'), 'add');
-  }
-}
-
-async function changeGameMode(mode) {
-  game.gameMode = mode;
-  move_sel.resetAndStart();
-  await ai_play_if_needed();
-}
-
 function cellClick(clicked_y = null, clicked_x = null) {
   if (move_sel.editMode > 0) {
     game.editCell(clicked_y, clicked_x, move_sel.editMode);
@@ -715,27 +619,6 @@ function godClick(player) {
   refreshPlayersText();
 }
 
-function reset() {
-  game.init_game();
-  move_sel.resetAndStart();
-
-  refreshBoard();
-  refreshPlayersText();
-  refreshButtons();
-  changeMoveText();
-}
-
-function cancel_and_undo() {
-  if (move_sel.stage == 0) {
-    game.previous();
-  }
-  move_sel.resetAndStart();
-
-  refreshBoard();
-  refreshButtons();
-  changeMoveText();
-}
-
 function togglePower(state) {
   move_sel.togglePower(state);
   refreshButtons();
@@ -759,45 +642,5 @@ function edit() {
   refreshPlayersText();
 }
 
-/* =================== */
-/* ===== PYODIDE ===== */
-/* =================== */
-
-// init Pyodide and stuff
-async function init_code() {
-  pyodide = await loadPyodide({ fullStdLib : false });
-  await pyodide.loadPackage("numpy");
-
-  await pyodide.runPythonAsync(`
-    from pyodide.http import pyfetch
-    for filename in ['Game.py', 'proxy.py', 'MCTS.py', 'SantoriniDisplay.py', 'SantoriniGame.py', 'SantoriniLogicNumba.py']:
-      response = await pyfetch('santorini/'+filename)
-      with open(filename, "wb") as f:
-        f.write(await response.bytes())
-
-    response = await pyfetch('`+pyConstantsFileName+`')
-    with open('SantoriniConstants.py', "wb") as f:
-      f.write(await response.bytes())
-  `)
-  loadONNX(); // Not "await" on purpose
-  console.log('Loaded python code, pyodide ready');  
-}
-
-async function main(usePyodide=true) {
-  refreshButtons(loading=true);
-
-  if (usePyodide) {
-    await init_code();
-  }
-  game.init_game();
-  move_sel.resetAndStart();
-
-  refreshBoard();
-  refreshPlayersText();
-  refreshButtons();
-  changeMoveText();
-}
-
 var game = new Santorini();
 var move_sel = new MoveSelector();
-var pyodide = null;

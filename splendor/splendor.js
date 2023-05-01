@@ -1,3 +1,5 @@
+// Import common.js before this file
+
 /* =================== */
 /* =====  CONST  ===== */
 /* =================== */
@@ -28,48 +30,25 @@ const different_gems_up_to_3 = [
 	[0,1,2], [0,1,3], [0,1,4], [0,2,3], [0,2,4], [0,3,4], [1,2,3], [1,2,4], [1,3,4], [2,3,4],
 ];
 
-/* =================== */
-/* =====  ONNX   ===== */
-/* =================== */
+const list_of_files = [
+	['splendor/Game.py', 'Game.py'],
+	['splendor/proxy.py', 'proxy.py'],
+	['splendor/MCTS.py', 'MCTS.py'],
+	['splendor/SplendorGame.py', 'SplendorGame.py'],
+	['splendor/SplendorLogic.py', 'SplendorLogic.py'],
+	['splendor/SplendorLogicNumba.py', 'SplendorLogicNumba.py'],
+];
 
-var onnxSession;
-var onnxSessionDefault;
-var onnxModel;
-
-// Function called by python code
-async function predict(canonicalBoard, valids) {
-  const cb_js = Float32Array.from(canonicalBoard.toJs({create_proxies: false}));
-  const vs_js = Uint8Array.from(valids.toJs({create_proxies: false}));
-  const tensor_board = new ort.Tensor('float32', cb_js, [1, 56, 7]);
-  const tensor_valid = new ort.Tensor('bool'   , vs_js, [1, 81]);
-  // console.log('canonicalboard:', tensor_board);
-  // console.log('valid:', tensor_valid);
-  const results = await globalThis.onnxSession.run({ board: tensor_board, valid_actions: tensor_valid });
-  // console.log('results:', results);
-  return {pi: Array.from(results.pi.data), v: Array.from(results.v.data)}
-}
-
-async function loadONNX(model=[]) {
-	globalThis.onnxSession = await ort.InferenceSession.create(defaultModelFileName);
-	console.log('Loaded default ONNX');
-}
-
-/* =================== */
-/* =====  UTILS  ===== */
-/* =================== */
-
-
-function humanPlayer() {
-	let player = (this.gameMode == 'P0') ? 0 : 1;
-	return player;
-}
+const sizeCB = [1, 56, 7];
+const sizeV = [1, 81];
 
 /* =================== */
 /* =====  LOGIC  ===== */
 /* =================== */
 
-class Splendor {
+class Splendor extends AbstractGame {
   constructor() {
+  	super()
 		this.py = null;
 		this.board = Array.from(Array(56), _ => Array(7).fill(0));
 		this.nextPlayer = 0;
@@ -86,26 +65,8 @@ class Splendor {
 		}
 		console.log('Run a game');
 		let data_tuple = this.py.init_stuff(25).toJs({create_proxies: false});
-		this.updateDifficulty();
+		this.changeDifficulty(document.getElementById('difficultyForm').value);
 		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-  }
-
-  manual_move(action) {
-		if (this.validMoves[action]) {
-		  this._applyMove(action, true);
-		} else {
-		  console.log('Not a valid action', this.validMoves);
-		}    
-  }
-
-  async ai_guess_and_play() {
-		if (game.gameEnded.some(x => !!x)) {
-		  console.log('Not guessing, game is finished');
-		  return;
-		}
-		// console.log('guessing');
-		var best_action = await this.py.guessBestAction();
-		this._applyMove(best_action, false);
   }
 
   _applyMove(action, manualMove) {
@@ -188,32 +149,6 @@ class Splendor {
 		return tokens
   }
 
-  updateDifficulty() {
-		this.py.changeDifficulty(Number(document.getElementById('difficultyForm').value));
-  }
-
-  previous() {
-    if (this.history.length == 0) {
-      return;
-    }
-
-    let player = (this.gameMode == 'P0') ? 0 : 1;
-    // Revert to the previous 0 before a 1, or first 0 from game
-    let index;
-    for (index = 0; index < this.history.length; ++index) {
-      if ((this.history[index][0] == player) && (index+1 == this.history.length || this.history[index+1][0] != player)) {
-        break;
-      }
-    }
-    console.log('index=', index, '/', this.history.length-1);
-
-    // Actually revert
-    console.log('board to revert:', this.history[index][1]);
-    let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
-    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    this.history.splice(0, index+1); // remove reverted move from history and further moves
-  }
-
   getLastActionDetails() {
   	if (this.history.length == 0) {
       return ['first', -1];
@@ -236,9 +171,9 @@ class Splendor {
 
 }
 
-class MoveSelector {
+class MoveSelector extends AbstractMoveSelector {
 	constructor() {
-		this.reset();
+		super()
 	}
 
 	click(itemType, index) {
@@ -561,7 +496,7 @@ function refreshBoard() {
 			if (color < 5) {
 				document.getElementById('p' + player + '_c' + color).innerHTML = generateSvgNbCards(color, game.getPlayerCard(player, color));
 			}
-			if (player == humanPlayer()) {
+			if (game.isHumanPlayer(player)) {
 				let selectMode = _getSelectMode('gemback', color);
 				document.getElementById('p' + player + '_g' + color).innerHTML = `<a onclick="clickToSelect('gemback', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getPlayerGems(player, color), selectMode)} </a>`;
 			} else {
@@ -576,7 +511,7 @@ function refreshBoard() {
 			let cardInfo = game.getPlayerReserved(player, rsvIndex);
 			
 				
-			if (player == humanPlayer()) {
+			if (game.isHumanPlayer(player)) {
 				if (cardInfo === null) {
 					document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = ``;
 				} else {
@@ -646,6 +581,18 @@ function refreshButtons(loading=false) {
 	}
 }
 
+function refreshPlayersText() {
+
+}
+
+function changeMoveText() {
+
+}
+
+function moveToString(move, gameMode) {
+	return ''
+}
+
 /* =================== */
 /* ===== ACTIONS ===== */
 /* =================== */
@@ -671,85 +618,5 @@ function confirmSelect() {
 	ai_play_if_needed();
 }
 
-function cancel_and_undo() {
-  if (move_sel.selectedType == 'none') {
-    game.previous();
-  }
-  move_sel.reset();
-
-  refreshBoard();
-  refreshButtons();
-}
-
-async function ai_play_one_move() {
-  refreshButtons(loading=true);
-  let aiPlayer = game.nextPlayer;
-  while ((game.nextPlayer == aiPlayer) && game.gameEnded.every(x => !x)) {
-		await game.ai_guess_and_play();
-		refreshBoard();
-  }
-  refreshButtons(loading=false);
-}
-
-async function ai_play_if_needed() {
-  if (game.gameMode == 'AI') {
-	while (game.gameEnded.every(x => !x)) {
-	  await ai_play_one_move();
-	}
-  } else
-  {
-	if ((game.nextPlayer == 0 && game.gameMode == 'P1') ||
-		(game.nextPlayer == 1 && game.gameMode == 'P0')) {
-	  await ai_play_one_move();
-	}
-	move_sel.reset();
-
-	refreshBoard();
-	refreshButtons();
-	/*changeMoveText(moveToString(game.lastMove, 'AI'), 'add');*/
-  }
-}
-
-async function changeGameMode(mode) {
-  game.gameMode = mode;
-  move_sel.reset();
-  await ai_play_if_needed();
-}
-
-
-/* =================== */
-/* ======= MAIN ====== */
-/* =================== */
-
-// init Pyodide and stuff
-async function init_code() {
-  pyodide = await loadPyodide({ fullStdLib : false });
-  await pyodide.loadPackage("numpy");
-
-  await pyodide.runPythonAsync(`
-	from pyodide.http import pyfetch
-	for filename in ['Game.py', 'proxy.py', 'MCTS.py', 'SplendorGame.py', 'SplendorLogic.py', 'SplendorLogicNumba.py']:
-		response = await pyfetch('splendor/'+filename)
-		with open(filename, "wb") as f:
-			f.write(await response.bytes())
-	`)
-  loadONNX(); // Not "await" on purpose
-  console.log('Loaded python code, pyodide ready');  
-}
-
-async function main(usePyodide=true) {
-  refreshButtons(loading=true);
-
-  if (usePyodide) {
-	await init_code();
-  }
-  game.init_game();
-  move_sel.reset();
-
-  refreshBoard();
-  refreshButtons();
-}
-
 var game = new Splendor();
 var move_sel = new MoveSelector();
-var pyodide = null;
