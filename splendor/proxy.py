@@ -1,6 +1,6 @@
 from MCTS import MCTS
 from SplendorGame import SplendorGame as Game
-from SplendorLogic import move_to_str
+from SplendorLogic import move_to_str, np_all_cards_1, np_all_cards_2, np_all_cards_3
 import numpy as np
 
 g, board, mcts, player = None, None, None, 0
@@ -62,11 +62,59 @@ async def guessBestAction():
 
 	return best_action
 
-def setData(setPlayer, setBoard):
+# -----------------------------------------------------------------------------
+
+def filterCards(tier, color, points):
+	pattern = np.zeros(7,)
+	pattern[color] = 1
+	pattern[6] = points
+	list_cards = [np_all_cards_1, np_all_cards_2, np_all_cards_3][tier].reshape(-1,2,7)
+	indexes = np.where((list_cards[:,1,:] == pattern).all(axis=1))[0]
+
+	# Convert to format used in our JS code
+	result = []
+	for i in indexes:
+		tokens_col = list_cards[i,0,:].nonzero()[0]
+		tokens_val = list_cards[i,0,tokens_col]
+		tokens = np.vstack([tokens_col, tokens_val]).T.tolist()
+		result.append([color, points, tokens])
+	return result
+
+def changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex):
+	pattern = np.zeros(7,)
+	pattern[color] = 1
+	pattern[6] = points
+	list_cards = [np_all_cards_1, np_all_cards_2, np_all_cards_3][tier].reshape(-1,2,7)
+	indexes = np.where((list_cards[:,1,:] == pattern).all(axis=1))[0]
+
+	newCardIndex = indexes[selectedIndexInDeck]
+	newCard = list_cards[newCardIndex, :, :]
+
+	oldCard = g.board.cards_tiers[8*tier+2*locationIndex:8*tier+2*locationIndex+2]
+	oldCardIndex = np.where(np.logical_and(
+		(list_cards[:,0,:] == oldCard[0,:]).all(axis=1),
+		(list_cards[:,1,:] == oldCard[1,:]).all(axis=1)
+	))[0][0]
+
+	# Actually put new card instead of old
+	g.board.cards_tiers[8*tier+2*locationIndex  , :] = newCard[0, :]
+	g.board.cards_tiers[8*tier+2*locationIndex+1, :] = newCard[1, :]
+
+	# TODO: swap card (put old instead of new)
+	# newCard is in visible deck? player reserve? invisible deck? player buy?
+	# TODO
+
+	end = g.getGameEnded(board, player)
+	valids = g.getValidMoves(board, player)
+	return player, end, board.tolist(), valids
+
+# init_stuff(25)
+# changeDeckCard(0,0,0,2,1)
+
+def setData(setBoard):
 	global g, board, mcts, player
 
 	board = g.getCanonicalForm(np.array(setBoard.to_py()), 0) # say player=0 to force-set setBoard as is
-	player = setPlayer
 	end = g.getGameEnded(board, player)
 	valids = g.getValidMoves(board, player)
 
