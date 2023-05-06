@@ -1,6 +1,7 @@
 from MCTS import MCTS
 from SplendorGame import SplendorGame as Game
 from SplendorLogic import move_to_str, np_all_cards_1, np_all_cards_2, np_all_cards_3
+from SplendorLogicNumba import my_packbits, my_unpackbits
 import numpy as np
 
 g, board, mcts, player = None, None, None, 0
@@ -80,36 +81,74 @@ def filterCards(tier, color, points):
 		result.append([color, points, tokens])
 	return result
 
-def changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex):
+# Return list of indexes where "card" appears in "many_cards"
+# Possible combo of dimensions
+# card=(7,) , many_cards=(?,2,7)
+# card=(2,7), many_cards=(?,2,7)
+# card=(2,7), many_cards=(?x2,7)
+def searchCard(card, many_cards, onlyCardIncome=False):
+	if (onlyCardIncome):
+		assert(card.ndim == 1)
+		assert(many_cards.ndim == 3)
+		return np.where((many_cards[:,1,:] == card).all(axis=1))[0]
+
+	assert(card.ndim == 2)
+	if many_cards.ndim == 3:	
+		result = np.where(np.logical_and(
+			(many_cards[:,0,:] == card[0,:]).all(axis=1),
+			(many_cards[:,1,:] == card[1,:]).all(axis=1)
+		))[0]
+	else:
+		result = np.where(np.logical_and(
+			(many_cards[ ::2,:] == card[0,:]).all(axis=1),
+			(many_cards[1::2,:] == card[1,:]).all(axis=1)
+		))[0]
+		result *= 2
+	
+	return result
+
+def changeDeckCard(tier, color, points, selectedIndexInList, locationIndex):
 	pattern = np.zeros(7,)
 	pattern[color] = 1
 	pattern[6] = points
 	list_cards = [np_all_cards_1, np_all_cards_2, np_all_cards_3][tier].reshape(-1,2,7)
-	indexes = np.where((list_cards[:,1,:] == pattern).all(axis=1))[0]
+	indexes = searchCard(pattern, list_cards, onlyCardIncome=True)
 
-	newCardIndex = indexes[selectedIndexInDeck]
+	newCardIndex = indexes[selectedIndexInList]
+	newCardX, newCardY = divmod(newCardIndex, list_cards.shape[0] // 5)
 	newCard = list_cards[newCardIndex, :, :]
 
 	oldCard = g.board.cards_tiers[8*tier+2*locationIndex:8*tier+2*locationIndex+2]
-	oldCardIndex = np.where(np.logical_and(
-		(list_cards[:,0,:] == oldCard[0,:]).all(axis=1),
-		(list_cards[:,1,:] == oldCard[1,:]).all(axis=1)
-	))[0][0]
+	oldCardIndex = searchCard(oldCard, list_cards)[0]
+	oldCardX, oldCardY = divmod(oldCardIndex, list_cards.shape[0] // 5)
+	old_i = 8*tier + 2*locationIndex
 
-	# Actually put new card instead of old
-	g.board.cards_tiers[8*tier+2*locationIndex  , :] = newCard[0, :]
-	g.board.cards_tiers[8*tier+2*locationIndex+1, :] = newCard[1, :]
-
-	# TODO: swap card (put old instead of new)
-	# newCard is in visible deck? player reserve? invisible deck? player buy?
-	# TODO
+	if newCardIndex != oldCardIndex:
+		# Swap cards (put old instead of new)
+		index_visible = searchCard(newCard, g.board.cards_tiers)
+		index_reserved = searchCard(newCard, g.board.players_reserved)
+		deck_cards = my_unpackbits(g.board.nb_deck_tiers[2*tier+1, newCardX])
+		new_is_in_deck = (deck_cards[newCardY] > 0)
+		# Swap old card <-> new card (old, new = new, old)
+		if (index_visible.size > 0 or index_reserved.size > 0):
+			new_i = index_visible[0] if index_visible.size else index_reserved[0]
+			g.board.cards_tiers[[old_i  , new_i  ], :] = g.board.cards_tiers[[new_i  , old_i  ], :]
+			g.board.cards_tiers[[old_i+1, new_i+1], :] = g.board.cards_tiers[[new_i+1, old_i+1], :]
+		else:
+			g.board.cards_tiers[old_i  , :] = newCard[0, :]
+			g.board.cards_tiers[old_i+1, :] = newCard[1, :]
+			if (new_is_in_deck):
+				# Remove new card from deck
+				deck_cards[newCardY] = 0
+				g.board.nb_deck_tiers[2*tier+1, newCardX] = my_packbits(deck_cards)
+				# Add old card in deck
+				deck_cards = my_unpackbits(g.board.nb_deck_tiers[2*tier+1, oldCardX])
+				deck_cards[oldCardY] = 0
+				g.board.nb_deck_tiers[2*tier+1, oldCardX] = my_packbits(deck_cards)
 
 	end = g.getGameEnded(board, player)
 	valids = g.getValidMoves(board, player)
 	return player, end, board.tolist(), valids
-
-# init_stuff(25)
-# changeDeckCard(0,0,0,2,1)
 
 def setData(setBoard):
 	global g, board, mcts, player
@@ -119,3 +158,6 @@ def setData(setBoard):
 	valids = g.getValidMoves(board, player)
 
 	return player, end, board.tolist(), valids
+
+# init_stuff(25)
+# changeDeckCard(0,0,0,3,1)
