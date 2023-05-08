@@ -88,6 +88,17 @@ class Splendor extends AbstractGame {
 		// Actually move
 		let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
 		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+
+		if (editedGame) {
+			// If game was edited, and that we just took a random card, propose user to edit it
+			if (action < 12+12) {
+				let tier = Math.floor((action%12) / 4);
+				let index = (action%12)%4;
+				startEdit(tier, index);
+			} else if (action < 12+15) {
+				console.log('I cant let you edit the deck card that was just reserved')
+			}
+		}
   }
 
   getBank(color) {
@@ -337,6 +348,291 @@ class MoveSelector extends AbstractMoveSelector {
 	}
 }
 
+class CardEditor {
+	constructor(tier, index) {
+		this.setInitialState(tier, index, false);
+	}
+
+	setInitialState(tier, index, lookup=true) {
+		this.tier = tier;
+		this.index = index;
+		this.currentCard = game.getTierCard(tier, index);
+		this.selectedColor = this.currentCard[0];
+		this.selectedPoints = this.currentCard[1];
+		this.cardsInfo = (lookup ? this._getMatchingCards() : []);
+	}
+
+	refresh() {
+		// Title
+		let title = "Edit card - ";
+		title += ["1st", "2nd", "3rd", "4th"][this.index];
+		title += " on ";
+		title += ["bottom", "middle", "top"][this.tier];
+		title += " line";
+		document.getElementById('mod_head').innerHTML = title;
+
+		// Small cards
+		for (let index = 0; index < 4; index++) {
+			let cardInfo = game.getTierCard(this.tier, index);
+			document.getElementById('editor_info' + index).innerHTML = generateSvgSmall(cardInfo[0], cardInfo[1], cardInfo[2], 0);
+		}
+
+		// Buttons
+		for (let index = 0; index < 5; index++) {
+			if (index == this.selectedColor) {
+				document.getElementById('mod_but_col' + index).classList.remove('basic');
+			} else {
+				document.getElementById('mod_but_col' + index).classList.add('basic');
+			}
+		}
+		for (let index = 0; index < 6; index++) {
+			if (index == this.selectedPoints) {
+				document.getElementById('mod_but_pts' + index).classList.remove('basic');
+			} else {
+				document.getElementById('mod_but_pts' + index).classList.add('basic');
+			}
+		}
+
+		// Proposed cards
+		for (let index = 0; index < this.cardsInfo.length; index++) {
+			let cardInfo = this.cardsInfo[index];
+			document.getElementById('sel_c' + index).innerHTML = `<a onclick="cardEditor.clickToEdit(${index});event.preventDefault();"> ${generateSvgCard(cardInfo[0], cardInfo[1], cardInfo[2], 0)} </a>`;
+		}
+		for (let index = this.cardsInfo.length; index < 8; index++) {
+			document.getElementById('sel_c' + index).innerHTML = `<svg viewBox="0 0 60 60"></svg>`;
+		}
+	}
+
+	clickToEdit(cardIndex) {
+		game._changeDeckCard(this.tier, this.selectedColor, this.selectedPoints, cardIndex, this.index);
+
+		let next_tier = (this.index==3) ? this.tier+1 : this.tier;
+		let next_index = (this.index+1) % 4;
+		if (next_tier >= 3) {
+			this.btnNext()
+		} else {
+			this.setInitialState(next_tier, next_index);
+			this.refresh();
+		}
+	}
+
+	buttonClick(btnId) {
+		if (btnId.substr(-4, 3) == 'col') {
+			this.selectedColor = Number(btnId.substr(-1));
+		} else {
+			this.selectedPoints = Number(btnId.substr(-1));
+		}
+		this.cardsInfo = this._getMatchingCards();
+		this.refresh();
+	}
+
+	_getMatchingCards() {
+		let results = game.py.filterCards(this.tier, this.selectedColor, this.selectedPoints).toJs({create_proxies: false});
+		return results;
+	}
+
+	btnNext() {
+		nobleEditor.setInitialState();
+		document.getElementById('card_editor').style = "display: none";
+		document.getElementById('noble_editor').style = "";
+		nobleEditor.refresh();
+		currentEditor = nobleEditor;
+
+		document.getElementById('edit_next_section').innerHTML = "Edit gems";
+	}	
+}
+
+class NobleEditor {
+	constructor() {
+		this.setInitialState();
+	}
+
+	setInitialState() {
+		this.selectedSlot = 0;
+		this.assignations = [-1, -1, -1];
+
+		this.noblesId = [-2, -2, -2];
+		for (let i = 0; i < 3; ++i) {
+			this.noblesId[i] = this._findNobleId(game.getNoble(i));
+		}
+	}
+
+	refresh() {
+		// Title
+		let title = "Edit nobles";
+		document.getElementById('mod_head').innerHTML = title;
+
+		// Bank nobles
+		for (let index = 0; index < 3; index++) {
+			let noble = all_nobles[this.noblesId[index]];
+			document.getElementById('bank_noble' + index).innerHTML = generateSvgNoble(noble, (index == this.selectedSlot) ? 1 : 0);
+		}
+
+		// Buttons
+		for (let index = -1; index < 2; index++) {
+			if (index == this.assignations[this.selectedSlot]) {
+				document.getElementById('noble_assign_P' + index).classList.remove('basic');
+			} else {
+				document.getElementById('noble_assign_P' + index).classList.add('basic');
+			}
+		}
+
+		// (constant) Nobles list
+		for (let index = 0; index < 10; index++) {
+			document.getElementById('avail_noble' + index).innerHTML = generateSvgNoble(all_nobles[index]);
+		}
+	}
+
+	clickToEdit(btnId) {
+		if (btnId.substr(0,5) == 'avail') {
+			this.noblesId[this.selectedSlot] = Number(btnId.substr(11));
+		} else {
+			// Assign noble to a player / bank
+			this.assignations[this.selectedSlot] = Number(btnId.substr(14));
+		}
+
+		let curPlayer = this.assignations[this.selectedSlot];	
+		let nobleId = this.noblesId[this.selectedSlot];
+		// Change noble value in bank
+		let index = 31 + this.selectedSlot;
+		this._changeNobleOrReset(index, all_nobles[nobleId], curPlayer<0);
+		// Change noble value for players
+		for (let player = 0; player < 2; ++player) {
+			index = 36 + 3*player + this.selectedSlot;
+			this._changeNobleOrReset(index, all_nobles[nobleId], curPlayer==player);
+		}
+
+		if (this.selectedSlot+1 < 3) {
+			++this.selectedSlot;
+			this.refresh();
+		} else {
+			this.btnNext();
+		}
+	}
+
+	buttonClick(btnId) {
+		this.selectedSlot = Number(btnId.substr(10));
+		this.refresh();
+	}
+
+	_changeNobleOrReset(index, tokens, confirmChange) {
+		this._resetNoble(index);
+		if (!confirmChange) {
+			return;
+		}
+
+		// Core change
+		tokens.forEach(token => game.board[index][token[0]] = token[1]);
+		// Set nb of points, always 3
+		game.board[index][6] = 3;
+	}
+
+	_resetNoble(index) {
+		// Reset
+		for (let i = 0; i < 7; ++i) {
+			game.board[index][i] = 0;
+		}
+	}
+
+	_findNobleId(tokens) {
+		let tokens_str = tokens.toString();
+		for (let i = 0; i < all_nobles.length; ++i) {
+			if (tokens_str == all_nobles[i].toString()) {
+				return i;
+			}
+		}
+		return -1;
+	}
+
+	btnNext() {
+		gemEditor.setInitialState();
+		document.getElementById('noble_editor').style = "display: none";
+		document.getElementById('gem_editor').style = "";
+		gemEditor.refresh();
+		currentEditor = gemEditor;
+
+		document.getElementById('edit_next_section').innerHTML = "Edit cards";
+	}
+}
+
+class GemEditor {
+	constructor() {
+		this.setInitialState();
+	}
+
+	setInitialState() {
+		this.selectedPlayer = -1;
+	}
+
+	refresh() {
+		// Title
+		let title = "Edit bank/players";
+		document.getElementById('mod_head').innerHTML = title;
+
+		// Buttons
+		for (let index = -1; index < 2; index++) {
+			if (index == this.selectedPlayer) {
+				document.getElementById('editor_P' + index).classList.remove('basic');
+			} else {
+				document.getElementById('editor_P' + index).classList.add('basic');
+			}
+		}
+
+		// Gems and cards
+		for (let index = 0; index < 6; index++) {
+			let nbGems = (this.selectedPlayer < 0) ? game.getBank(index) : game.getPlayerGems(this.selectedPlayer, index);
+			document.getElementById('editor_g' + index).innerHTML = generateSvgGem(index, nbGems, 0, false);
+		}
+
+		if (this.selectedPlayer < 0) {
+			document.getElementById('editor_c_grid').style = "display: none";
+		} else {
+			document.getElementById('editor_c_grid').style = "";
+			for (let index = 0; index < 5; index++) {
+				let nbCards = game.getPlayerCard(this.selectedPlayer, index);
+				document.getElementById('editor_c' + index).innerHTML = generateSvgNbCards(index, nbCards, false);
+			}
+		}
+	}
+
+	clickToEdit(btnId) {
+		editor_g0_plus
+		let btnInfo = btnId.split('_');
+		let type = (btnInfo[1][0] == 'g') ? 'gem' : 'card';
+		let color = Number(btnInfo[1][1]);
+		let delta = (btnInfo[2] == 'plus') ? +1 : -1;
+
+		let i;
+		if (this.selectedPlayer < 0) {
+			// Bank
+			i = 0;
+		} else if (type == 'gem') {
+			// Player gem
+			i = 34 + this.selectedPlayer;
+		} else {
+			// Player card
+				i = 42 + this.selectedPlayer;
+		}
+		game.board[i][color] = Math.max(0, game.board[i][color]+delta);
+		this.refresh();
+	}
+
+	buttonClick(btnId) {
+		this.selectedPlayer = Number(btnId.substr(8));
+		this.refresh();
+	}
+
+	btnNext() {
+		cardEditor.setInitialState(0, 0);
+		document.getElementById('gem_editor').style = "display: none";
+		document.getElementById('card_editor').style = "";
+		cardEditor.refresh();
+		currentEditor = cardEditor;
+
+		document.getElementById('edit_next_section').innerHTML = "Edit nobles";
+	}
+}
+
 /* =================== */
 /* ===== DISPLAY ===== */
 /* =================== */
@@ -469,15 +765,17 @@ function _getSelectMode(itemType, index, lastAction=null, currentMove=true) {
 	if (currentMove) {
 		result = move_sel.isSelected(itemType, index);
 	}
-
-	if (lastAction !== null && result == 0) {
-		if (lastAction[0] == itemType || (itemType == 'gemback' && lastAction[0] == 'gem') || (itemType == 'card' && lastAction[0] == 'rsv')) {
-			if (Array.isArray(lastAction[1])) {
-				if (lastAction[1].includes(index)) {
+	if ((game.gameMode[0] == 'P' && game.isHumanPlayer(game.nextPlayer)) || game.gameMode == 'AI') {
+		// Previous mode was from AI
+		if (lastAction !== null && result == 0) {
+			if (lastAction[0] == itemType || (itemType == 'gemback' && lastAction[0] == 'gem') || (itemType == 'card' && lastAction[0] == 'rsv')) {
+				if (Array.isArray(lastAction[1])) {
+					if (lastAction[1].includes(index)) {
+						result = 3;
+					}
+				} else if (lastAction[1] == index) {
 					result = 3;
 				}
-			} else if (lastAction[1] == index) {
-				result = 3;
 			}
 		}
 	}
@@ -581,7 +879,7 @@ function refreshButtons(loading=false) {
 		let color; let message;
 		if (game.gameEnded[0]>0) {
 			if (game.gameEnded[1]>0) {
-				color = 'gray'; message = 'TIE';
+				color = 'gray'; message = 'Tie game';
 			} else {
 				color = 'green'; message = 'P0 wins';
 			}
@@ -589,21 +887,22 @@ function refreshButtons(loading=false) {
 			color = 'red'; message = 'P1 wins';
 		}
 		document.getElementById('btn_confirm').classList.add(color, 'disabled');
-		document.getElementById('btn_confirm').innerHTML = `END OF GAME - ` + message;
+		document.getElementById('btn_confirm').classList.remove('basic');
+		document.getElementById('btn_confirm').innerHTML = message;
 	} else {
 		let move_str = move_sel.getMoveShortDesc();
 		let move = move_sel.getMoveIndex();
 		
 		if (move_str == 'none') {
 			document.getElementById('btn_confirm').innerHTML = `CLICK ON A CARD OR A GEM`;
-			document.getElementById('btn_confirm').classList.add('disabled', 'green');
+			document.getElementById('btn_confirm').classList.add('disabled', 'green', 'basic');
 		} else if (game.validMoves[move]) {
 			document.getElementById('btn_confirm').innerHTML = `Confirm to ${move_str}`;
-			document.getElementById('btn_confirm').classList.remove('disabled');
+			document.getElementById('btn_confirm').classList.remove('disabled', 'basic');
 			document.getElementById('btn_confirm').classList.add('green');
 		} else {
 			document.getElementById('btn_confirm').innerHTML = `Cannot ${move_str}`;
-			document.getElementById('btn_confirm').classList.add('disabled');
+			document.getElementById('btn_confirm').classList.add('disabled', 'basic');
 		}
 	}
 }
@@ -642,291 +941,21 @@ function confirmSelect() {
 	refreshBoard();
 	refreshButtons();
 
-	ai_play_if_needed();
-}
-
-class CardEditor {
-	constructor(tier, index) {
-		this.setInitialState(tier, index, false);
-	}
-
-	setInitialState(tier, index, lookup=true) {
-		this.tier = tier;
-		this.index = index;
-		this.currentCard = game.getTierCard(tier, index);
-		this.selectedColor = this.currentCard[0];
-		this.selectedPoints = this.currentCard[1];
-		this.cardsInfo = (lookup ? this._getMatchingCards() : []);
-	}
-
-	refresh() {
-		// Title
-		let title = "Edit card - ";
-		title += ["1st", "2nd", "3rd", "4th"][this.index];
-		title += " on ";
-		title += ["bottom", "middle", "top"][this.tier];
-		title += " line";
-		document.getElementById('mod_head').innerHTML = title;
-
-		// Buttons
-		for (let index = 0; index < 5; index++) {
-			if (index == this.selectedColor) {
-				document.getElementById('mod_but_col' + index).classList.remove('basic');
-			} else {
-				document.getElementById('mod_but_col' + index).classList.add('basic');
-			}
-		}
-		for (let index = 0; index < 6; index++) {
-			if (index == this.selectedPoints) {
-				document.getElementById('mod_but_pts' + index).classList.remove('basic');
-			} else {
-				document.getElementById('mod_but_pts' + index).classList.add('basic');
-			}
-		}
-
-		// Proposed cards
-		for (let index = 0; index < this.cardsInfo.length; index++) {
-			let cardInfo = this.cardsInfo[index];
-			document.getElementById('sel_c' + index).innerHTML = `<a onclick="cardEditor.clickToEdit(${index});event.preventDefault();"> ${generateSvgCard(cardInfo[0], cardInfo[1], cardInfo[2], 0)} </a>`;
-		}
-		for (let index = this.cardsInfo.length; index < 8; index++) {
-			document.getElementById('sel_c' + index).innerHTML = `<svg viewBox="0 0 60 60"></svg>`;
-		}
-	}
-
-	clickToEdit(cardIndex) {
-		game._changeDeckCard(this.tier, this.selectedColor, this.selectedPoints, cardIndex, this.index);
-
-		let next_tier = (this.index==3) ? this.tier+1 : this.tier;
-		let next_index = (this.index+1) % 4;
-		if (next_tier >= 3) {
-			this.btnNext()
-		} else {
-			this.setInitialState(next_tier, next_index);
-			this.refresh();
-		}
-	}
-
-	buttonClick(btnId) {
-		if (btnId.substr(-4, 3) == 'col') {
-			this.selectedColor = Number(btnId.substr(-1));
-		} else {
-			this.selectedPoints = Number(btnId.substr(-1));
-		}
-		this.cardsInfo = this._getMatchingCards();
-		this.refresh();
-	}
-
-	_getMatchingCards() {
-		let results = game.py.filterCards(this.tier, this.selectedColor, this.selectedPoints).toJs({create_proxies: false});
-		return results;
-	}
-
-	btnNext() {
-		nobleEditor.setInitialState();
-		document.getElementById('card_editor').style = "display: none";
-		document.getElementById('noble_editor').style = "";
-		nobleEditor.refresh();
-		currentEditor = nobleEditor;
-
-		document.getElementById('edit_next_section').innerHTML = "Edit gems";
-	}	
-}
-
-class NobleEditor {
-	constructor() {
-		this.setInitialState();
-	}
-
-	setInitialState() {
-		this.selectedSlot = 0;
-		this.assignations = [-1, -1, -1];
-
-		this.noblesId = [-2, -2, -2];
-		for (let i = 0; i < 3; ++i) {
-			this.noblesId[i] = this._findNobleId(game.getNoble(i));
-		}
-	}
-
-	refresh() {
-		// Title
-		let title = "Edit nobles";
-		document.getElementById('mod_head').innerHTML = title;
-
-		// Bank nobles
-		for (let index = 0; index < 3; index++) {
-			let noble = all_nobles[this.noblesId[index]];
-			document.getElementById('bank_noble' + index).innerHTML = generateSvgNoble(noble, (index == this.selectedSlot) ? 1 : 0);
-		}
-
-		// Buttons
-		for (let index = -1; index < 2; index++) {
-			if (index == this.assignations[this.selectedSlot]) {
-				document.getElementById('noble_assign_P' + index).classList.remove('basic');
-			} else {
-				document.getElementById('noble_assign_P' + index).classList.add('basic');
-			}
-		}
-
-		// (constant) Nobles list
-		for (let index = 0; index < 10; index++) {
-			document.getElementById('avail_noble' + index).innerHTML = generateSvgNoble(all_nobles[index]);
-		}
-	}
-
-	clickToEdit(btnId) {
-		if (btnId.substr(0,5) == 'avail') {
-			this.noblesId[this.selectedSlot] = Number(btnId.substr(11));
-		} else {
-			// Assign noble to a player / bank
-			this.assignations[this.selectedSlot] = Number(btnId.substr(14));
-		}
-
-		let curPlayer = this.assignations[this.selectedSlot];	
-		let nobleId = this.noblesId[this.selectedSlot];
-		// Change noble value in bank
-		let index = 31 + this.selectedSlot;
-		this._changeNobleOrReset(index, all_nobles[nobleId], curPlayer<0);
-		// Change noble value for players
-		for (let player = 0; player < 2; ++player) {
-			index = 36 + 3*player + this.selectedSlot;
-			this._changeNobleOrReset(index, all_nobles[nobleId], curPlayer==player);
-		}
-
-		this.refresh();
-	}
-
-	buttonClick(btnId) {
-		this.selectedSlot = Number(btnId.substr(10));
-		this.refresh();
-	}
-
-	_changeNobleOrReset(index, tokens, confirmChange) {
-		this._resetNoble(index);
-		if (!confirmChange) {
-			return;
-		}
-
-		// Core change
-		tokens.forEach(token => game.board[index][token[0]] = token[1]);
-		// Set nb of points, always 3
-		game.board[index][6] = 3;
-	}
-
-	_resetNoble(index) {
-		// Reset
-		for (let i = 0; i < 7; ++i) {
-			game.board[index][i] = 0;
-		}
-	}
-
-	_findNobleId(tokens) {
-		let tokens_str = tokens.toString();
-		for (let i = 0; i < all_nobles.length; ++i) {
-			if (tokens_str == all_nobles[i].toString()) {
-				return i;
-			}
-		}
-		return -1;
-	}
-
-	btnNext() {
-		gemEditor.setInitialState();
-		document.getElementById('noble_editor').style = "display: none";
-		document.getElementById('gem_editor').style = "";
-		gemEditor.refresh();
-		currentEditor = gemEditor;
-
-		document.getElementById('edit_next_section').innerHTML = "Edit cards";
+	if (!editionOngoing) {
+		ai_play_if_needed();
 	}
 }
 
-class GemEditor {
-	constructor() {
-		this.setInitialState();
-	}
-
-	setInitialState() {
-		this.selectedPlayer = -1;
-	}
-
-	refresh() {
-		// Title
-		let title = "Edit bank/players";
-		document.getElementById('mod_head').innerHTML = title;
-
-		// Buttons
-		for (let index = -1; index < 2; index++) {
-			if (index == this.selectedPlayer) {
-				document.getElementById('editor_P' + index).classList.remove('basic');
-			} else {
-				document.getElementById('editor_P' + index).classList.add('basic');
-			}
-		}
-
-		// Gems and cards
-		for (let index = 0; index < 6; index++) {
-			let nbGems = (this.selectedPlayer < 0) ? game.getBank(index) : game.getPlayerGems(this.selectedPlayer, index);
-			document.getElementById('editor_g' + index).innerHTML = generateSvgGem(index, nbGems, 0, false);
-		}
-
-		if (this.selectedPlayer < 0) {
-			document.getElementById('editor_c_grid').style = "display: none";
-		} else {
-			document.getElementById('editor_c_grid').style = "";
-			for (let index = 0; index < 5; index++) {
-				let nbCards = game.getPlayerCard(this.selectedPlayer, index);
-				document.getElementById('editor_c' + index).innerHTML = generateSvgNbCards(index, nbCards, false);
-			}
-		}
-	}
-
-	clickToEdit(btnId) {
-		editor_g0_plus
-		let btnInfo = btnId.split('_');
-		let type = (btnInfo[1][0] == 'g') ? 'gem' : 'card';
-		let color = Number(btnInfo[1][1]);
-		let delta = (btnInfo[2] == 'plus') ? +1 : -1;
-
-		let i;
-		if (this.selectedPlayer < 0) {
-			// Bank
-			i = 0;
-		} else if (type == 'gem') {
-			// Player gem
-			i = 34 + this.selectedPlayer;
-		} else {
-			// Player card
-				i = 42 + this.selectedPlayer;
-		}
-		game.board[i][color] = Math.max(0, game.board[i][color]+delta);
-		this.refresh();
-	}
-
-	buttonClick(btnId) {
-		this.selectedPlayer = Number(btnId.substr(8));
-		this.refresh();
-	}
-
-	btnNext() {
-		cardEditor.setInitialState(0, 0);
-		document.getElementById('gem_editor').style = "display: none";
-		document.getElementById('card_editor').style = "";
-		cardEditor.refresh();
-		currentEditor = cardEditor;
-
-		document.getElementById('edit_next_section').innerHTML = "Edit nobles";
-	}
-}
-
-function startEdit() {
-	cardEditor.setInitialState(0, 0);
+function startEdit(tier=0, index=0) {
+	editionOngoing = true;
+	cardEditor.setInitialState(tier, index);
 	document.getElementById('noble_editor').style = "display: none";
 	document.getElementById('gem_editor').style = "display: none";
 	document.getElementById('card_editor').style = "";
 	cardEditor.refresh();
 	document.getElementById('edit_next_section').innerHTML = "Edit nobles";
-	$('.ui.modal').modal({onHidden: afterEdit}).modal('show');
+	$('.ui.modal').modal({onHide: afterEdit}).modal('show');
+	editedGame = true;
 }
 
 function afterEdit() {
@@ -934,6 +963,9 @@ function afterEdit() {
 	refreshBoard();
 	refreshButtons();
 	changeMoveText();
+	editionOngoing = false;
+
+	ai_play_if_needed();
 
 	return true;
 }
@@ -944,3 +976,5 @@ var cardEditor = new CardEditor(0, 0);
 var gemEditor = new GemEditor();
 var nobleEditor = new NobleEditor();
 var currentEditor = cardEditor;
+var editedGame = false;
+var editionOngoing = true;
