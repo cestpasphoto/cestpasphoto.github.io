@@ -196,9 +196,19 @@
 </div>
 
 <div class="ui modal">
+  <i class="close inside icon"></i>
   <div class="header" id="mod_head"></div>
   <div class="content">
     <div id="card_editor">
+
+      <div class="ui center aligned grid">
+        <div class="two wide column"><div id="editor_info0"></div></div>
+        <div class="two wide column"><div id="editor_info1"></div></div>
+        <div class="two wide column"><div id="editor_info2"></div></div>
+        <div class="two wide column"><div id="editor_info3"></div></div>
+      </div>
+
+      <div class="ui hidden divider"></div>
       <div class="ui large wrapped wrapping buttons">
         <button class="ui gray basic button" id="mod_but_col0" onclick="cardEditor.buttonClick(this.id)">White</button>
         <button class="ui blue basic button" id="mod_but_col1" onclick="cardEditor.buttonClick(this.id)">Blue</button>
@@ -336,7 +346,6 @@
     </div>
   </div>
   <div class="actions">
-    <div class="ui close button">Close</div>
     <div class="ui primary button" id="edit_next_section" onclick="currentEditor.btnNext();">Edit nobles</div>
   </div>
 </div>
