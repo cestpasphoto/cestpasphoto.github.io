@@ -190,6 +190,10 @@ class Santorini extends AbstractGame {
     this.cellsOfLastMove = [[workerY, workerX]];
   }
 
+  afterSetData() {
+    this._readPowersData();
+  }
+
   _readPowersData() {
     for (let p = 0; p < 2; p++) {
       let index = this.powers[p] + p * NB_GODS;

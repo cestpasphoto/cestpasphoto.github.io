@@ -111,7 +111,7 @@ def searchCard(card, many_cards, onlyCardIncome=False):
 	
 	return result
 
-def changeDeckCard(tier, color, points, selectedIndexInList, locationIndex):
+def changeDeckCard(tier, color, points, selectedIndexInList, locationIndex, lapidaryMode):
 	pattern = np.zeros(7,)
 	pattern[color] = 1
 	pattern[6] = points
@@ -150,11 +150,16 @@ def changeDeckCard(tier, color, points, selectedIndexInList, locationIndex):
 				deck_cards[oldCardY] = 0
 				g.board.nb_deck_tiers[2*tier+1, oldCardX] = my_packbits(deck_cards)
 
+	if lapidaryMode:
+		# Put new card (now at old_i index) at the rightest and shift other cards
+		end_tier = 8*(tier+1)
+		g.board.cards_tiers[old_i:end_tier, :] = np.roll(g.board.cards_tiers[old_i:end_tier, :], shift=-2, axis=0)
+
 	end = g.getGameEnded(board, player)
 	valids = g.getValidMoves(board, player)
 	return player, end, board.tolist(), valids
 
-def setData(setBoard):
+def setData(player_, setBoard):
 	global g, board, mcts, player
 
 	board = g.getCanonicalForm(np.array(setBoard.to_py()), 0) # say player=0 to force-set setBoard as is

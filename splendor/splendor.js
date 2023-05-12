@@ -94,7 +94,7 @@ class Splendor extends AbstractGame {
 			if (action < 12+12) {
 				let tier = Math.floor((action%12) / 4);
 				let index = (action%12)%4;
-				startEdit(tier, index);
+				startEdit(tier, index, true);
 			} else if (action < 12+15) {
 				console.log('I cant let you edit the deck card that was just reserved')
 			}
@@ -137,9 +137,9 @@ class Splendor extends AbstractGame {
 		}
   }
 
-  _changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex) {
+  _changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex, lapidaryMode) {
 		// Actually move
-		let data_tuple = this.py.changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex).toJs({create_proxies: false});
+		let data_tuple = this.py.changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex, lapidaryMode).toJs({create_proxies: false});
 		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;  	
   }
 
@@ -164,7 +164,7 @@ class Splendor extends AbstractGame {
   }
 
   update() {
-  	let data_tuple = this.py.setData(this.board).toJs({create_proxies: false});
+  	let data_tuple = this.py.setData(null, this.board).toJs({create_proxies: false});
 		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
   }
 }
@@ -317,6 +317,7 @@ class CardEditor {
 		if (tier >= 0 && index >= 0) {
 			this.setInitialState(tier, index, false);
 		}
+		this.lapidaryMode = false;
 	}
 
 	setInitialState(tier, index, lookup=true) {
@@ -370,7 +371,7 @@ class CardEditor {
 	}
 
 	clickToEdit(cardIndex) {
-		game._changeDeckCard(this.tier, this.selectedColor, this.selectedPoints, cardIndex, this.index);
+		game._changeDeckCard(this.tier, this.selectedColor, this.selectedPoints, cardIndex, this.index, this.lapidaryMode);
 
 		let next_tier = (this.index==3) ? this.tier+1 : this.tier;
 		let next_index = (this.index+1) % 4;
@@ -913,8 +914,9 @@ function confirmSelect() {
 	}
 }
 
-function startEdit(tier=0, index=0) {
+function startEdit(tier=0, index=0, lapidaryMode=false) {
 	editionOngoing = true;
+	cardEditor.lapidaryMode = lapidaryMode;
 	cardEditor.setInitialState(tier, index);
 	document.getElementById('noble_editor').style = "display: none";
 	document.getElementById('gem_editor').style = "display: none";
@@ -939,7 +941,7 @@ function afterEdit() {
 
 var game = new Splendor();
 var move_sel = new MoveSelector();
-var cardEditor = new CardEditor(-1, -1);
+var cardEditor = new CardEditor(-1, -1, false);
 var gemEditor = new GemEditor();
 var nobleEditor = new NobleEditor();
 var currentEditor = cardEditor;

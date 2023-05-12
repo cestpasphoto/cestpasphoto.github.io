@@ -88,7 +88,7 @@ class AbstractGame {
     console.log('board to revert:', this.history[index][1]);
     let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    this._readPowersData();
+    this.afterSetData();
     this.history.splice(0, index+1); // remove reverted move from history and further moves
     this.lastMove = -1;
     this.cellsOfLastMove = [];
@@ -97,6 +97,8 @@ class AbstractGame {
   isHumanPlayer(player) {
     return player == ((this.gameMode == 'P0') ? 0 : 1);
   }
+
+  afterSetData() {}
 }
 
 /* =================== */
@@ -112,6 +114,7 @@ class AbstractDisplay {
 
 class AbstractMoveSelector {
   constructor() {
+    this.stage = 0;
     this.resetAndStart();
   }
 
