@@ -65,21 +65,25 @@ async def guessBestAction():
 
 # -----------------------------------------------------------------------------
 
+def _convertTokensToJS(card_data_1):
+	tokens_col = card_data_1[:6].nonzero()[0]
+	tokens_val = card_data_1[tokens_col]
+	return np.vstack([tokens_col, tokens_val]).T.tolist()
+
+def _convertCardToJS(card_data_1, card_data_2):
+	if card_data_1.sum() == 0: # Empty card
+		return [-1, -1, []]
+	color, points = card_data_2.nonzero()[0][0].item(), card_data_2[6].item()
+	tokens = _convertTokensToJS(card_data_1)
+	return [color, points, tokens]
+
 def filterCards(tier, color, points):
 	pattern = np.zeros(7,)
 	pattern[color] = 1
 	pattern[6] = points
 	list_cards = [np_all_cards_1, np_all_cards_2, np_all_cards_3][tier].reshape(-1,2,7)
 	indexes = np.where((list_cards[:,1,:] == pattern).all(axis=1))[0]
-
-	# Convert to format used in our JS code
-	result = []
-	for i in indexes:
-		tokens_col = list_cards[i,0,:].nonzero()[0]
-		tokens_val = list_cards[i,0,tokens_col]
-		tokens = np.vstack([tokens_col, tokens_val]).T.tolist()
-		result.append([color, points, tokens])
-	return result
+	return [_convertCardToJS(list_cards[i,0,:], list_cards[i,1,:]) for i in indexes]
 
 # Return list of indexes where "card" appears in "many_cards"
 # Possible combo of dimensions
@@ -159,5 +163,34 @@ def setData(setBoard):
 
 	return player, end, board.tolist(), valids
 
-# init_stuff(25)
-# changeDeckCard(0,0,0,3,1)
+def getBank(color):
+	return g.board.bank[0][color].item()
+
+def getPlayerNbCards(player, color):
+	return g.board.players_cards[player][color].item()
+
+def getPlayerReserved(player, index):
+	card_data_1 = g.board.players_reserved[6*player+2*index]
+	card_data_2 = g.board.players_reserved[6*player+2*index+1]
+	return _convertCardToJS(card_data_1, card_data_2)
+
+def getPlayerGems(player, color):
+	return g.board.players_gems[player][color].item()
+
+def getTierCard(tier, index):
+	card_data_1 = g.board.cards_tiers[8*tier+2*index]
+	card_data_2 = g.board.cards_tiers[8*tier+2*index+1]
+	return _convertCardToJS(card_data_1, card_data_2)
+
+def getNbCardsInDeck(tier):
+	return g.board.nb_deck_tiers[2*tier, :5].sum().item()
+
+def getPoints(player, details):
+	card_points  = g.board.players_cards[player, 6].item()
+	noble_points = g.board.players_nobles[player*3:player*3+3, 6].sum().item()
+	return [card_points + noble_points, card_points, noble_points] if details else (card_points+noble_points)
+
+def getNoble(index):
+	noble = g.board.nobles[index]
+	tokens = _convertTokensToJS(noble)
+	return tokens[:3]

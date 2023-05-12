@@ -102,75 +102,39 @@ class Splendor extends AbstractGame {
   }
 
   getBank(color) {
-		return this.board[0][color];
+		return this.py.getBank(color);
   }
 
-  getPlayerCard(player, color) {
-		return this.board[42+player][color];
+  getPlayerNbCards(player, color) {
+		return this.py.getPlayerNbCards(player, color);
   }
 
   getPlayerReserved(player, index) {
-		let i = 44 + 6*player + 2*index;
-		let tokens = this._getTokens(i, 4);
-		// card reward
-		let cardColor = this.board[i+1].findIndex(x=>x>0);
-		let cardPoints = this.board[i+1][6];
-
-		if (cardColor < 0) {
-			return null;
-		}
-		return [cardColor, cardPoints, tokens]; 
+		return this.py.getPlayerReserved(player, index).toJs({create_proxies: false});
   }
 
   getPlayerGems(player, color) {
-		return this.board[34+player][color];
+		return this.py.getPlayerGems(player, color);
   }
 
   getTierCard(tier, index) {
-		let i = 1 + 8*tier + 2*index;
-		let tokens = this._getTokens(i, 4);
-		// card reward
-		let cardColor = this.board[i+1].findIndex(x=>x>0);
-		let cardPoints = this.board[i+1][6];
-
-		return [cardColor, cardPoints, tokens]; 
+		return this.py.getTierCard(tier, index).toJs({create_proxies: false});
   }
 
   getNbCardsInDeck(tier) {
-		let result = 0;
-		for (let c = 0; c < 5; c++) {
-			result += this.board[25 + 2*tier][c];
-		}
-		return result;
-  }
+		return this.py.getNbCardsInDeck(tier);
+	}
 
   getNoble(index) {
-		let i = 31 + index;
-		return this._getTokens(i, 3); 
+		return this.py.getNoble(index).toJs({create_proxies: false});
   }
 
   getPoints(player, details=false) {
-		let card_points  = this.board[42 + player][6];
-		let noble_points = 0;
-		for (let i = player*3; i < player*3+3; i++) {
-			noble_points += this.board[36 + i][6];
-		}
-
 		if (details) {
-			return [card_points + noble_points, card_points, noble_points];
+			return this.py.getPoints(player, details).toJs({create_proxies: false});
 		} else {
-			return card_points + noble_points;
+			return this.py.getPoints(player, details);
 		}
-  }
-
-  _getTokens(i, maxi) {
-		// card cost
-		let tokens = [];
-		for (let c = 0; c < 5; c++) {
-			if (this.board[i][c] > 0 && tokens.length < maxi)
-				tokens.push([c, this.board[i][c]]);
-		}
-		return tokens
   }
 
   _changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex) {
@@ -350,7 +314,9 @@ class MoveSelector extends AbstractMoveSelector {
 
 class CardEditor {
 	constructor(tier, index) {
-		this.setInitialState(tier, index, false);
+		if (tier >= 0 && index >= 0) {
+			this.setInitialState(tier, index, false);
+		}
 	}
 
 	setInitialState(tier, index, lookup=true) {
@@ -452,8 +418,10 @@ class NobleEditor {
 		this.assignations = [-1, -1, -1];
 
 		this.noblesId = [-2, -2, -2];
-		for (let i = 0; i < 3; ++i) {
-			this.noblesId[i] = this._findNobleId(game.getNoble(i));
+		if (game.py !== null) {
+			for (let i = 0; i < 3; ++i) {
+				this.noblesId[i] = this._findNobleId(game.getNoble(i));
+			}
 		}
 	}
 
@@ -589,7 +557,7 @@ class GemEditor {
 		} else {
 			document.getElementById('editor_c_grid').style = "";
 			for (let index = 0; index < 5; index++) {
-				let nbCards = game.getPlayerCard(this.selectedPlayer, index);
+				let nbCards = game.getPlayerNbCards(this.selectedPlayer, index);
 				document.getElementById('editor_c' + index).innerHTML = generateSvgNbCards(index, nbCards, false);
 			}
 		}
@@ -809,8 +777,7 @@ function refreshBoard() {
 		let selectMode = _getSelectMode('gem', color);
 		if (color < 5) {
 			document.getElementById('bank_c' + color).innerHTML = `<a onclick="clickToSelect('gem', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getBank(color), selectMode)} </a>`;
-		} else 
-		{
+		} else {
 			document.getElementById('bank_c' + color).innerHTML = generateSvgGem(color, game.getBank(color), selectMode);
 		}
 	}
@@ -819,7 +786,7 @@ function refreshBoard() {
 	for (let player = 0; player < 2; player++) {
 		for (let color = 0; color < 6; color++) {
 			if (color < 5) {
-				document.getElementById('p' + player + '_c' + color).innerHTML = generateSvgNbCards(color, game.getPlayerCard(player, color));
+				document.getElementById('p' + player + '_c' + color).innerHTML = generateSvgNbCards(color, game.getPlayerNbCards(player, color));
 			}
 			if (game.isHumanPlayer(player)) {
 				let selectMode = _getSelectMode('gemback', color);
@@ -837,7 +804,7 @@ function refreshBoard() {
 			
 				
 			if (game.isHumanPlayer(player)) {
-				if (cardInfo === null) {
+				if (cardInfo[0] < 0) {
 					document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = ``;
 				} else {
 					let selectMode = _getSelectMode('buyrsv', rsvIndex);
@@ -845,7 +812,7 @@ function refreshBoard() {
 				}
 			} else {
 				let selectMode = _getSelectMode('buyrsv', rsvIndex, lastAction, currentMove=false);
-				if (cardInfo === null) {
+				if (cardInfo[0] < 0) {
 					if (selectMode == 0) {
 						document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = ``;
 					} else {
@@ -972,7 +939,7 @@ function afterEdit() {
 
 var game = new Splendor();
 var move_sel = new MoveSelector();
-var cardEditor = new CardEditor(0, 0);
+var cardEditor = new CardEditor(-1, -1);
 var gemEditor = new GemEditor();
 var nobleEditor = new NobleEditor();
 var currentEditor = cardEditor;
