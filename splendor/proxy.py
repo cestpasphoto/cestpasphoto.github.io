@@ -159,6 +159,14 @@ def changeDeckCard(tier, color, points, selectedIndexInList, locationIndex, lapi
 	valids = g.getValidMoves(board, player)
 	return player, end, board.tolist(), valids
 
+def changeGemOrNbCards(player, color, type_, delta):
+	if (player < 0): # Bank
+		g.board.bank[0][color]               = max(0, g.board.bank[0][color]               + delta)
+	elif type_ == 'gem':
+		g.board.players_gems[player][color]  = max(0, g.board.players_gems[player][color]  + delta)
+	else:
+		g.board.players_cards[player][color] = max(0, g.board.players_cards[player][color] + delta)
+
 def setData(player_, setBoard):
 	global g, board, mcts, player
 

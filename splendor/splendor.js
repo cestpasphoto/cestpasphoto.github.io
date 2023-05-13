@@ -571,18 +571,7 @@ class GemEditor {
 		let color = Number(btnInfo[1][1]);
 		let delta = (btnInfo[2] == 'plus') ? +1 : -1;
 
-		let i;
-		if (this.selectedPlayer < 0) {
-			// Bank
-			i = 0;
-		} else if (type == 'gem') {
-			// Player gem
-			i = 34 + this.selectedPlayer;
-		} else {
-			// Player card
-				i = 42 + this.selectedPlayer;
-		}
-		game.board[i][color] = Math.max(0, game.board[i][color]+delta);
+		game.py.changeGemOrNbCards(this.selectedPlayer, color, type, delta);
 		this.refresh();
 	}
 
@@ -921,8 +910,10 @@ function startEdit(tier=0, index=0, lapidaryMode=false) {
 	document.getElementById('noble_editor').style = "display: none";
 	document.getElementById('gem_editor').style = "display: none";
 	document.getElementById('card_editor').style = "";
-	cardEditor.refresh();
 	document.getElementById('edit_next_section').innerHTML = "Edit nobles";
+	currentEditor = cardEditor;
+	cardEditor.refresh();
+	
 	$('.ui.modal').modal({onHide: afterEdit}).modal('show');
 	editedGame = true;
 }
