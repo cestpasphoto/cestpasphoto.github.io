@@ -138,9 +138,18 @@ class Splendor extends AbstractGame {
   }
 
   _changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex, lapidaryMode) {
-		// Actually move
 		let data_tuple = this.py.changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex, lapidaryMode).toJs({create_proxies: false});
 		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;  	
+  }
+
+  _changeNoble(index, nobleId, assignedPlayer) {
+		let data_tuple = this.py.changeNoble(index, nobleId, assignedPlayer).toJs({create_proxies: false});
+		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;  	
+  }
+
+  _changeGemOrNbCards(player, color, type, delta) {
+  	let data_tuple = this.py.changeGemOrNbCards(player, color, type, delta).toJs({create_proxies: false});
+		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
   }
 
   getLastActionDetails() {
@@ -459,17 +468,8 @@ class NobleEditor {
 			// Assign noble to a player / bank
 			this.assignations[this.selectedSlot] = Number(btnId.substr(14));
 		}
+		game._changeNoble(this.selectedSlot, this.noblesId[this.selectedSlot], this.assignations[this.selectedSlot]);
 
-		let curPlayer = this.assignations[this.selectedSlot];	
-		let nobleId = this.noblesId[this.selectedSlot];
-		// Change noble value in bank
-		let index = 31 + this.selectedSlot;
-		this._changeNobleOrReset(index, all_nobles[nobleId], curPlayer<0);
-		// Change noble value for players
-		for (let player = 0; player < 2; ++player) {
-			index = 36 + 3*player + this.selectedSlot;
-			this._changeNobleOrReset(index, all_nobles[nobleId], curPlayer==player);
-		}
 
 		if (this.selectedSlot+1 < 3) {
 			++this.selectedSlot;
@@ -482,25 +482,6 @@ class NobleEditor {
 	buttonClick(btnId) {
 		this.selectedSlot = Number(btnId.substr(10));
 		this.refresh();
-	}
-
-	_changeNobleOrReset(index, tokens, confirmChange) {
-		this._resetNoble(index);
-		if (!confirmChange) {
-			return;
-		}
-
-		// Core change
-		tokens.forEach(token => game.board[index][token[0]] = token[1]);
-		// Set nb of points, always 3
-		game.board[index][6] = 3;
-	}
-
-	_resetNoble(index) {
-		// Reset
-		for (let i = 0; i < 7; ++i) {
-			game.board[index][i] = 0;
-		}
 	}
 
 	_findNobleId(tokens) {
@@ -571,7 +552,7 @@ class GemEditor {
 		let color = Number(btnInfo[1][1]);
 		let delta = (btnInfo[2] == 'plus') ? +1 : -1;
 
-		game.py.changeGemOrNbCards(this.selectedPlayer, color, type, delta);
+		game._changeGemOrNbCards(this.selectedPlayer, color, type, delta);
 		this.refresh();
 	}
 
@@ -919,7 +900,6 @@ function startEdit(tier=0, index=0, lapidaryMode=false) {
 }
 
 function afterEdit() {
-	game.update();
 	refreshBoard();
 	refreshButtons();
 	changeMoveText();

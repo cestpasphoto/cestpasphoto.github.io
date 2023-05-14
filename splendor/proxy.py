@@ -1,6 +1,6 @@
 from MCTS import MCTS
 from SplendorGame import SplendorGame as Game
-from SplendorLogic import move_to_str, np_all_cards_1, np_all_cards_2, np_all_cards_3
+from SplendorLogic import move_to_str, np_all_cards_1, np_all_cards_2, np_all_cards_3, np_all_nobles
 from SplendorLogicNumba import my_packbits, my_unpackbits
 import numpy as np
 
@@ -159,13 +159,30 @@ def changeDeckCard(tier, color, points, selectedIndexInList, locationIndex, lapi
 	valids = g.getValidMoves(board, player)
 	return player, end, board.tolist(), valids
 
-def changeGemOrNbCards(player, color, type_, delta):
-	if (player < 0): # Bank
-		g.board.bank[0][color]               = max(0, g.board.bank[0][color]               + delta)
+def changeGemOrNbCards(p, color, type_, delta):
+	if (p < 0): # Bank
+		g.board.bank[0][color]          = max(0, g.board.bank[0][color]          + delta)
 	elif type_ == 'gem':
-		g.board.players_gems[player][color]  = max(0, g.board.players_gems[player][color]  + delta)
+		g.board.players_gems[p][color]  = max(0, g.board.players_gems[p][color]  + delta)
 	else:
-		g.board.players_cards[player][color] = max(0, g.board.players_cards[player][color] + delta)
+		g.board.players_cards[p][color] = max(0, g.board.players_cards[p][color] + delta)
+
+	end = g.getGameEnded(board, player)
+	valids = g.getValidMoves(board, player)
+	return player, end, board.tolist(), valids
+
+def resetNoble(index):
+	g.board.nobles[index, :] = 0
+	g.board.players_nobles[index::2, :] = 0
+
+def changeNoble(index, nobleId, assignedPlayer):
+	g.board.nobles[index, :] = np_all_nobles[nobleId, :] if assignedPlayer < 0 else 0
+	for p in range(2):
+		g.board.players_nobles[3*p+index, :] = np_all_nobles[nobleId, :] if assignedPlayer == p else 0
+
+	end = g.getGameEnded(board, player)
+	valids = g.getValidMoves(board, player)
+	return player, end, board.tolist(), valids
 
 def setData(player_, setBoard):
 	global g, board, mcts, player
