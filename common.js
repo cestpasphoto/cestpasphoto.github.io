@@ -120,9 +120,12 @@ class AbstractMoveSelector {
 
   resetAndStart() {
     this.reset();
+    this.start();
   }
 
   reset() { }
+
+  start() { }
 
   // return move, or -1 if move is undefined
   getMove() {}

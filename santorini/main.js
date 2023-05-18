@@ -288,6 +288,10 @@ class MoveSelector extends AbstractMoveSelector {
     this.editMode = 0; // 0 = no edit mode, 1 = editing levels, 2 = editing workers
   }
 
+  start() {
+    this._select_relevant_cells();
+  }
+
   // return move when finished, else null
   click(clicked_y, clicked_x) {
     this.stage++; 

@@ -917,4 +917,4 @@ var gemEditor = new GemEditor();
 var nobleEditor = new NobleEditor();
 var currentEditor = cardEditor;
 var editedGame = false;
-var editionOngoing = true;
+var editionOngoing = false;
