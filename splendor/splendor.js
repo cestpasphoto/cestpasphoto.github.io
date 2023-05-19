@@ -587,7 +587,7 @@ function _svgIfSelected(selected) {
 
 function generateSvgCard(colorIndex, points, tokens, selected) {
 	let [bgColor, mainColor, fontColor] = colors[colorIndex]
-	let svg = `<svg viewBox="0 0 60 60">`;
+	let svg = `<svg class="svgL" viewBox="0 0 60 60">`;
 	// Draw background first
 	svg += `<rect width="100%" height="100%" fill="${bgColor}"/>`;
 	svg += `<rect width="100%" height="30%" fill="white" fill-opacity="50%"/>`;
@@ -613,10 +613,10 @@ function generateSvgCard(colorIndex, points, tokens, selected) {
 
 function generateSvgNbCards(colorIndex, nbCards, hideIfZero=true) {
 	if (nbCards <= 0 && hideIfZero) {
-		return `<svg viewBox="0 0 32 32"></svg>`;
+		return `<svg class="svgS" viewBox="0 0 32 32"></svg>`;
 	}
 	let [bgColor, mainColor, fontColor] = colors[colorIndex]
-	let svg = `<svg viewBox="0 0 32 32">`;
+	let svg = `<svg class="svgS" viewBox="0 0 32 32">`;
 	svg += `<rect width="100%" height="100%" fill="${mainColor}" />`;
 	svg += `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" fill="${fontColor}">${nbCards}</text>`;
 	svg += `</svg>`;
@@ -625,10 +625,10 @@ function generateSvgNbCards(colorIndex, nbCards, hideIfZero=true) {
 
 function generateSvgGem(colorIndex, nbGems, selected, hideIfZero=true) {
 	if (nbGems <= 0 && hideIfZero) {
-		return `<svg viewBox="0 0 32 32">${_svgIfSelected(selected)}</svg>`;
+		return `<svg class="svgS" viewBox="0 0 32 32">${_svgIfSelected(selected)}</svg>`;
 	}
 	let [bgColor, mainColor, fontColor] = colors[colorIndex]
-	let svg = `<svg viewBox="0 0 32 32">`;
+	let svg = `<svg class="svgS" viewBox="0 0 32 32">`;
 	svg += `<circle cx="50%" cy="50%" r="50%" fill="${mainColor}" />`;
 	svg += `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" fill="${fontColor}">${nbGems}</text>`;
 	svg += _svgIfSelected(selected) + `</svg>`;
@@ -637,7 +637,7 @@ function generateSvgGem(colorIndex, nbGems, selected, hideIfZero=true) {
 
 function generateSvgSmall(colorIndex, points, tokens, selected) {
 	let [bgColor, mainColor, fontColor] = colors[colorIndex]
-	let svg = `<svg viewBox="0 0 32 32">`;
+	let svg = `<svg class="svgS" viewBox="0 0 32 32">`;
 	// Draw background first
 	svg += `<rect width="100%" height="100%" fill="${bgColor}"/>`;
 	svg += `<rect width="100%" height="33%" fill="white" fill-opacity="50%"/>`;
@@ -663,7 +663,7 @@ function generateSvgSmall(colorIndex, points, tokens, selected) {
 
 function generateSvgNoble(tokens, selected=0) {
 	let [bgColor, mainColor, fontColor] = colors[6];
-	let svg = `<svg viewBox="0 0 32 32">`;
+	let svg = `<svg class="svgS" viewBox="0 0 32 32">`;
 	// Draw background first
 	svg += `<rect width="100%" height="100%" fill="${bgColor}"/>`;
 	for (const [index, token] of tokens.entries()) {
@@ -679,7 +679,7 @@ function generateSvgNoble(tokens, selected=0) {
 }
 
 function generateDeck(number, selected) {
-	let svg = `<svg viewBox="0 0 60 60">`;
+	let svg = `<svg class="svgL" viewBox="0 0 60 60">`;
 	svg += `<polygon points="0,0 60,0 60,60 0,60" fill="black"/>`;
 	svg += `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" fill="darkgray">${number} cards</text>`;
 	svg += _svgIfSelected(selected) + `</svg>`;
@@ -687,8 +687,8 @@ function generateDeck(number, selected) {
 }
 
 function generateTxtPoints(player, scoreDetails) {
-	let result = ``;
-	result += `<div class="ui header">${scoreDetails[0]} point(s)</div>`;
+	let result = game.isHumanPlayer(player) ? `You - ` : ` AI - `;
+	result += `${scoreDetails[0]} point(s)`;
 	if (scoreDetails[2] > 0) {
 		result += ` (incl. ${scoreDetails[2]} by nobles)`;
 	}
