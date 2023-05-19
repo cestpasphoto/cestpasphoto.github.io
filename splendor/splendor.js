@@ -576,13 +576,19 @@ class GemEditor {
 /* ===== DISPLAY ===== */
 /* =================== */
 
-function _svgIfSelected(selected) {
+function _svgIfSelected(selected, isCircle=false) {
 	if (selected == 0) {
 		return "";
 	}
 
-	let color = (selected == 2) ? 'turquoise' : ((selected == 1) ? 'deeppink' : 'chocolate');
-	return `<circle cx="85%" cy="15%" r="5px" fill="${color}"/>`;
+	let color = (selected == 1) ? 'aquamarine' : 'tan';
+	if (selected == 3) {
+		return `<circle cx="85%" cy="15%" r="5px" fill="${color}"/>`;
+	}	else if (isCircle) {
+		return `<circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:${color}" />`;
+	} else {
+		return `<rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:${color}" />`;
+	}
 }
 
 function generateSvgCard(colorIndex, points, tokens, selected) {
@@ -625,13 +631,13 @@ function generateSvgNbCards(colorIndex, nbCards, hideIfZero=true) {
 
 function generateSvgGem(colorIndex, nbGems, selected, hideIfZero=true) {
 	if (nbGems <= 0 && hideIfZero) {
-		return `<svg class="svgS" viewBox="0 0 32 32">${_svgIfSelected(selected)}</svg>`;
+		return `<svg class="svgS" viewBox="0 0 32 32">${_svgIfSelected(selected, true)}</svg>`;
 	}
 	let [bgColor, mainColor, fontColor] = colors[colorIndex]
 	let svg = `<svg class="svgS" viewBox="0 0 32 32">`;
 	svg += `<circle cx="50%" cy="50%" r="50%" fill="${mainColor}" />`;
 	svg += `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" fill="${fontColor}">${nbGems}</text>`;
-	svg += _svgIfSelected(selected) + `</svg>`;
+	svg += _svgIfSelected(selected, true) + `</svg>`;
 	return svg;
 }
 
