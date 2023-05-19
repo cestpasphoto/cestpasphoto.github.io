@@ -4,19 +4,14 @@
 /* =====  CONST  ===== */
 /* =================== */
 
-const defaultModelFileName = 'splendor/model.onnx';
-
-const tokensCoord      = [["20%", "83%"], ["20%", "53%"], ["50%", "83%"], ["50%", "53%"]];
-const tokensCoordSmall = [["20%", "83%"], ["20%", "50%"], ["50%", "83%"], ["50%", "50%"]];
-const tokensCoordNoble = [["25%", "83%"], ["25%", "50%"], ["25%", "16%"]];
 const colors = [
-	["lightgray"  , "ghostwhite", "black"],
-	["dodgerblue" , "mediumblue", "white"],
-	["lightgreen" , "green"     , "white"],
-	["tomato"     , "red"       , "white"],
-	["dimgray"    , "black"     , "white"],
-	["lightyellow", "yellow"    , "black"],
-	["gray"       , "gray"      , "black"] // For noble
+	["gainsboro"  , "ghostwhite", "black"], // white
+	["dodgerblue" , "mediumblue", "white"], // blue
+	["lightgreen" , "green"     , "white"], // green
+	["tomato"     , "red"       , "white"], // red
+	["dimgray"    , "black"     , "white"], // black
+	["lightyellow", "yellow"    , "black"], // yellow
+	["darkgray"   , "darkgray"  , "black"]  // For noble
 ];
 
 const different_gems_up_to_2 = [
@@ -52,8 +47,13 @@ const list_of_files = [
 	['splendor/SplendorLogicNumba.py', 'SplendorLogicNumba.py'],
 ];
 
+const defaultModelFileName = 'splendor/model.onnx';
 const sizeCB = [1, 56, 7];
 const sizeV = [1, 81];
+
+const tokensCoord      = [["20%", "83%"], ["20%", "53%"], ["50%", "83%"], ["50%", "53%"]];
+const tokensCoordSmall = [["20%", "83%"], ["20%", "50%"], ["50%", "83%"], ["50%", "50%"]];
+const tokensCoordNoble = [["25%", "83%"], ["25%", "50%"], ["25%", "16%"]];
 
 /* =================== */
 /* =====  LOGIC  ===== */
@@ -670,7 +670,7 @@ function generateSvgNoble(tokens, selected=0) {
 		let [x, y] = tokensCoordNoble[index];
 		let [col, tokValue] = tokens[index];
 		let [notUsed, tokCol, fontCol] = colors[col];
-		svg += `<circle cx="${x}" cy="${y}" r="0.3em" fill="${tokCol}" />`;
+		svg += `<rect x="calc(${x} - 0.3em)" y="calc(${y} - 0.3em)" width="0.6em" height="0.6em" fill="${tokCol}" />`;
 		svg += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" fill="${fontCol}">${tokValue}</text>`;
 	}
 
