@@ -9,7 +9,7 @@ class dotdict(dict):
     def __getattr__(self, name):
         return self[name]
 
-def init_stuff(numMCTSSims):
+def init_game(numMCTSSims):
 	global g, board, mcts, player
 
 	mcts_args = dotdict({

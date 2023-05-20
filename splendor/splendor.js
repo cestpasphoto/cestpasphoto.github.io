@@ -64,31 +64,10 @@ class Splendor extends AbstractGame {
   	super()
 		this.py = null;
 		this.board = Array.from(Array(56), _ => Array(7).fill(0));
-		this.nextPlayer = 0;
-		this.gameEnded = [0, 0];
-		this.history = [];          // List all previous states from new to old, not including current one
 		this.validMoves = Array(81); this.validMoves.fill(false);
-		this.gameMode = 'P0';
   }
 
-  init_game() {
-		if (this.py == null) {
-			console.log('Now importing python module');
-			this.py = pyodide.pyimport("proxy");
-		}
-		console.log('Run a game');
-		let data_tuple = this.py.init_stuff(25).toJs({create_proxies: false});
-		this.changeDifficulty(document.getElementById('difficultyForm').value);
-		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-  }
-
-  _applyMove(action, manualMove) {
-		this.history.unshift([this.nextPlayer, this.board, action]);
-
-		// Actually move
-		let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
-		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-
+  post_move(action, manualMove) {
 		if (editedGame) {
 			// If game was edited, and that we just took a random card, propose user to edit it
 			if (action < 12+12) {
@@ -695,7 +674,7 @@ function generateDeck(number, selected) {
 }
 
 function generateTxtPoints(player, scoreDetails) {
-	let result = game.isHumanPlayer(player) ? `You - ` : ` AI - `;
+	let result = game.is_human_player(player) ? `You - ` : ` AI - `;
 	result += `${scoreDetails[0]} point(s)`;
 	if (scoreDetails[2] > 0) {
 		result += ` incl. ${scoreDetails[2]} by nobles`;
@@ -712,7 +691,7 @@ function _getSelectMode(itemType, index, lastAction=null, currentMove=true) {
 	if (currentMove) {
 		result = move_sel.isSelected(itemType, index);
 	}
-	if ((game.gameMode[0] == 'P' && game.isHumanPlayer(game.nextPlayer)) || game.gameMode == 'AI') {
+	if (!game.is_human_player('previous')) {
 		// Previous mode was from AI
 		if (lastAction !== null && result == 0) {
 			if (lastAction[0] == itemType || (itemType == 'gemback' && lastAction[0] == 'gem') || (itemType == 'card' && lastAction[0] == 'rsv')) {
@@ -767,7 +746,7 @@ function refreshBoard() {
 			if (color < 5) {
 				document.getElementById('p' + player + '_c' + color).innerHTML = generateSvgNbCards(color, game.getPlayerNbCards(player, color));
 			}
-			if (game.isHumanPlayer(player)) {
+			if (game.is_human_player(player)) {
 				let selectMode = _getSelectMode('gemback', color);
 				document.getElementById('p' + player + '_g' + color).innerHTML = `<a onclick="clickToSelect('gemback', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getPlayerGems(player, color), selectMode)} </a>`;
 			} else {
@@ -782,7 +761,7 @@ function refreshBoard() {
 			let cardInfo = game.getPlayerReserved(player, rsvIndex);
 			
 				
-			if (game.isHumanPlayer(player)) {
+			if (game.is_human_player(player)) {
 				if (cardInfo[0] < 0) {
 					document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = ``;
 				} else {
@@ -819,7 +798,7 @@ function refreshButtons(loading=false) {
 	}
 	document.getElementById('btn_confirm').classList.remove('green', 'red', 'gray');
 
-	if (game.gameEnded.some(x => !!x)) {
+	if (game.is_ended()) {
 		// Game is finished, looking for the winner
 		console.log('End of game');
 		let color; let message;
@@ -882,7 +861,7 @@ function confirmSelect() {
 
 	// Do move
 	console.log('Move = ', move, ' = ', descr);
-	game.manual_move(move);
+	game.move(move, true);
 
 	refreshBoard();
 	refreshButtons();

@@ -25,7 +25,7 @@ async function predict(canonicalBoard, valids) {
   return {pi: Array.from(results.pi.data), v: Array.from(results.v.data)}
 }
 
-async function loadONNX(model=[]) {
+async function loadONNX(model) {
   globalThis.onnxSession = await ort.InferenceSession.create(defaultModelFileName);
   console.log('Loaded default ONNX');
 }
@@ -38,43 +38,74 @@ class AbstractGame {
   constructor() {
     if (this.constructor == AbstractGame) {
       throw new Error("Abstract classes can't be instantiated.");
-    } 
+    }
+
+    this.py = null;             // Python wrapper
+    this.nextPlayer = 0;        // ID of next player
+    this.previousPlayer = null; // ID of previous player
+    this.gameEnded = [0, 0];    // Has player P won, for each player
+    this.history = [];          // List all previous states from new to old, not including current one. Each contains an array with nextPlayer and board
+    this.gameMode = 'P0';       // "P0" or "P1" to define which player is human or "AI" for AIs only or "human" for no AI
+    this.numMCTSSims = 25;      // Number of MCTS simulations per move
+
+    // To define in extended class
+    this.board = null;          // Board representation (should not exist)
+    this.validMoves = null;     // Array boolean with valid moves 
   }
 
   init_game() {
+    this.nextPlayer = 0;
+    this.previousPlayer = null;
+    this.gameEnded = [0, 0];
+    this.history = [];
+    this.gameMode = 'P0';
+    this.validMoves.fill(false);
+    
+    // Python init
+    if (this.py == null) {
+      console.log('Now importing python module');
+      this.py = pyodide.pyimport("proxy");
+    }
+    let data_tuple = this.py.init_game(this.numMCTSSims).toJs({create_proxies: false});
+    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+
+    this.post_init_game();
   }
 
-  manual_move(action) {
-    console.log('manual move:', action);
-    if (this.validMoves[action]) {
-      this._applyMove(action, true);
-    } else {
+  move(action, isManualMove) {
+    if (this.is_ended()) {
+      console.log('Cant move, game is finished');
+    } else if (!this.validMoves[action]) {
       console.log('Not a valid action', this.validMoves);
-    }    
+    } else {
+      this.pre_move(action, isManualMove);
+
+      // Record board
+      this.history.unshift([this.nextPlayer, this.board]);
+      this.previousPlayer = this.nextPlayer;
+      // Actually move
+      let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
+      [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+
+      this.post_move(action, isManualMove);
+    }  
   }
 
-  _applyMove(action, manualMove) { }
-
-  async ai_guess_and_play() {
-    if (game.gameEnded.some(x => !!x)) {
+  async ai_guess_and_move() {
+    if (this.is_ended()) {
       console.log('Not guessing, game is finished');
       return;
     }
-    // console.log('guessing');
     var best_action = await this.py.guessBestAction();
-    this._applyMove(best_action, false);
+    this.move(best_action, false);
   }
 
-  changeDifficulty(numMCTSSims) {
-    this.py.changeDifficulty(Number(numMCTSSims));
-  }
-
-  previous() {
+  revert_to_previous_human_move() {
     if (this.history.length == 0) {
       return;
     }
 
-    let player = (this.gameMode == 'P0') ? 0 : 1;
+    let player = this.who_is_human();
     // Revert to the previous 0 before a 1, or first 0 from game
     let index;
     for (index = 0; index < this.history.length; ++index) {
@@ -88,17 +119,50 @@ class AbstractGame {
     console.log('board to revert:', this.history[index][1]);
     let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
     [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    this.afterSetData();
-    this.history.splice(0, index+1); // remove reverted move from history and further moves
-    this.lastMove = -1;
-    this.cellsOfLastMove = [];
+    this.previousPlayer = null;
+    this.post_set_data();
+    // Remove reverted move from history and later moves
+    this.history.splice(0, index+1); 
   }
 
-  isHumanPlayer(player) {
+  // ----- UTILS METHODS -----
+
+  change_difficulty(numMCTSSims) {
+    this.numMCTSSims = Number(numMCTSSims);
+    this.py.changeDifficulty(this.numMCTSSims);
+  }
+
+  is_ended() {
+    return this.gameEnded.some(x => !!x);
+  }
+
+  is_human_player(player) {
+    if (this.gameMode == 'AI') {
+      return false;
+    } else if (this.gameMode == 'Human') {
+      return true;
+    }
+
+
+    if (player == 'next') {
+      player = this.nextPlayer;
+    } else if (player == 'previous') {
+      player = this.previousPlayer;
+    }
     return player == ((this.gameMode == 'P0') ? 0 : 1);
   }
 
-  afterSetData() {}
+  who_is_human() {
+    return (this.gameMode == 'P0') ? 0 : 1;
+  }
+
+  // ----- METHODS TO EXTEND -----
+
+  post_init_game() {}
+  pre_move(action, isManualMove) {}
+  post_move(action, isManualMove) {}
+  post_set_data() {}
+  has_changed_on_last_move(item_vector) {}
 }
 
 /* =================== */
@@ -141,7 +205,7 @@ async function ai_play_one_move() {
   refreshButtons(loading=true);
   let aiPlayer = game.nextPlayer;
   while ((game.nextPlayer == aiPlayer) && game.gameEnded.every(x => !x)) {
-    await game.ai_guess_and_play();
+    await game.ai_guess_and_move();
     refreshBoard();
   }
   refreshButtons(loading=false);
@@ -185,7 +249,7 @@ function reset() {
 
 function cancel_and_undo() {
   if (move_sel.stage == 0) {
-    game.previous();
+    game.revert_to_previous_human_move();
   }
   move_sel.resetAndStart();
 

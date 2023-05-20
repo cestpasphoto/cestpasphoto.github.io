@@ -91,82 +91,43 @@ function generateSvg(nb_levels, worker) {
 class Santorini extends AbstractGame {
   constructor() {
     super()
-    this.py = null;
     this.board = Array.from(Array(5), _ => Array.from(Array(5), _ => Array(3).fill(0)));
-    this.nextPlayer = 0;
     this.validMoves = Array(2*NB_GODS*9*9); this.validMoves.fill(false);
-    this.gameEnded = [0, 0];
-    this.history = [];          // List all previous states from new to old, not including current one
     this.lastMove = -1;
     this.powers = [0, 0];       // Which power each player has
     this.powers_data = [0, 0];  // Which data stored in power position
-    this.gameMode = 'P0';
     this.cellsOfLastMove = [];
   }
 
-  init_game() {
-    this.history = [];
+  post_init_game() {
     this.lastMove = -1;
     this.cellsOfLastMove = [];
 
-    if (pyodide == null) {
-      // Random board
-      this.board = Array.from(Array(5), _ => Array.from(Array(5), _ => Array(3).fill(0)));
-      this.validMoves.fill(true);
-      for (let y = 0; y < 5; y++) {
-        for (let x = 0; x < 5; x++) {
-          let worker = Math.random() * 15 - 7;
-          let level = Math.random() * 9;
-          this.board[y][x][0] = Math.floor((worker>0) ? worker-Math.min(5,worker) : worker-Math.max(-5,worker));
-          this.board[y][x][1] = Math.floor(level - Math.min(6, level));
-          /*console.log(this.board[y][x][0], this.board[y][x][1]);*/
-        }
-      }
-      // Random powers
-      let power = Math.floor(Math.random()*NB_GODS);
-      console.log('Random power 1 = ', power);
-      this.board[Math.floor(power/5)][power%5][2] = 64;
-      power = Math.floor(Math.random()*NB_GODS) + NB_GODS;
-      console.log('Random power 2 = ', power-NB_GODS);
-      this.board[Math.floor(power/5)][power%5][2] = 64;      
-    } else {
-      if (this.py == null) {
-        console.log('Now importing python module');
-        this.py = pyodide.pyimport("proxy");
-      }
-      console.log('Run a game');
-      let data_tuple = this.py.init_stuff(25).toJs({create_proxies: false});
-      this.changeDifficulty(document.getElementById('difficultyForm').value);
-      [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    }
-
-    // Find powers of each player
-    for (let p = 0; p < 2; p++) {
-      for (let i = p*NB_GODS; i < (p+1)*NB_GODS; i++) {
-        let y = Math.floor(i/5), x = i%5;
-        if (this.board[y][x][2] > 0) {
-          this.powers[p] = i - p*NB_GODS;
-          console.log('Player', p, 'has power', this.powers[p]);
-        }
-      }
-    }
-    this._readPowersData();
+    // Find powers and power info for each player
+    this._read_power_info(false);
   }
 
-  _applyMove(action, manualMove) {
-    this.history.unshift([this.nextPlayer, this.board]);
+  pre_move(action, manualMove) {
     if (manualMove) {
       this.cellsOfLastMove = [];
     } else {
       this._updateLastCells(action);
     }
     this.lastMove = action;
+  }
 
-    // Actually move
-    let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
-    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-    this._readPowersData();
-    
+  post_move(action, manualMove) {
+    this._read_power_info();    
+  }
+
+  post_set_data() {
+    this.lastMove = -1;
+    this.cellsOfLastMove = [];
+    this._read_power_info();
+  }
+
+  has_changed_on_last_move(item_vector) {
+    return this.cellsOfLastMove.some(e => e.toString() == item_vector.toString());
   }
 
   _findWorker(worker) {
@@ -186,16 +147,22 @@ class Santorini extends AbstractGame {
     let [workerY, workerX] = this._findWorker(worker_id);
     let [moveY, moveX] = Santorini._applyDirection(workerY, workerX, move_direction);
     let [buildY, buildX] = Santorini._applyDirection(moveY, moveX, build_direction);
-    //this.cellsOfLastMove = [[workerY, workerX], [moveY, moveX], [buildY, buildX]];
-    this.cellsOfLastMove = [[workerY, workerX]];
+    this.cellsOfLastMove = [workerY, workerX];
   }
 
-  afterSetData() {
-    this._readPowersData();
-  }
-
-  _readPowersData() {
+  _read_power_info(read_data_only=true) {
     for (let p = 0; p < 2; p++) {
+
+      if (!read_data_only) {
+        for (let i = p*NB_GODS; i < (p+1)*NB_GODS; i++) {
+          let y = Math.floor(i/5), x = i%5;
+          if (this.board[y][x][2] > 0) {
+            this.powers[p] = i - p*NB_GODS;
+            console.log('Player', p, 'has power', this.powers[p]);
+          }
+        }
+      }
+
       let index = this.powers[p] + p * NB_GODS;
       let y = Math.floor(index/5), x = index%5;
       this.powers_data[p] = this.board[y][x][2];
@@ -236,7 +203,7 @@ class Santorini extends AbstractGame {
       // Update all other data
       let data_tuple = this.py.setData(this.nextPlayer, this.board).toJs({create_proxies: false});
       [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
-      this._readPowersData();
+      this._read_power_info();
     } else {
       console.log('Dont know what to do in editMode', editMode);
     }
@@ -247,10 +214,6 @@ class Santorini extends AbstractGame {
     this.powers_data[player] = 64;
     let power = this.powers[player] + player * NB_GODS;
     this.board[Math.floor(power/5)][power%5][2] = 64;
-  }
-
-  isALastCell(y, x) {
-    return this.cellsOfLastMove.some(e => e[0]==y && e[1]==x);
   }
 
   static decodeMove(move) {
@@ -475,9 +438,9 @@ function refreshBoard() {
 
       // generateSvg deals with nb of levels, dome, worker and color
       cell_content = '<div class="ui middle aligned tiny image">';
-      if (game.isALastCell(y,x)) {
+      if (game.has_changed_on_last_move([y,x])) {
         // Since dot only shows for AI, making it red if human is P0 else green
-        let dotColor = (game.gameMode == 'P0') ? 'red' : 'green';
+        let dotColor = game.is_human_player(0) ? 'red' : 'green';
         cell_content += `<div class="ui tiny ${dotColor} corner empty circular label"></div>`;
       }
       cell_content += generateSvg(level, worker) + '</div>';
@@ -518,7 +481,7 @@ function refreshButtons(loading=false) {
   } else {
     allBtn.style = "";
     loadingBtn.style = "display: none";
-    if (game.gameEnded.some(x => !!x)) {
+    if (game.is_ended()) {
       // Game is finished, looking for the winner
       console.log('End of game');
       allBtn.classList.add((game.gameEnded[0]>0) ? 'green' : 'red');
@@ -606,13 +569,12 @@ function cellClick(clicked_y = null, clicked_x = null) {
     move_sel.click(clicked_y == null ? -1 : clicked_y, clicked_x == null ? -1 : clicked_x);
     let move = move_sel.getMove();
 
-    loadONNX(game.powers);
     refreshBoard();
     refreshButtons();
     changeMoveText(move_sel.getPartialDescription(), move_sel.stage == 1 ? 'add' : 'edit');
 
     if (move >= 0) {
-      game.manual_move(move);
+      game.move(move, true);
       move_sel.reset();
       refreshBoard();
       refreshButtons();
@@ -634,7 +596,7 @@ function togglePower(state) {
 
   let move = move_sel.getMove();
   if (move >= 0) {
-    game.manual_move(move);
+    game.move(move, true);
     move_sel.reset();
     refreshBoard();
     refreshButtons();
