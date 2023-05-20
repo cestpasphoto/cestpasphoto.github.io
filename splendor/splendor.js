@@ -350,7 +350,8 @@ class CardEditor {
 		// Small cards
 		for (let index = 0; index < 4; index++) {
 			let cardInfo = game.getTierCard(this.tier, index);
-			document.getElementById('editor_info' + index).innerHTML = generateSvgSmall(cardInfo[0], cardInfo[1], cardInfo[2], 0);
+			let selectMode = (index == this.index) ? 1 : 0;
+			document.getElementById('editor_info' + index).innerHTML = generateSvgSmall(cardInfo[0], cardInfo[1], cardInfo[2], selectMode);
 		}
 
 		// Buttons
@@ -372,7 +373,8 @@ class CardEditor {
 		// Proposed cards
 		for (let index = 0; index < this.cardsInfo.length; index++) {
 			let cardInfo = this.cardsInfo[index];
-			document.getElementById('sel_c' + index).innerHTML = `<a onclick="cardEditor.clickToEdit(${index});event.preventDefault();"> ${generateSvgCard(cardInfo[0], cardInfo[1], cardInfo[2], 0)} </a>`;
+			let selectMode = (this.currentCard.toString() == cardInfo.toString()) ? 1 : 0;
+			document.getElementById('sel_c' + index).innerHTML = `<a onclick="cardEditor.clickToEdit(${index});event.preventDefault();"> ${generateSvgCard(cardInfo[0], cardInfo[1], cardInfo[2], selectMode)} </a>`;
 		}
 		for (let index = this.cardsInfo.length; index < 8; index++) {
 			document.getElementById('sel_c' + index).innerHTML = `<svg viewBox="0 0 60 60"></svg>`;
@@ -696,7 +698,7 @@ function generateTxtPoints(player, scoreDetails) {
 	let result = game.isHumanPlayer(player) ? `You - ` : ` AI - `;
 	result += `${scoreDetails[0]} point(s)`;
 	if (scoreDetails[2] > 0) {
-		result += ` (incl. ${scoreDetails[2]} by nobles)`;
+		result += ` incl. ${scoreDetails[2]} by nobles`;
 	}
 	return result;
 }
