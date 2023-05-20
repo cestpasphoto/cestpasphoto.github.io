@@ -1,0 +1,318 @@
+Seulement dans ../: Game.py
+Seulement dans ../../../splendor/alpha-zero-general/splendor/: __init__.py
+Seulement dans ../../../splendor/alpha-zero-general/splendor/: many_games.gif
+Seulement dans ../: MCTS.py
+Seulement dans ../: model.onnx
+Seulement dans ../../../splendor/alpha-zero-general/splendor/: NNet.py
+Seulement dans ../: patch
+Seulement dans ../../../splendor/alpha-zero-general/splendor/: pretrained_2players.pt
+Seulement dans ../../../splendor/alpha-zero-general/splendor/: pretrained_3players.pt
+Seulement dans ../../../splendor/alpha-zero-general/splendor/: pretrained_4players.pt
+Seulement dans ../: proxy.py
+Seulement dans ../__pycache__: Game.cpython-39.pyc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: __init__.cpython-39.pyc
+Seulement dans ../__pycache__: MCTS.cpython-39.pyc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: NNet.cpython-39.pyc
+Seulement dans ../__pycache__: proxy.cpython-39.pyc
+Les fichiers binaires ../../../splendor/alpha-zero-general/splendor/__pycache__/SplendorGame.cpython-39.pyc et ../__pycache__/SplendorGame.cpython-39.pyc sont différents
+Les fichiers binaires ../../../splendor/alpha-zero-general/splendor/__pycache__/SplendorLogic.cpython-39.pyc et ../__pycache__/SplendorLogic.cpython-39.pyc sont différents
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.action_size-94.py39.1.nbc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.action_size-94.py39.nbi
+Les fichiers binaires ../../../splendor/alpha-zero-general/splendor/__pycache__/SplendorLogicNumba.cpython-39.pyc et ../__pycache__/SplendorLogicNumba.cpython-39.pyc sont différents
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.my_packbits-103.py39.1.nbc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.my_packbits-103.py39.2.nbc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.my_packbits-103.py39.nbi
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.my_random_choice-98.py39.1.nbc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.my_random_choice-98.py39.nbi
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.my_unpackbits-108.py39.1.nbc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.my_unpackbits-108.py39.nbi
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.np_all_axis1-112.py39.1.nbc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.np_all_axis1-112.py39.nbi
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.observation_size-90.py39.1.nbc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.observation_size-90.py39.2.nbc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorLogicNumba.observation_size-90.py39.nbi
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorNNet.cpython-39.pyc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/__pycache__: SplendorPlayers.cpython-39.pyc
+Seulement dans ../../../splendor/alpha-zero-general/splendor/: sample_game.gif
+Seulement dans ../../../splendor/alpha-zero-general/splendor/: sample_training.jpg
+diff -ur ../../../splendor/alpha-zero-general/splendor/SplendorGame.py ../SplendorGame.py
+--- ../../../splendor/alpha-zero-general/splendor/SplendorGame.py	2023-05-19 18:56:09.154365426 +0200
++++ ../SplendorGame.py	2023-05-20 08:01:46.484359402 +0200
+@@ -1,12 +1,9 @@
+-import sys
+-sys.path.append('..')
+ from Game import Game
+-from .SplendorLogic import print_board, move_to_str
+-from .SplendorLogicNumba import Board, observation_size, action_size
++from SplendorLogic import print_board, move_to_str
++from SplendorLogicNumba import Board, observation_size, action_size
+ import numpy as np
+-from numba import jit, njit
+ 
+-NUMBER_PLAYERS = 3
++NUMBER_PLAYERS = 2
+ 
+ class SplendorGame(Game):
+ 	def __init__(self):
+Seulement dans ../: splendor.js
+diff -ur ../../../splendor/alpha-zero-general/splendor/SplendorLogicNumba.py ../SplendorLogicNumba.py
+--- ../../../splendor/alpha-zero-general/splendor/SplendorLogicNumba.py	2023-05-14 22:19:23.786840721 +0200
++++ ../SplendorLogicNumba.py	2023-05-20 08:03:22.576970654 +0200
+@@ -1,7 +1,5 @@
+-from .SplendorLogic import np_all_nobles, np_all_cards_1, np_all_cards_2, np_all_cards_3, len_all_cards, np_different_gems_up_to_2, np_different_gems_up_to_3, np_cards_symmetries, np_reserve_symmetries
++from SplendorLogic import np_all_nobles, np_all_cards_1, np_all_cards_2, np_all_cards_3, len_all_cards, np_different_gems_up_to_2, np_different_gems_up_to_3, np_cards_symmetries, np_reserve_symmetries
+ import numpy as np
+-from numba import njit
+-import numba
+ 
+ idx_white, idx_blue, idx_green, idx_red, idx_black, idx_gold, idx_points = range(7)
+ mask = np.array([128, 64, 32, 16, 8, 4, 2, 1], dtype=np.uint8)
+@@ -91,25 +89,20 @@
+ def observation_size(num_players):
+ 	return (32 + 10*num_players + num_players*num_players, 7)
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def action_size():
+ 	return 81
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def my_random_choice(prob):
+ 	result = np.searchsorted(np.cumsum(prob), np.random.random(), side="right")
+ 	return result
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def my_packbits(array):
+ 	product = np.multiply(array.astype(np.uint8), mask[:len(array)])
+ 	return product.sum()
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def my_unpackbits(value):
+ 	return (np.bitwise_and(value, mask) != 0).astype(np.uint8)
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def np_all_axis1(x):
+ 	out = np.ones(x.shape[0], dtype=np.bool8)
+ 	for i in range(x.shape[1]):
+@@ -117,25 +110,6 @@
+ 	return out
+ 
+ 
+-spec = [
+-	('num_players'         , numba.int8),
+-	('current_player_index', numba.int8),
+-	('num_gems_in_play'    , numba.int8),
+-	('num_nobles'          , numba.int8),
+-	('max_moves'           , numba.uint8),
+-	('score_win'           , numba.int8),
+-
+-	('state'           , numba.int8[:,:]),
+-	('bank'            , numba.int8[:,:]),
+-	('cards_tiers'     , numba.int8[:,:]),
+-	('nb_deck_tiers'   , numba.int8[:,:]),
+-	('nobles'          , numba.int8[:,:]),
+-	('players_gems'    , numba.int8[:,:]),
+-	('players_nobles'  , numba.int8[:,:]),
+-	('players_cards'   , numba.int8[:,:]),
+-	('players_reserved', numba.int8[:,:]),
+-]
+-@numba.experimental.jitclass(spec)
+ class Board():
+ 	def __init__(self, num_players):
+ 		n = num_players
+diff -ur ../../../splendor/alpha-zero-general/splendor/SplendorLogic.py ../SplendorLogic.py
+--- ../../../splendor/alpha-zero-general/splendor/SplendorLogic.py	2022-12-03 07:33:31.854488168 +0100
++++ ../SplendorLogic.py	2023-04-20 08:20:31.047379411 +0200
+@@ -1,5 +1,4 @@
+ import numpy as np
+-from colorama import Style, Fore, Back
+ import random
+ import itertools
+ 
+@@ -22,28 +21,28 @@
+ 		i = move - 12-15-3
+ 		if i < len(list_different_gems_up_to_3):
+ 			if short:
+-				gems_str = [ light_colors[i] + "  " + Style.RESET_ALL  for i, v in enumerate(list_different_gems_up_to_3[i][:5]) if v != 0]
++				gems_str = ["  " for i, v in enumerate(list_different_gems_up_to_3[i][:5]) if v != 0]
+ 				return f'{" ".join(gems_str)}'
+ 			else:
+ 				gems_str = [str(v)+" "+color_names[i] for i, v in enumerate(list_different_gems_up_to_3[i][:5]) if v != 0]
+ 				return f'take {", ".join(gems_str)}'		
+ 		else:
+ 			if short:
+-				return f'{light_colors[i-len(list_different_gems_up_to_3)] + "    " + Style.RESET_ALL}'
++				return f'{"    "}'
+ 			else:
+ 				return f'take 2 gems of color {color_names[i-len(list_different_gems_up_to_3)]}'
+ 	elif move < 12+15+3+30+20:
+ 		i = move - 12-15-3-30
+ 		if i < len(list_different_gems_up_to_2):
+ 			if short:
+-				gems_str = [ light_colors[i] + "  " + Style.RESET_ALL for i, v in enumerate(list_different_gems_up_to_2[i][:5]) if v != 0]
++				gems_str = ["  " for i, v in enumerate(list_different_gems_up_to_2[i][:5]) if v != 0]
+ 				return f'give {" ".join(gems_str)}'
+ 			else:
+ 				gems_str = [str(v)+" "+color_names[i] for i, v in enumerate(list_different_gems_up_to_2[i][:5]) if v != 0]
+ 				return f'give back {", ".join(gems_str)}'
+ 		else:
+ 			if short:
+-				return f'give {light_colors[i-len(list_different_gems_up_to_2)] + "    " + Style.RESET_ALL}'
++				return f'give {"    "}'
+ 			else:
+ 				return f'give back 2 {color_names[i-len(list_different_gems_up_to_2)]}'
+ 	else:
+@@ -106,22 +105,6 @@
+ ##### END OF CLASS #####
+ 
+ idx_white, idx_blue, idx_green, idx_red, idx_black, idx_gold, idx_points = range(7)
+-light_colors = [
+-	Back.LIGHTWHITE_EX + Fore.BLACK,	# white
+-	Back.LIGHTBLUE_EX + Fore.WHITE,		# blue
+-	Back.LIGHTGREEN_EX + Fore.BLACK,	# green
+-	Back.LIGHTRED_EX + Fore.BLACK,		# red
+-	Back.LIGHTBLACK_EX + Fore.WHITE,	# black
+-	Back.LIGHTYELLOW_EX + Fore.BLACK,	# gold
+-]
+-strong_colors = [
+-	Back.WHITE + Fore.BLACK,	# white
+-	Back.BLUE + Fore.BLACK,		# blue
+-	Back.GREEN + Fore.BLACK,	# green
+-	Back.RED + Fore.BLACK,		# red
+-	Back.BLACK + Fore.WHITE,	# black
+-	Back.YELLOW + Fore.BLACK,	# gold
+-]
+ 
+ #    W Blu G  R  Blk  Point
+ all_nobles = [
+@@ -278,129 +261,3 @@
+ np_all_cards_2 = np.array(all_cards_2, dtype=np.int8)
+ np_all_cards_3 = np.array(all_cards_3, dtype=np.int8)
+ len_all_cards = np.array([len(all_cards_1[0]), len(all_cards_2[0]), len(all_cards_3[0])], dtype=np.int8)
+-
+-def _print_round_and_scores(board):
+-	n = board.num_players
+-	print('='*10*n, f' round {board.get_round()}    ', end='')
+-	for p in range(n):
+-		print(f'{Style.BRIGHT}P{p}{Style.RESET_ALL}: {board.get_score(p)} points  ', end='')
+-	print('='*10*n, Style.RESET_ALL)
+-
+-def _print_nobles(board):
+-	print(f'{Style.BRIGHT}Nobles:  {Style.RESET_ALL}', end='')
+-	for noble in board.nobles:
+-		if noble[idx_points] == 0:
+-			print(f'< {Style.DIM}empty{Style.RESET_ALL} >', end=' ')
+-		else:
+-			print(f'< {noble[idx_points]} points ', end='')
+-			for i, color in enumerate(light_colors):
+-				if noble[i] != 0:
+-					print(f'{color} {noble[i]} {Style.RESET_ALL} ', end='')
+-			print(f'> ', end='')
+-	print(f'{Style.RESET_ALL}')
+-
+-def _print_card_line(card, line, space_between):
+-	if card[1,:5].sum() == 0:
+-		print(f' '*(8+space_between), end='')
+-		return
+-	card_color = np.flatnonzero(card[1,:5] != 0)[0]
+-	background = light_colors[card_color]
+-	print(background, end= '')
+-	if line == 0:
+-		print(f'     {Style.BRIGHT}{card[1][idx_points]}{Style.NORMAL}  ', end='')
+-	else:
+-		card_cost = np.flatnonzero(card[0,:5] != 0)
+-		if line-1 < card_cost.size:
+-			color = card_cost[line-1]
+-			value = card[0,color]
+-			print(f' {light_colors[color]} {value} {background}    ', end='')
+-		else:
+-			print(' '*8, end='')
+-	print(Style.RESET_ALL, end=' '*space_between)
+-
+-def _print_tiers(board):
+-	for tier in range(2, -1, -1):
+-		for line in range(5):
+-			if line == 3:
+-				print(f'Tier {tier}:  ', end='')
+-			elif line == 4 :
+-				print(f'  ({board.nb_deck_tiers[2*tier].sum():>2})   ', end='')
+-			else:
+-				print(f'         ', end='')
+-			for i in range(4):
+-				_print_card_line(board.cards_tiers[8*tier+2*i:8*tier+2*i+2, :], line, 4)
+-			print()
+-		print()
+-
+-def _print_bank(board):
+-	print(f'{Style.BRIGHT}Bank: {Style.RESET_ALL}   ', end='')
+-	for c in range(6):
+-		print(f'{light_colors[c]} {board.bank[0][c]} {Style.RESET_ALL} ', end='')
+-	print(f'{Style.RESET_ALL}')
+-
+-def _print_players(board):
+-	n = board.num_players
+-	# NAMES
+-	print(' '*19, end='')
+-	for p in range(n):
+-		print(f'Player {p}', end='')
+-		if p < n-1:
+-			print(f' '*26, end='')
+-	print()
+-
+-	# NOBLES
+-	print(' '*9, end='')
+-	for p in range(n):
+-		for noble in board.players_nobles[3*p:3*p+3]:
+-			if noble[idx_points] > 0:
+-				print(f'  < {Style.BRIGHT}{noble[idx_points]}{Style.RESET_ALL} >  ', end='')
+-			else:
+-				print(f'        ', end='')
+-		print(f' '*10, end='')
+-	print()
+-
+-	# GEMS
+-	print(f'{Style.BRIGHT}Gems: {Style.RESET_ALL}   ', end='')
+-	for p in range(n):
+-		for c in range(6):
+-			my_gems  = board.players_gems[p][c]
+-			print(f'{light_colors[c]} {my_gems} {Style.RESET_ALL} ', end='')
+-		print(f' Σ{board.players_gems[p].sum():2}      ', end='')
+-	print()
+-
+-	# CARDS
+-	# print()
+-	print(f'{Style.BRIGHT}Cards: {Style.RESET_ALL}  ', end='')
+-	for p in range(n):
+-		for c in range(5):
+-			my_cards = board.players_cards[p][c]
+-			print(f'{light_colors[c]} {my_cards} {Style.RESET_ALL} ', end='')
+-		print(f'              ', end='')
+-	print()
+-
+-	# RESERVED
+-	if board.players_reserved.sum() > 0:
+-		print()
+-		for line in range(5):
+-			if line == 2:
+-				print(f'{Style.BRIGHT}Reserve: {Style.RESET_ALL}', end='')
+-			else:
+-				print(' '*9, end='')
+-			for p in range(n):
+-				for r in range(3):
+-					reserved = board.players_reserved[6*p+2*r:6*p+2*r+2]
+-					if reserved[0].sum() != 0:
+-						_print_card_line(reserved, line, 2)
+-					else:
+-						print(f' '*10, end='')
+-				print(f' '*4, end='')
+-			print()
+-
+-def print_board(board):
+-	_print_round_and_scores(board)
+-	_print_nobles(board)
+-	print()
+-	_print_tiers(board)
+-	_print_bank(board)
+-	print()
+-	_print_players(board)
+Seulement dans ../../../splendor/alpha-zero-general/splendor/: SplendorNNet.py
+Seulement dans ../../../splendor/alpha-zero-general/splendor/: SplendorPlayers.py

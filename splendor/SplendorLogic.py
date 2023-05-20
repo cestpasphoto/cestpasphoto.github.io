@@ -261,3 +261,6 @@ np_all_cards_1 = np.array(all_cards_1, dtype=np.int8)
 np_all_cards_2 = np.array(all_cards_2, dtype=np.int8)
 np_all_cards_3 = np.array(all_cards_3, dtype=np.int8)
 len_all_cards = np.array([len(all_cards_1[0]), len(all_cards_2[0]), len(all_cards_3[0])], dtype=np.int8)
+
+def print_board(board):
+	print('Function not ported')

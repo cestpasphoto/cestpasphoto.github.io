@@ -1,0 +1,116 @@
+--- ../../../splendor/alpha-zero-general/MCTS.py	2023-03-11 20:54:44.284925038 +0100
++++ ../MCTS.py	2023-05-20 08:06:05.345519157 +0200
+@@ -1,17 +1,11 @@
+-import logging
+ import math
+ import numpy as np
+-import gc
+-
+-from numba import njit
+ 
+ EPS = 1e-8
+ NAN = -42.
+ k = 0.5
+ MINFLOAT = float('-inf')
+ 
+-log = logging.getLogger(__name__)
+-
+ 
+ class MCTS():
+     """
+@@ -42,7 +36,7 @@
+         self.last_cleaning = 0
+         self.batch_info = batch_info
+ 
+-    def getActionProb(self, canonicalBoard, temp=1, force_full_search=False):
++    async def getActionProb(self, canonicalBoard, temp=1, force_full_search=False):
+         """
+         This function performs numMCTSSims simulations of MCTS starting from
+         canonicalBoard.
+@@ -56,7 +50,7 @@
+         forced_playouts = (is_full_search and self.args.forced_playouts)
+         for self.step in range(nb_MCTS_sims):
+             dir_noise = (self.step == 0 and is_full_search and self.dirichlet_noise)
+-            self.search(canonicalBoard, dirichlet_noise=dir_noise, forced_playouts=forced_playouts)
++            await self.search(canonicalBoard, dirichlet_noise=dir_noise, forced_playouts=forced_playouts)
+ 
+         s = self.game.stringRepresentation(canonicalBoard)
+         counts = [self.nodes_data[s][5][a] for a in range(self.game.getActionSize())] # Nsa
+@@ -96,7 +90,7 @@
+         probs = [x / counts_sum for x in counts]
+         return probs, q, is_full_search
+ 
+-    def search(self, canonicalBoard, dirichlet_noise=False, forced_playouts=False):
++    async def search(self, canonicalBoard, dirichlet_noise=False, forced_playouts=False):
+         """
+         This function performs one iteration of MCTS. It is recursively called
+         till a leaf node is found. The action chosen at each node is one that
+@@ -134,10 +128,15 @@
+         if Ps is None:
+             # First time that we explore state s
+             Vs = self.game.getValidMoves(canonicalBoard, 0)
+-            if self.batch_info is None:
+-                Ps, v = self.nnet.predict(canonicalBoard, Vs)
+-            else:
+-                Ps, v = self.nnet.predict_client(canonicalBoard, Vs, self.batch_info)
++            # if self.batch_info is None:
++            #     Ps, v = self.nnet.predict(canonicalBoard, Vs)
++            # else:
++            #     Ps, v = self.nnet.predict_client(canonicalBoard, Vs, self.batch_info)
++            import js
++            nn_result = await js.predict(canonicalBoard.flat[:], Vs.flat[:])
++            nn_result_py = nn_result.to_py()
++            Ps, v = np.exp(np.array(nn_result_py['pi'], dtype=np.float32)), np.array(nn_result_py['v'], dtype=np.float32)
++
+             if dirichlet_noise:
+                 Ps = softmax(Ps, self.args.temperature[0])
+                 self.applyDirNoise(Ps, Vs)
+@@ -165,7 +164,7 @@
+             self.args.fpu,
+         )
+ 
+-        v = self.search(next_s)
++        v = await self.search(next_s)
+         v = np_roll(v, next_player)
+ 
+         Qsa[a] = (Nsa[a] * Qsa[a] + v[0]) / (Nsa[a] + 1) # if Qsa[a] is NAN, then Nsa is zero
+@@ -185,18 +184,11 @@
+                Ps[idx] = (0.75 * Ps[idx]) + (0.25 * dir_values[dir_idx])
+                dir_idx += 1
+ 
+-    @staticmethod
+-    def reset_all_search_trees():
+-        for obj in [o for o in gc.get_objects() if type(o) is MCTS]: # dirtier than isinstance, but that would trigger a pytorch warning
+-            obj.nodes_data = {}
+-            obj.last_cleaning = 0
+         
+-@njit(cache=True, fastmath=True, nogil=True)
+ def np_roll(arr, n):
+     return np.roll(arr, n)
+ 
+ # pick the action with the highest upper confidence bound
+-@njit(cache=True, fastmath=True, nogil=True)
+ def pick_highest_UCB(Es, Vs, Ps, Ns, Qsa, Nsa, Qs, cpuct, forced_playouts, n_iter, fpu):
+     cur_best = MINFLOAT
+     best_act = -1
+@@ -219,7 +211,6 @@
+     return best_act
+ 
+ 
+-@njit(fastmath=True, nogil=True) # no cache because it relies on jitclass which isn't compatible with cache
+ def get_next_best_action_and_canonical_state(Es, Vs, Ps, Ns, Qsa, Nsa, Qs, cpuct, gameboard, canonicalBoard, forced_playouts, n_iter, fpu):
+     a = pick_highest_UCB(Es, Vs, Ps, Ns, Qsa, Nsa, Qs, cpuct, forced_playouts, n_iter, fpu)
+ 
+@@ -236,12 +227,10 @@
+ 
+     return a, next_s, next_player
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def normalise(vector):
+     sum_vector = np.sum(vector)
+     vector /= sum_vector
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def softmax(Ps, softmax_temp):
+     if softmax_temp == 1.:
+         return Ps

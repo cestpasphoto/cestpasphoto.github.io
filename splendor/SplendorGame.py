@@ -1,4 +1,5 @@
 from Game import Game
+from SplendorLogic import print_board, move_to_str
 from SplendorLogicNumba import Board, observation_size, action_size
 import numpy as np
 
@@ -57,3 +58,11 @@ class SplendorGame(Game):
 
 	def getNumberOfPlayers(self):
 		return NUMBER_PLAYERS
+
+	def moveToString(self, move, current_player):
+		return move_to_str(move)
+
+	def printBoard(self, numpy_board):
+		board = Board(self.getNumberOfPlayers())
+		board.copy_state(numpy_board, False)
+		print_board(board)

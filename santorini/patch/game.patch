@@ -1,0 +1,147 @@
+Seulement dans ../: constants_nogod.js
+Seulement dans ../: constants_withgods.js
+Seulement dans ../: Game.py
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: glicko_graph.csv
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: glicko_graph.png
+Seulement dans ../: index.html
+Seulement dans ../: main.js
+Seulement dans ../: MCTS.py
+Seulement dans ../: model_gods_default.onnx
+Seulement dans ../: model_no_god.onnx
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: NNet.py
+Seulement dans ../: patch
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: pretrained.pt
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: pretrained_withgods.pt
+Seulement dans ../: proxy.py
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: __pycache__
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: README.md
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: sample_game_with_random_init.gif
+Seulement dans ../: SantoriniConstantsNoGod.py
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: SantoriniConstants.py
+Seulement dans ../: SantoriniConstantsWithGods.py
+diff -ur ../../../splendor/alpha-zero-general/santorini/SantoriniDisplay.py ../SantoriniDisplay.py
+--- ../../../splendor/alpha-zero-general/santorini/SantoriniDisplay.py	2023-03-11 20:54:44.284925038 +0100
++++ ../SantoriniDisplay.py	2023-03-04 19:26:21.108470670 +0100
+@@ -1,9 +1,10 @@
+ import numpy as np
+-from colorama import Style, Fore, Back
+-from .SantoriniConstants import _decode_action, NB_GODS, NO_GOD
++import random
++import itertools
++from SantoriniConstants import _decode_action, NB_GODS, NO_GOD
+ 
+-my_workers_color    = [Fore.WHITE, Fore.BLUE  , Fore.CYAN]
+-other_workers_color = [Fore.WHITE, Fore.YELLOW, Fore.MAGENTA]
++my_workers_color    = ['', '', '']
++other_workers_color = ['', '', '']
+ # levels_char = ['▪', '◔', '◑', '◕', 'X']
+ levels_char = ['◎', '▂', '▅', '█', 'X']
+ directions_char = ['↖', '↑', '↗', '←', 'Ø', '→', '↙', '↓', '↘']
+@@ -14,7 +15,7 @@
+ 	worker_color = my_workers_color[worker+1] if player == 0 else other_workers_color[worker+1]
+ 	god_power = f' using {gods_name[power]}' if power != NO_GOD else ''
+ 
+-	return f'Move {worker_color}worker {worker+1}{Style.RESET_ALL} to {directions_char[move_direction]} and then build {directions_char[build_direction]}' + god_power
++	return f'Move {worker_color}worker {worker+1} to {directions_char[move_direction]} and then build {directions_char[build_direction]}' + god_power
+ 
+ 
+ ############################# PRINT GAME ######################################
+@@ -26,10 +27,10 @@
+ 
+ 	gods_data = board.gods_power[board.gods_power.nonzero()]
+ 	message  = f'Player 0: '
+-	message += f'{my_workers_color[1]}worker 1  {my_workers_color[2]}worker 2{Style.RESET_ALL} '
++	message += f'{my_workers_color[1]}worker 1  {my_workers_color[2]}worker 2 '
+ 	message += f'(has {god_id(0)} power, data={gods_data[0] % 64})    '
+ 	message += f'Player 1: '
+-	message += f'{other_workers_color[1]}worker 1  {other_workers_color[2]}worker 2{Style.RESET_ALL} '
++	message += f'{other_workers_color[1]}worker 1  {other_workers_color[2]}worker 2 '
+ 	message += f'(has {god_id(1)} power, data={gods_data[1] % 64})'
+ 	print(message)
+ 
+@@ -40,7 +41,7 @@
+ 			worker, level = board.workers[y, x], board.levels[y, x]
+ 			worker_color = my_workers_color[worker] if worker >= 0 else other_workers_color[-worker]
+ 			if worker != 0 or level > 0:
+-				print(f'|{worker_color}{levels_char[level]}{Style.RESET_ALL}', end='')
++				print(f'|{worker_color}{levels_char[level]}', end='')
+ 			else:
+ 				print(f'| ', end='')
+ 		print('|')
+diff -ur ../../../splendor/alpha-zero-general/santorini/SantoriniGame.py ../SantoriniGame.py
+--- ../../../splendor/alpha-zero-general/santorini/SantoriniGame.py	2023-03-11 20:54:44.284925038 +0100
++++ ../SantoriniGame.py	2023-03-04 19:20:36.647411817 +0100
+@@ -1,8 +1,6 @@
+-import sys
+-sys.path.append('..')
+ from Game import Game
+-from .SantoriniLogicNumba import Board, observation_size, action_size
+-from .SantoriniDisplay import move_to_str, print_board
++from SantoriniLogicNumba import Board, observation_size, action_size
++from SantoriniDisplay import move_to_str, print_board
+ import numpy as np
+ 
+ NUMBER_PLAYERS = 2
+diff -ur ../../../splendor/alpha-zero-general/santorini/SantoriniLogicNumba.py ../SantoriniLogicNumba.py
+--- ../../../splendor/alpha-zero-general/santorini/SantoriniLogicNumba.py	2023-03-18 17:59:03.689843928 +0100
++++ ../SantoriniLogicNumba.py	2023-03-04 19:21:21.188068067 +0100
+@@ -1,8 +1,6 @@
+ import numpy as np
+-from numba import njit
+-import numba
+-from .SantoriniConstants import *
+-from .SantoriniConstants import _decode_action, _encode_action
++from SantoriniConstants import *
++from SantoriniConstants import _decode_action, _encode_action
+ 
+ # 0: 2x2 workers set at an arbitrary position before 1st move
+ # 1: 2x2 workers set at a random position before 1st move
+@@ -10,11 +8,9 @@
+ # Don't forget to update NB_GODS in SantoriniConstants.py
+ INIT_METHOD = 1
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def observation_size():
+ 	return (25, 3) # True size is 5,5,3 but other functions expects 2-dim answer
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def action_size():
+ 	return NB_GODS*2*9*9
+ 
+@@ -48,11 +44,9 @@
+ #   3  4  5
+ #   6  7  8
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def _position_if_pushed(old, new):
+ 	return (2*new[0] - old[0], 2*new[1] - old[1])
+ 
+-@njit(cache=True, fastmath=True, nogil=True)
+ def _apply_direction(position, direction):
+ 	DIRECTIONS = [
+ 		(-1,-1),
+@@ -68,13 +62,6 @@
+ 	delta = DIRECTIONS[direction]
+ 	return (position[0]+delta[0], position[1]+delta[1])
+ 
+-spec = [
+-	('state'      , numba.int8[:,:,:]),
+-	('workers'    , numba.int8[:,:]),
+-	('levels'     , numba.int8[:,:]),
+-	('gods_power' , numba.int8[:,:]),
+-]
+-@numba.experimental.jitclass(spec)
+ class Board():
+ 	def __init__(self, num_players):
+ 		self.state = np.zeros((5,5,3), dtype=np.int8)
+@@ -111,6 +98,7 @@
+ 				self.workers[place//5, place%5] = worker
+ 
+ 			gods = [NO_GOD, NO_GOD] if NB_GODS <= 1 else (np.random.choice(NB_GODS-1, 2, replace=False)+1)
++			# gods = [HERMES, HERMES]
+ 			self.gods_power.flat[gods[0]+NB_GODS*0] = 64
+ 			self.gods_power.flat[gods[1]+NB_GODS*1] = 64
+ 
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: SantoriniNNet.py
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: SantoriniPlayers.py
+Seulement dans ../../../splendor/alpha-zero-general/santorini/: SANTORINI_README.md

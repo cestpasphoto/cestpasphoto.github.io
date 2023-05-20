@@ -12,7 +12,7 @@ class MCTS():
     This class handles the MCTS tree.
     """
 
-    def __init__(self, game, nnet, args, dirichlet_noise=False, batch_info=(None, None, None, None)):
+    def __init__(self, game, nnet, args, dirichlet_noise=False, batch_info=None):
         self.game = game
         self.nnet = nnet
         self.args = args
@@ -67,7 +67,6 @@ class MCTS():
             adjusted_counts = [c if c > 1 else 0 for c in adjusted_counts]
             counts = adjusted_counts
 
-        # Compute kl-divergence on probs vs self.Ps[s]
         probs = np.array(counts)
         probs = probs / probs.sum()
 
@@ -129,14 +128,15 @@ class MCTS():
         if Ps is None:
             # First time that we explore state s
             Vs = self.game.getValidMoves(canonicalBoard, 0)
-            # if self.batch_info[0] is None:
+            # if self.batch_info is None:
             #     Ps, v = self.nnet.predict(canonicalBoard, Vs)
             # else:
-            #     Ps, v = self.nnet.predictBatch(canonicalBoard, Vs, self.batch_info)
+            #     Ps, v = self.nnet.predict_client(canonicalBoard, Vs, self.batch_info)
             import js
             nn_result = await js.predict(canonicalBoard.flat[:], Vs.flat[:])
             nn_result_py = nn_result.to_py()
             Ps, v = np.exp(np.array(nn_result_py['pi'], dtype=np.float32)), np.array(nn_result_py['v'], dtype=np.float32)
+
             if dirichlet_noise:
                 Ps = softmax(Ps, self.args.temperature[0])
                 self.applyDirNoise(Ps, Vs)
@@ -183,6 +183,7 @@ class MCTS():
             if Vs[idx]:
                Ps[idx] = (0.75 * Ps[idx]) + (0.25 * dir_values[dir_idx])
                dir_idx += 1
+
         
 def np_roll(arr, n):
     return np.roll(arr, n)
