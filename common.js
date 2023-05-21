@@ -44,7 +44,7 @@ class AbstractGame {
     this.nextPlayer = 0;        // ID of next player
     this.previousPlayer = null; // ID of previous player
     this.gameEnded = [0, 0];    // Has player P won, for each player
-    this.history = [];          // List all previous states from new to old, not including current one. Each contains an array with nextPlayer and board
+    this.history = [];          // Previous states (new to old, not current). Each is an array with nextPlayer and board an action
     this.gameMode = 'P0';       // "P0" or "P1" to define which player is human or "AI" for AIs only or "human" for no AI
     this.numMCTSSims = 25;      // Number of MCTS simulations per move
 
@@ -81,7 +81,7 @@ class AbstractGame {
       this.pre_move(action, isManualMove);
 
       // Record board
-      this.history.unshift([this.nextPlayer, this.board]);
+      this.history.unshift([this.nextPlayer, this.board, action]);
       this.previousPlayer = this.nextPlayer;
       // Actually move
       let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});

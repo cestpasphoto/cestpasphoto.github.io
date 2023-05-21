@@ -147,7 +147,7 @@ class Santorini extends AbstractGame {
     let [workerY, workerX] = this._findWorker(worker_id);
     let [moveY, moveX] = Santorini._applyDirection(workerY, workerX, move_direction);
     let [buildY, buildX] = Santorini._applyDirection(moveY, moveX, build_direction);
-    this.cellsOfLastMove = [workerY, workerX];
+    this.cellsOfLastMove = [[workerY, workerX]];
   }
 
   _read_power_info(read_data_only=true) {

@@ -64,7 +64,7 @@
     }
 
     [class*="svgL"] {
-      width: 6rem;
+      width: 7rem;
       max-width: 100%;
     }
   }
@@ -82,7 +82,7 @@
     <div class="fitted item"> 
       <div class="ui small form">
         <div class="field">
-          <select onchange="game.changeDifficulty(this.value)" id="difficultyForm">
+          <select onchange="game.change_difficulty(this.value)" id="difficultyForm">
             <optgroup label="Above optimal">
             <option value="6400"       >God-like</option>
             <option value="1600"       >Boosted</option>
@@ -232,7 +232,9 @@
   </div>
 
 </div>
-</div>
+
+
+
 
 <div class="ui modal">
   <i class="close inside icon"></i>
@@ -388,6 +390,8 @@
     <div class="ui primary button" id="edit_next_section" onclick="currentEditor.btnNext();">Edit nobles</div>
   </div>
 </div>
+
+
 
 <script>main();</script>
 </body>

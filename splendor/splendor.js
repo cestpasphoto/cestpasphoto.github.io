@@ -73,7 +73,7 @@ class Splendor extends AbstractGame {
 			if (action < 12+12) {
 				let tier = Math.floor((action%12) / 4);
 				let index = (action%12)%4;
-				startEdit(tier, index, true);
+				startEdit(tier, index, true, true);
 			} else if (action < 12+15) {
 				console.log('I cant let you edit the deck card that was just reserved')
 			}
@@ -306,6 +306,7 @@ class CardEditor {
 			this.setInitialState(tier, index, false);
 		}
 		this.lapidaryMode = false;
+		this.singleCard = false;
 	}
 
 	setInitialState(tier, index, lookup=true) {
@@ -362,14 +363,17 @@ class CardEditor {
 
 	clickToEdit(cardIndex) {
 		game._changeDeckCard(this.tier, this.selectedColor, this.selectedPoints, cardIndex, this.index, this.lapidaryMode);
-
-		let next_tier = (this.index==3) ? this.tier+1 : this.tier;
-		let next_index = (this.index+1) % 4;
-		if (next_tier >= 3) {
-			this.btnNext()
+		if (this.singleCard) {
+			$('.ui.modal').modal('hide');
 		} else {
-			this.setInitialState(next_tier, next_index);
-			this.refresh();
+			let next_tier = (this.index==3) ? this.tier+1 : this.tier;
+			let next_index = (this.index+1) % 4;
+			if (next_tier >= 3) {
+				this.btnNext()
+			} else {
+				this.setInitialState(next_tier, next_index);
+				this.refresh();
+			}
 		}
 	}
 
@@ -673,12 +677,13 @@ function generateDeck(number, selected) {
 	return svg;
 }
 
-function generateTxtPoints(player, scoreDetails) {
+function generateTxtPoints(player, scoreDetails, nbGems) {
 	let result = game.is_human_player(player) ? `You - ` : ` AI - `;
-	result += `${scoreDetails[0]} point(s)`;
+	result += `${scoreDetails[0]} point${scoreDetails[0]>1 ? 's' : ''}`;
 	if (scoreDetails[2] > 0) {
-		result += ` incl. ${scoreDetails[2]} by nobles`;
+		result += ` (incl. ${scoreDetails[2]} <i class="chess queen icon"></i>)`;
 	}
+	result += ` - ${nbGems} <i class="gem icon"></i>`
 	return result;
 }
 
@@ -750,7 +755,7 @@ function refreshBoard() {
 				let selectMode = _getSelectMode('gemback', color);
 				document.getElementById('p' + player + '_g' + color).innerHTML = `<a onclick="clickToSelect('gemback', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getPlayerGems(player, color), selectMode)} </a>`;
 			} else {
-				let selectMode = _getSelectMode('gemback', color, lastAction, currentMove=false);
+				let selectMode = _getSelectMode('gemback', color, lastAction, false);
 				document.getElementById('p' + player + '_g' + color).innerHTML = generateSvgGem(color, game.getPlayerGems(player, color), selectMode);
 			}
 		}
@@ -783,7 +788,8 @@ function refreshBoard() {
 		}
 
 		let scoreDetails = game.getPoints(player, details=true);
-		document.getElementById('p' + player + '_details').innerHTML = generateTxtPoints(player, scoreDetails);
+		let nbGems = [...Array(6).keys()].reduce((sum, color) => sum + game.getPlayerGems(player, color), 0);
+		document.getElementById('p' + player + '_details').innerHTML = generateTxtPoints(player, scoreDetails, nbGems);
 	}
 }
 
@@ -871,9 +877,10 @@ function confirmSelect() {
 	}
 }
 
-function startEdit(tier=0, index=0, lapidaryMode=false) {
+function startEdit(tier=0, index=0, lapidaryMode=false, singleCard=false) {
 	editionOngoing = true;
 	cardEditor.lapidaryMode = lapidaryMode;
+	cardEditor.singleCard = singleCard;
 	cardEditor.setInitialState(tier, index);
 	document.getElementById('noble_editor').style = "display: none";
 	document.getElementById('gem_editor').style = "display: none";
