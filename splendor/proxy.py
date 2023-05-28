@@ -56,8 +56,8 @@ async def guessBestAction():
 	# Compute good moves
 	print('List of best moves found by AI:')
 	sorted_probs = sorted([(action,p) for action,p in enumerate(probs)], key=lambda x: x[1], reverse=True)
-	for action, p in sorted_probs:
-		if p < sorted_probs[0][1] / 5.:
+	for i, (action, p) in enumerate(sorted_probs):
+		if p < sorted_probs[0][1] / 3. or i >= 3:
 			break
 		print(f'{int(100*p)}% [{action}] {move_to_str(action, short=False)}')
 
@@ -145,10 +145,13 @@ def changeDeckCard(tier, color, points, selectedIndexInList, locationIndex, lapi
 				# Remove new card from deck
 				deck_cards[newCardY] = 0
 				g.board.nb_deck_tiers[2*tier+1, newCardX] = my_packbits(deck_cards)
+				g.board.nb_deck_tiers[2*tier, newCardX] -= 1
 				# Add old card in deck
 				deck_cards = my_unpackbits(g.board.nb_deck_tiers[2*tier+1, oldCardX])
-				deck_cards[oldCardY] = 0
+				deck_cards[oldCardY] = 1
 				g.board.nb_deck_tiers[2*tier+1, oldCardX] = my_packbits(deck_cards)
+				g.board.nb_deck_tiers[2*tier, oldCardX] += 1
+			# else was won by a player
 
 	if lapidaryMode:
 		# Put new card (now at old_i index) at the rightest and shift other cards
