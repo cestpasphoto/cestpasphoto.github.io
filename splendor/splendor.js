@@ -73,7 +73,7 @@ class Splendor extends AbstractGame {
 			if (action < 12+12) {
 				let tier = Math.floor((action%12) / 4);
 				let index = (action%12)%4;
-				startEdit(tier, index, true, true);
+				startEdit(tier, index, true);
 			} else if (action < 12+15) {
 				console.log('I cant let you edit the deck card that was just reserved')
 			}
@@ -877,7 +877,7 @@ function confirmSelect() {
 	}
 }
 
-function startEdit(tier=0, index=0, lapidaryMode=false, singleCard=false) {
+function startEdit(tier=0, index=0, singleCard=false, lapidaryMode=false) {
 	editionOngoing = true;
 	cardEditor.lapidaryMode = lapidaryMode;
 	cardEditor.singleCard = singleCard;
