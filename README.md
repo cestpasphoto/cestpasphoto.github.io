@@ -21,7 +21,7 @@ This AI is based on AlphaZero training. I have reused an existing training engin
 ### Strength
 
 Compared to best AI I found:
-* >95% winrate against [Ai Ai](http://mrraow.com/index.php/aiai-home/aiai/) - 20 wins in 20 games
+* \>95% winrate against [Ai Ai](http://mrraow.com/index.php/aiai-home/aiai/) - 20 wins in 20 games
   * Even running a degraded version of mine leads to >90% winrate - 10 wins in 10 games
 * 98+% win rate against [BoardSpace AI](https://www.boardspace.net/english/index.shtml), using BestBot
 
@@ -43,7 +43,9 @@ Using same AI as Santorini, described above.
 
 ### Strength
 
-(tbc)
+Compared to the only AI I found: \>90% winrate against [Lapidary AI](https://github.com/inclement/lapidary-ai) - 10 wins in 10 games, with average 12.4 points difference (16 vs 4).
+
+Details: needed to reproduce Lapidary "behavior" (only to win gold even if one has 10 gems, new card from deck appears on the right instead of replacing old card slot). My AI doesn't allow simultaneously giving back and taking gems so I needed to do some hack. Lapidary is aware of card in deck, whereas mine wasn't (I always replaced random card by the one chose by Lapidary). My AI was running in "native" mode, meaning 400 rollouts per move.
 
 The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
 
@@ -71,6 +73,6 @@ See other details in (#common-technical-details).
 My goal from the start was to run AI on client side. They all use the following technology:
 * Python code running in browser running with [pyodide](https://pyodide.org/en/stable/). Still in beta phase, a bit long to load but very stable and compatible with several external modules such as numpy! It is based on WebAssembly so performance is quite good.
 * AlphaZero need a ML inference library: [onnx](https://github.com/microsoft/onnxruntime-inference-examples/tree/main/js) has an JS version and has no framework incompatibility (both TF and PyTorch can export in ONNX format). I found the WebGL to be quite buggy on some browsers so I went for the WASM version which uses client CPU.
-* I am no export in JS/HTML/CSS so I chose fomantic-ui: result is quite decent on PC and mobile with low barrier at start. But gosh JavaScript is such an ugly language :-)
+* I am no expert in JS/HTML/CSS so I chose fomantic-ui: result is quite decent on PC and mobile with low barrier at start. But gosh JavaScript is such an ugly language :-)
 
 I was quite surprised by the final performance of AlphaZero ported in the browser: since game logic and MCTS is in python/pyodide and ML is in JavaScript, browser has to switch these two frameworks and therefore a larger overhead for type conversion. I expected this overhead to be worse but at the end, it is has roughly same speed than regulary python and only 5-10x slower than numba.
