@@ -8,8 +8,8 @@ g, board, mcts, player = None, None, None, 0
 history = [] # Previous states (new to old, not current). Each is an array with player and board and action
 
 class dotdict(dict):
-    def __getattr__(self, name):
-        return self[name]
+	def __getattr__(self, name):
+		return self[name]
 
 def init_game(numMCTSSims):
 	global g, board, mcts, player, history

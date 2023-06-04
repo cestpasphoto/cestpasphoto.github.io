@@ -1,4 +1,4 @@
-// Import common.js before this file
+// Import common/game.js before this file
 
 /* =================== */
 /* =====  CONST  ===== */
