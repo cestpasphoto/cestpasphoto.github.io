@@ -5,13 +5,14 @@ from SplendorLogicNumba import my_packbits, my_unpackbits
 import numpy as np
 
 g, board, mcts, player = None, None, None, 0
+history = [] # Previous states (new to old, not current). Each is an array with player and board and action
 
 class dotdict(dict):
-    def __getattr__(self, name):
-        return self[name]
+	def __getattr__(self, name):
+		return self[name]
 
 def init_game(numMCTSSims):
-	global g, board, mcts, player
+	global g, board, mcts, player, history
 
 	mcts_args = dotdict({
 		'numMCTSSims'     : numMCTSSims,
@@ -29,28 +30,26 @@ def init_game(numMCTSSims):
 	valids = g.getValidMoves(board, player)
 	end = [0,0]
 
-	return player, end, board.tolist(), valids
+	return player, end, valids
 
 def getNextState(action):
-	global g, board, mcts, player
+	global g, board, mcts, player, history
+	history.insert(0, [player, np.copy(board), action])
 	board, player = g.getNextState(board, player, action)
 	end = g.getGameEnded(board, player)
 	valids = g.getValidMoves(board, player)
 
-	return player, end, board.tolist(), valids
-
-def getBoard():
-	global g, board, mcts, player
-	return board.tolist()
+	return player, end, valids
 
 def changeDifficulty(numMCTSSims):
-	global g, board, mcts, player
+	global g, board, mcts, player, history
 	mcts.args.numMCTSSims = numMCTSSims
 	print('Difficulty changed to', mcts.args.numMCTSSims);
 
 async def guessBestAction():
-	global g, board, mcts, player
+	global g, board, mcts, player, history
 	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), force_full_search=True)
+	g.board.copy_state(board, True) # g.board was in canonical form, set it back to normal form
 	best_action = max(range(len(probs)), key=lambda x: probs[x])
 
 	# Compute good moves
@@ -62,6 +61,31 @@ async def guessBestAction():
 		print(f'{int(100*p)}% [{action}] {move_to_str(action, short=False)}')
 
 	return best_action
+
+def revert_to_previous_move(player_asking_revert):
+	global g, board, mcts, player, history
+	if len(history) > 0:
+		# Revert to the previous 0 before a 1, or first 0 from game
+		for index, state in enumerate(history):
+			if (state[0] == player_asking_revert) and (index+1 == len(history) or history[index+1][0] != player_asking_revert):
+				break
+		print(f'index={index} / {len(history)}');
+		
+		# Actually revert, and update history
+		# print(f'Board to revert: {state[1]}')
+		player, board = state[0], state[1]
+		history = history[index+1:]
+
+	end = g.getGameEnded(board, player)
+	valids = g.getValidMoves(board, player)
+	return player, end, valids
+
+def get_last_action():
+	global g, board, mcts, player, history
+
+	if len(history) < 1:
+		return None
+	return history[0][2]
 
 # -----------------------------------------------------------------------------
 
@@ -160,7 +184,7 @@ def changeDeckCard(tier, color, points, selectedIndexInList, locationIndex, lapi
 
 	end = g.getGameEnded(board, player)
 	valids = g.getValidMoves(board, player)
-	return player, end, board.tolist(), valids
+	return player, end, valids
 
 def changeGemOrNbCards(p, color, type_, delta):
 	if (p < 0): # Bank
@@ -172,7 +196,7 @@ def changeGemOrNbCards(p, color, type_, delta):
 
 	end = g.getGameEnded(board, player)
 	valids = g.getValidMoves(board, player)
-	return player, end, board.tolist(), valids
+	return player, end, valids
 
 def resetNoble(index):
 	g.board.nobles[index, :] = 0
@@ -185,16 +209,7 @@ def changeNoble(index, nobleId, assignedPlayer):
 
 	end = g.getGameEnded(board, player)
 	valids = g.getValidMoves(board, player)
-	return player, end, board.tolist(), valids
-
-def setData(player_, setBoard):
-	global g, board, mcts, player
-
-	board = g.getCanonicalForm(np.array(setBoard.to_py()), 0) # say player=0 to force-set setBoard as is
-	end = g.getGameEnded(board, player)
-	valids = g.getValidMoves(board, player)
-
-	return player, end, board.tolist(), valids
+	return player, end, valids
 
 def getBank(color):
 	return g.board.bank[0][color].item()

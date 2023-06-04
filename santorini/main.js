@@ -91,7 +91,6 @@ function generateSvg(nb_levels, worker) {
 class Santorini extends AbstractGame {
   constructor() {
     super()
-    this.board = Array.from(Array(5), _ => Array.from(Array(5), _ => Array(3).fill(0)));
     this.validMoves = Array(2*NB_GODS*9*9); this.validMoves.fill(false);
     this.lastMove = -1;
     this.powers = [0, 0];       // Which power each player has
@@ -130,90 +129,35 @@ class Santorini extends AbstractGame {
     return this.cellsOfLastMove.some(e => e.toString() == item_vector.toString());
   }
 
-  _findWorker(worker) {
-    for (let y = 0; y < 5; y++) {
-      for (let x = 0; x < 5; x++) {
-        if (this.board[y][x][0] == worker) {
-          return [y,x];
-        }
-      }
-    }
-    return [-1, -1];
-  }
-
   _updateLastCells(action) {
     let [worker, power, move_direction, build_direction] = Santorini.decodeMove(action);
     let worker_id = (worker+1) * ((this.nextPlayer==0) ? 1 : -1);
-    let [workerY, workerX] = this._findWorker(worker_id);
+    let [workerY, workerX] = this.py._findWorker(worker_id).toJs({create_proxies: false});
     let [moveY, moveX] = Santorini._applyDirection(workerY, workerX, move_direction);
     let [buildY, buildX] = Santorini._applyDirection(moveY, moveX, build_direction);
     this.cellsOfLastMove = [[workerY, workerX]];
   }
 
   _read_power_info(read_data_only=true) {
-    for (let p = 0; p < 2; p++) {
-
-      if (!read_data_only) {
-        for (let i = p*NB_GODS; i < (p+1)*NB_GODS; i++) {
-          let y = Math.floor(i/5), x = i%5;
-          if (this.board[y][x][2] > 0) {
-            this.powers[p] = i - p*NB_GODS;
-            console.log('Player', p, 'has power', this.powers[p]);
-          }
-        }
-      }
-
-      let index = this.powers[p] + p * NB_GODS;
-      let y = Math.floor(index/5), x = index%5;
-      this.powers_data[p] = this.board[y][x][2];
-      if (this.powers_data[p] != 64) {
-        console.log('Power data for player', p, 'is', this.powers_data[p]);
-      }
+    if (!read_data_only) {
+      this.powers = this.py._read_power().toJs({create_proxies: false});
     }
+    this.powers_data = this.py._read_power_data().toJs({create_proxies: false});
   }
 
   editCell(clicked_y, clicked_x, editMode) {
-    if (editMode == 1) {
-      this.board[clicked_y][clicked_x][1] = (this.board[clicked_y][clicked_x][1]+1) % 5;
-    } else if (editMode == 2) {
-      if (this.board[clicked_y][clicked_x][0] > 0) {
-         this.board[clicked_y][clicked_x][0] = -1;
-      } else if (this.board[clicked_y][clicked_x][0] < 0) {
-        this.board[clicked_y][clicked_x][0] = 0;
-      } else {
-        this.board[clicked_y][clicked_x][0] = 1;
-      }
-    } else if (editMode == 0) {
-      // Reassign worker id
-      let countP0 = 0, countP1 = 0;
-      for (let y = 0; y < 5; y++) {
-        for (let x = 0; x < 5; x++) {
-          if (this.board[y][x][0] > 0) {
-            countP0++;
-            this.board[y][x][0] = countP0;
-          } else if (this.board[y][x][0] < 0) {
-            countP1++;
-            this.board[y][x][0] = -countP1;
-          }
-        }
-      }
-      if (countP0 != 2 || countP1 != 2) {
-        console.log('Invalid board', countP0, countP1);
-      }
-      // Update all other data
-      let data_tuple = this.py.setData(this.nextPlayer, this.board).toJs({create_proxies: false});
-      [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+    this.py.editCell(clicked_y, clicked_x, editMode);
+    
+    if (editMode == 0) {
+      let data_tuple = this.py.update_after_edit().toJs({create_proxies: false});
+      [this.nextPlayer, this.gameEnded, this.validMoves] = data_tuple;
       this._read_power_info();
-    } else {
-      console.log('Dont know what to do in editMode', editMode);
     }
   }
 
   editGod(player) {
-    this.powers[player] = (this.powers[player] + 1) % NB_GODS;
-    this.powers_data[player] = 64;
-    let power = this.powers[player] + player * NB_GODS;
-    this.board[Math.floor(power/5)][power%5][2] = 64;
+    this.py.editGod(player, this.powers[player]);
+    this._read_power_info(false);
   }
 
   static decodeMove(move) {
@@ -262,7 +206,7 @@ class MoveSelector extends AbstractMoveSelector {
       // Selecting worker
       this.workerX = clicked_x;
       this.workerY = clicked_y;
-      this.workerID = Math.abs(game.board[this.workerY][this.workerX][0]) - 1;
+      this.workerID = Math.abs(game.py._read_worker(this.workerY, this.workerX)) - 1;
       this.currentMoveWoPower = NB_GODS*9*9 * this.workerID;
     } else if (this.stage == 2) {
       // Selecting worker new position
@@ -348,13 +292,17 @@ class MoveSelector extends AbstractMoveSelector {
   }
 
   _select_relevant_cells() {
+    if (game.py == null) {
+      return;
+    }
+
     if (this.stage >= 3) {
       this._select_none();
     } else if (this.stage < 1) {
       for (let y = 0; y < 5; y++) {
         for (let x = 0; x < 5; x++) {
-          if ((game.nextPlayer == 0 && game.board[y][x][0] > 0) ||
-              (game.nextPlayer == 1 && game.board[y][x][0] < 0)) {
+          if ((game.nextPlayer == 0 && game.py._read_worker(y,x) > 0) ||
+              (game.nextPlayer == 1 && game.py._read_worker(y,x) < 0)) {
             this.cells[y][x] = this._anySubmovePossible(y, x);
           } else {
             this.cells[y][x] = false;
@@ -379,7 +327,7 @@ class MoveSelector extends AbstractMoveSelector {
     let any_move_possible = true;
     let power = game.powers[game.nextPlayer]*9*9;
     if (this.stage == 0) {
-      let worker_id = Math.abs(game.board[coordY][coordX][0]) - 1;
+      let worker_id = Math.abs(game.py._read_worker(coordY, coordX)) - 1;
       let moves_begin = (worker_id*NB_GODS    )*9*9;
       let moves_end   = (worker_id*NB_GODS + 1)*9*9;
       any_move_possible = game.validMoves.slice(moves_begin, moves_end).some(x => x);
@@ -432,8 +380,8 @@ function refreshBoard() {
   for (let y = 0; y < 5; y++) {
     for (let x = 0; x < 5; x++) {
       let cell = document.getElementById('cell_' + y + '_' + x);
-      let level  = game.board[y][x][1];
-      let worker = game.board[y][x][0];
+      let level  = game.py._read_level(y, x);
+      let worker = game.py._read_worker(y, x);
       let selectable = move_sel.isSelectable(y, x);
 
       // generateSvg deals with nb of levels, dome, worker and color
@@ -488,7 +436,7 @@ function refreshButtons(loading=false) {
     } else {
       // Ongoing game
       allBtn.classList.remove('green', 'red');
-      if (game.history.length < 1 && move_sel.stage <= 0) {
+      if (game.py.get_last_action() == null && move_sel.stage <= 0) {
         undoBtn.classList.add('disabled');
       } else {
         undoBtn.classList.remove('disabled');

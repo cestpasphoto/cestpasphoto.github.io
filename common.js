@@ -44,12 +44,10 @@ class AbstractGame {
     this.nextPlayer = 0;        // ID of next player
     this.previousPlayer = null; // ID of previous player
     this.gameEnded = [0, 0];    // Has player P won, for each player
-    this.history = [];          // Previous states (new to old, not current). Each is an array with nextPlayer and board an action
     this.gameMode = 'P0';       // "P0" or "P1" to define which player is human or "AI" for AIs only or "human" for no AI
     this.numMCTSSims = 25;      // Number of MCTS simulations per move
 
     // To define in extended class
-    this.board = null;          // Board representation (should not exist)
     this.validMoves = null;     // Array boolean with valid moves 
   }
 
@@ -57,7 +55,6 @@ class AbstractGame {
     this.nextPlayer = 0;
     this.previousPlayer = null;
     this.gameEnded = [0, 0];
-    this.history = [];
     this.gameMode = 'P0';
     this.validMoves.fill(false);
     
@@ -67,7 +64,7 @@ class AbstractGame {
       this.py = pyodide.pyimport("proxy");
     }
     let data_tuple = this.py.init_game(this.numMCTSSims).toJs({create_proxies: false});
-    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+    [this.nextPlayer, this.gameEnded, this.validMoves] = data_tuple;
 
     this.post_init_game();
   }
@@ -80,12 +77,10 @@ class AbstractGame {
     } else {
       this.pre_move(action, isManualMove);
 
-      // Record board
-      this.history.unshift([this.nextPlayer, this.board, action]);
-      this.previousPlayer = this.nextPlayer;
       // Actually move
+      this.previousPlayer = this.nextPlayer;
       let data_tuple = this.py.getNextState(action).toJs({create_proxies: false});
-      [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+      [this.nextPlayer, this.gameEnded, this.validMoves] = data_tuple;
 
       this.post_move(action, isManualMove);
     }  
@@ -101,28 +96,11 @@ class AbstractGame {
   }
 
   revert_to_previous_human_move() {
-    if (this.history.length == 0) {
-      return;
-    }
-
     let player = this.who_is_human();
-    // Revert to the previous 0 before a 1, or first 0 from game
-    let index;
-    for (index = 0; index < this.history.length; ++index) {
-      if ((this.history[index][0] == player) && (index+1 == this.history.length || this.history[index+1][0] != player)) {
-        break;
-      }
-    }
-    console.log('index=', index, '/', this.history.length-1);
-
-    // Actually revert
-    console.log('board to revert:', this.history[index][1]);
-    let data_tuple = this.py.setData(this.history[index][0], this.history[index][1]).toJs({create_proxies: false});
-    [this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+    let data_tuple = this.py.revert_to_previous_move(player).toJs({create_proxies: false});
+    [this.nextPlayer, this.gameEnded, this.validMoves] = data_tuple;
     this.previousPlayer = null;
     this.post_set_data();
-    // Remove reverted move from history and later moves
-    this.history.splice(0, index+1); 
   }
 
   // ----- UTILS METHODS -----

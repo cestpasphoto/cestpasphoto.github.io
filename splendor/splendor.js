@@ -63,7 +63,6 @@ class Splendor extends AbstractGame {
   constructor() {
   	super()
 		this.py = null;
-		this.board = Array.from(Array(56), _ => Array(7).fill(0));
 		this.validMoves = Array(81); this.validMoves.fill(false);
   }
 
@@ -118,24 +117,24 @@ class Splendor extends AbstractGame {
 
   _changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex, lapidaryMode) {
 		let data_tuple = this.py.changeDeckCard(tier, color, points, selectedIndexInDeck, locationIndex, lapidaryMode).toJs({create_proxies: false});
-		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;  	
+		[this.nextPlayer, this.gameEnded, this.validMoves] = data_tuple;  	
   }
 
   _changeNoble(index, nobleId, assignedPlayer) {
 		let data_tuple = this.py.changeNoble(index, nobleId, assignedPlayer).toJs({create_proxies: false});
-		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;  	
+		[this.nextPlayer, this.gameEnded, this.validMoves] = data_tuple;  	
   }
 
   _changeGemOrNbCards(player, color, type, delta) {
   	let data_tuple = this.py.changeGemOrNbCards(player, color, type, delta).toJs({create_proxies: false});
-		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
+		[this.nextPlayer, this.gameEnded, this.validMoves] = data_tuple;
   }
 
   getLastActionDetails() {
-  	if (this.history.length == 0) {
+  	let lastMove = this.py.get_last_action();
+  	if (lastMove == null) {
       return ['first', -1];
     }
-  	let lastMove = this.history[0][2];
   	if (0 <= lastMove && lastMove < 12) {
   		return ['card', lastMove-0];
   	} else if (12 <= lastMove && lastMove < 12+12) {
@@ -149,11 +148,6 @@ class Splendor extends AbstractGame {
   	} else if (12+15+3+30 <= lastMove) {
   		return ['gemback', different_gems_up_to_2[lastMove-12-15-3-30]];
   	}
-  }
-
-  update() {
-  	let data_tuple = this.py.setData(null, this.board).toJs({create_proxies: false});
-		[this.nextPlayer, this.gameEnded, this.board, this.validMoves] = data_tuple;
   }
 }
 
