@@ -43,7 +43,7 @@ Using same AI as Santorini, described above.
 
 ### Strength
 
-Compared to the only AI I found: \>90% winrate against [Lapidary AI](https://github.com/inclement/lapidary-ai) - 10 wins in 10 games, with average 12.4 points difference (16 vs 4).
+Compared to the only AI I found: \>90% winrate against [Lapidary AI](https://github.com/inclement/lapidary-ai) - 10 wins in 10 games, with a median 14 points difference (median game is 16-2).
 
 Details: needed to reproduce Lapidary "behavior" (only to win gold even if one has 10 gems, new card from deck appears on the right instead of replacing old card slot). My AI doesn't allow simultaneously giving back and taking gems so I needed to do some hack. Lapidary is aware of card in deck, whereas mine wasn't (I always replaced random card by the one chose by Lapidary). My AI was running in "native" mode, meaning 400 rollouts per move. My AI doesn't know which cards will be drawn. 
 
