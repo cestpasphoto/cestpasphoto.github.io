@@ -51,7 +51,7 @@ def changeDifficulty(numMCTSSims):
 async def guessBestAction():
 	global g, board, mcts, player
 	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), force_full_search=True)
-	best_action = max(range(len(probs)), key=lambda x: 0 if 24 <= x <= 26 else probs[x])
+	best_action = max(range(len(probs)), key=lambda x: probs[x])
 
 	# Compute good moves
 	print('List of best moves found by AI:')
