@@ -126,23 +126,23 @@ def _read_level(y, x):
 
 def editCell(clicked_y, clicked_x, editMode):
 	if editMode == 1:
-		g.board.levels[clicked_y][clicked_x] = (g.board.levels[clicked_y][clicked_x][1]+1) % 5
+		g.board.levels[clicked_y, clicked_x] = (g.board.levels[clicked_y, clicked_x]+1) % 5
 	elif editMode == 2:
-		if g.board.workers[clicked_y][clicked_x] > 0:
-			g.board.workers[clicked_y][clicked_x] = -1
-		elif g.board.workers[clicked_y][clicked_x] < 0:
-			g.board.workers[clicked_y][clicked_x] = 0
+		if g.board.workers[clicked_y, clicked_x] > 0:
+			g.board.workers[clicked_y, clicked_x] = -1
+		elif g.board.workers[clicked_y, clicked_x] < 0:
+			g.board.workers[clicked_y, clicked_x] = 0
 		else:
-			g.board.workers[clicked_y][clicked_x] = 1
+			g.board.workers[clicked_y, clicked_x] = 1
 	elif editMode == 0:
 		# Reassign worker ID
 		counts = [0, 0]
 		for xy in range(25):
 			if g.board.workers.flat[xy] > 0:
-				++counts[0]
+				counts[0] += 1
 				g.board.workers.flat[xy] = counts[0]
 			elif g.board.workers.flat[xy] < 0:
-				++counts[1]
+				counts[1] += 1
 				g.board.workers.flat[xy] = -counts[1]
 		if (counts[0] != 2 or counts[0] != 2):
 			print('Invalid board', counts)
