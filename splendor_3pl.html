@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.3/dist/jquery.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.2/dist/semantic.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.2/dist/semantic.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.23.2/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.15.0/dist/ort.min.js"></script>
+</head>
+<script src="./common/game.js"></script>
+<script src="./splendor/constants_3pl.js"></script>
+<script src="./splendor/splendor.js"></script>
+<style>
+  /* Mobile */
+  @media only screen and                        (max-width: 767px) {
+    [class*="mobile hidden"],
+    [class*="tablet only"]:not(.mobile),
+    [class*="computer only"]:not(.mobile) {
+      display: none !important;
+    }
+
+    [class*="svgS"] {
+      width: 2.5rem;
+      max-width: 100%;
+    }
+
+    [class*="svgL"] {
+      width: 5rem;
+      max-width: 100%;
+    }
+  }
+
+  /* Tablet / iPad Portrait */
+  @media only screen and (min-width: 768px) and (max-width: 991px) {
+    [class*="mobile only"]:not(.tablet),
+    [class*="tablet hidden"],
+    [class*="computer only"]:not(.tablet) {
+      display: none !important;
+    }
+
+    [class*="svgS"] {
+      width: 3rem;
+      max-width: 100%;
+    }
+
+    [class*="svgL"] {
+      width: 5rem;
+      max-width: 100%;
+    }
+  }
+
+  /* Computer / Desktop / iPad Landscape */
+  @media only screen and (min-width: 992px) {
+    [class*="mobile only"]:not(.computer),
+    [class*="tablet only"]:not(.computer),
+    [class*="computer hidden"] {
+      display: none !important;
+    }
+
+    [class*="svgS"] {
+      width: 4rem;
+      max-width: 100%;
+    }
+
+    [class*="svgL"] {
+      width: 7rem;
+      max-width: 100%;
+    }
+  }
+</style>
+<body>
+
+<div class="ui borderless menu">
+  <div class="ui container">    
+    <div class="fitted item">
+      <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
+    </div> 
+    <div class="fitted item"> 
+      <button class="ui icon button" onclick="startEdit()" id="editBtn"><i class="edit icon"></i></button>
+    </div>
+    <div class="fitted item"> 
+      <div class="ui small form">
+        <div class="field">
+          <select onchange="game.change_difficulty(this.value)" id="difficultyForm">
+            <optgroup label="Above optimal">
+            <option value="6400"       >God-like</option>
+            <option value="1600"       >Boosted</option>
+            <optgroup label="Level used during training">
+            <option value="400"        >Native</option>
+            <optgroup label="Sub optimal levels">
+            <option value="100"        >Medium</option>
+            <option value="25" selected>Easy</option>
+            <option value="12"         >Easier</option>
+            <option value="3"          >Come on</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="fitted item"> 
+      <div class="ui small form">
+        <div class="field">
+          <select onchange="changeGameMode(this.value)">
+            <option value="P0" selected>You vs AI</option>
+            <option value="P1"         >AI vs you</option>
+            <option value="Human"      >No AI</option>
+            <option value="AI"         >WarGames</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ui main text container">
+
+  <h1 class="ui huge center aligned header">Splendor with AI</h1> 
+  <div class="ui hidden divider"></div>
+
+  <div class="ui very compact equal width center aligned grid">
+    <div class="ui row">
+      <div class="column" id="lv2_deck"></div>
+      <div class="column" id="lv2_0"></div>
+      <div class="column" id="lv2_1"></div>
+      <div class="column" id="lv2_2"></div>
+      <div class="column" id="lv2_3"></div>
+    </div>
+    <div class="ui row">
+      <div class="column" id="lv1_deck"></div>
+      <div class="column" id="lv1_0"></div>
+      <div class="column" id="lv1_1"></div>
+      <div class="column" id="lv1_2"></div>
+      <div class="column" id="lv1_3"></div>
+    </div>
+    <div class="ui row">
+      <div class="column" id="lv0_deck"></div>
+      <div class="column" id="lv0_0"></div>
+      <div class="column" id="lv0_1"></div>
+      <div class="column" id="lv0_2"></div>
+      <div class="column" id="lv0_3"></div>
+    </div>
+  </div>
+
+  <div class="ui hidden divider computer only"></div>
+  <div class="ui very compact equal width center aligned grid">
+    <div class="column" id="bank_c0"></div>
+    <div class="column" id="bank_c1"></div>
+    <div class="column" id="bank_c2"></div>
+    <div class="column" id="bank_c3"></div>
+    <div class="column" id="bank_c4"></div>
+    <div class="column" id="bank_c5"></div>
+    <div class="column" id="noble0"></div>
+    <div class="column" id="noble1"></div>
+    <div class="column" id="noble2"></div>
+  </div>
+
+  <div class="ui hidden divider mobile hidden"></div>
+  <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
+    <button class="ui gray basic button" id="btn_confirm" onclick="confirmSelect()">Click a card or gem to select action</button>
+    <button class="ui gray basic icon button" id="btn_undo" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
+  </div>
+  <button class="ui fluid large active loading button" id="loadingBtn">‌</button>
+
+  <div class="ui hidden divider computer only"></div>
+  <div class="ui horizontal divider" id="p0_details">
+    Your gems and cards below
+  </div>
+  <div class="ui very compact equal width center aligned grid">
+    <div class="column">
+      <div id="p0_g0"></div>
+      <div id="p0_c0"></div>
+    </div>
+    <div class="column">
+      <div id="p0_g1"></div>
+      <div id="p0_c1"></div>
+    </div>
+    <div class="column">
+      <div id="p0_g2"></div>
+      <div id="p0_c2"></div>
+    </div>
+    <div class="column">
+      <div id="p0_g3"></div>
+      <div id="p0_c3"></div>
+    </div>
+    <div class="column">
+      <div id="p0_g4"></div>
+      <div id="p0_c4"></div>
+    </div>
+    <div class="column">
+      <div id="p0_g5"></div>
+      <div id="p0_r2"></div>
+    </div>
+    <div class="column">
+      <div id="p0_r0"></div>
+      <div id="p0_r1"></div>
+    </div>
+  </div>
+
+  <div class="ui hidden divider computer only"></div>
+  <div class="ui horizontal divider" id="p1_details">
+    AI below
+  </div>
+  <div class="ui very compact equal width center aligned grid">
+    <div class="column">
+      <div id="p1_g0"></div>
+      <div id="p1_c0"></div>
+    </div>
+    <div class="column">
+      <div id="p1_g1"></div>
+      <div id="p1_c1"></div>
+    </div>
+    <div class="column">
+      <div id="p1_g2"></div>
+      <div id="p1_c2"></div>
+    </div>
+    <div class="column">
+      <div id="p1_g3"></div>
+      <div id="p1_c3"></div>
+    </div>
+    <div class="column">
+      <div id="p1_g4"></div>
+      <div id="p1_c4"></div>
+    </div>
+    <div class="column">
+      <div id="p1_g5"></div>
+      <div id="p1_r2"></div>
+    </div>
+    <div class="column">
+      <div id="p1_r0"></div>
+      <div id="p1_r1"></div>
+    </div>
+  </div>
+
+  <div class="ui hidden divider computer only"></div>
+  <div class="ui horizontal divider" id="p2_details">
+    AI bis below
+  </div>
+  <div class="ui very compact equal width center aligned grid">
+    <div class="column">
+      <div id="p2_g0"></div>
+      <div id="p2_c0"></div>
+    </div>
+    <div class="column">
+      <div id="p2_g1"></div>
+      <div id="p2_c1"></div>
+    </div>
+    <div class="column">
+      <div id="p2_g2"></div>
+      <div id="p2_c2"></div>
+    </div>
+    <div class="column">
+      <div id="p2_g3"></div>
+      <div id="p2_c3"></div>
+    </div>
+    <div class="column">
+      <div id="p2_g4"></div>
+      <div id="p2_c4"></div>
+    </div>
+    <div class="column">
+      <div id="p2_g5"></div>
+      <div id="p2_r2"></div>
+    </div>
+    <div class="column">
+      <div id="p2_r0"></div>
+      <div id="p2_r1"></div>
+    </div>
+  </div>
+
+</div>
+
+
+
+
+<div class="ui modal">
+  <i class="close inside icon"></i>
+  <div class="header" id="mod_head"></div>
+  <div class="content">
+    <div id="card_editor">
+
+      <div class="ui center aligned grid">
+        <div class="two wide column"><div id="editor_info0"></div></div>
+        <div class="two wide column"><div id="editor_info1"></div></div>
+        <div class="two wide column"><div id="editor_info2"></div></div>
+        <div class="two wide column"><div id="editor_info3"></div></div>
+      </div>
+
+      <div class="ui hidden divider"></div>
+      <div class="ui large wrapped wrapping buttons">
+        <button class="ui gray basic button" id="mod_but_col0" onclick="cardEditor.buttonClick(this.id)">White</button>
+        <button class="ui blue basic button" id="mod_but_col1" onclick="cardEditor.buttonClick(this.id)">Blue</button>
+        <button class="ui green basic button" id="mod_but_col2" onclick="cardEditor.buttonClick(this.id)">Green</button>
+        <button class="ui red basic button" id="mod_but_col3" onclick="cardEditor.buttonClick(this.id)">Red</button>
+        <button class="ui black basic button" id="mod_but_col4" onclick="cardEditor.buttonClick(this.id)">Black</button>
+      </div>
+
+      <div class="ui hidden divider"></div>
+      <div class="ui large wrapped wrapping buttons">
+        <button class="ui basic button" id="mod_but_pts0" onclick="cardEditor.buttonClick(this.id)">0</button>
+        <button class="ui basic button" id="mod_but_pts1" onclick="cardEditor.buttonClick(this.id)">1</button>
+        <button class="ui basic button" id="mod_but_pts2" onclick="cardEditor.buttonClick(this.id)">2</button>
+        <button class="ui basic button" id="mod_but_pts3" onclick="cardEditor.buttonClick(this.id)">3</button>
+        <button class="ui basic button" id="mod_but_pts4" onclick="cardEditor.buttonClick(this.id)">4</button>
+        <button class="ui basic button" id="mod_but_pts5" onclick="cardEditor.buttonClick(this.id)">5</button>
+      </div>
+
+      <div class="ui hidden divider"></div>
+      <div class="ui text container">
+        <div class="ui four column compact centered grid">
+          <div class="column" id="sel_c0"></div>
+          <div class="column" id="sel_c1"></div>
+          <div class="column" id="sel_c2"></div>
+          <div class="column" id="sel_c3"></div>
+
+          <div class="column" id="sel_c4"></div>
+          <div class="column" id="sel_c5"></div>
+          <div class="column" id="sel_c6"></div>
+          <div class="column" id="sel_c7"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="noble_editor" style="display: none">
+      <div class="ui equal width compact center aligned grid" id="noble_slots">
+        <div class="column"><div id="bank_noble0" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
+        <div class="column"><div id="bank_noble1" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
+        <div class="column"><div id="bank_noble2" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
+      </div>
+
+      <div class="ui hidden divider"></div>
+      Change by any noble in the list:
+      <div class="ui five column compact centered grid">
+        <div class="column" id="avail_noble0" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+        <div class="column" id="avail_noble1" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+        <div class="column" id="avail_noble2" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+        <div class="column" id="avail_noble3" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+        <div class="column" id="avail_noble4" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+
+        <div class="column" id="avail_noble5" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+        <div class="column" id="avail_noble6" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+        <div class="column" id="avail_noble7" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+        <div class="column" id="avail_noble8" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+        <div class="column" id="avail_noble9" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+      </div>
+      <div class="ui fluid large wrapped wrapping buttons">
+        <button class="ui basic button" id="noble_assign_P-1" onclick="nobleEditor.clickToEdit(this.id)">Not won</button>
+        <button class="ui basic button" id="noble_assign_P0"  onclick="nobleEditor.clickToEdit(this.id)">Won by P0</button>
+        <button class="ui basic button" id="noble_assign_P1"  onclick="nobleEditor.clickToEdit(this.id)">Won by P1</button>
+      </div>
+    </div>
+
+    <div id="gem_editor" style="display: none">
+      <div class="ui fluid large buttons">
+        <button class="ui basic button" id="editor_P-1" onclick="gemEditor.buttonClick(this.id)">Bank</button>
+        <button class="ui basic button" id="editor_P0" onclick="gemEditor.buttonClick(this.id)">Player0</button>
+        <button class="ui basic button" id="editor_P1" onclick="gemEditor.buttonClick(this.id)">Player1</button>
+      </div>
+
+      <div class="ui hidden divider"></div>
+      <div class="ui equal width compact center aligned grid">
+        <div class="column">
+          <button class="ui basic large button" id="editor_g0_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
+          <div id="editor_g0"></div>
+          <button class="ui basic large button" id="editor_g0_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
+        </div>
+        <div class="column">
+          <button class="ui basic large button" id="editor_g1_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
+          <div id="editor_g1"></div>
+          <button class="ui basic large button" id="editor_g1_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
+        </div>
+        <div class="column">
+          <button class="ui basic large button" id="editor_g2_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
+          <div id="editor_g2"></div>
+          <button class="ui basic large button" id="editor_g2_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
+        </div>
+        <div class="column">
+          <button class="ui basic large button" id="editor_g3_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
+          <div id="editor_g3"></div>
+          <button class="ui basic large button" id="editor_g3_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
+        </div>
+        <div class="column">
+          <button class="ui basic large button" id="editor_g4_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
+          <div id="editor_g4"></div>
+          <button class="ui basic large button" id="editor_g4_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
+        </div>
+        <div class="column">
+          <button class="ui basic large button" id="editor_g5_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
+          <div id="editor_g5"></div>
+          <button class="ui basic large button" id="editor_g5_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
+        </div>
+      </div>
+
+      <div class="ui hidden divider"></div>
+      <div class="ui equal width compact center aligned grid" id="editor_c_grid">
+        <div class="column">
+          <button class="ui basic large button" id="editor_c0_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
+          <div id="editor_c0"></div>
+          <button class="ui basic large button" id="editor_c0_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
+        </div>
+        <div class="column">
+          <button class="ui basic large button" id="editor_c1_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
+          <div id="editor_c1"></div>
+          <button class="ui basic large button" id="editor_c1_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
+        </div>
+        <div class="column">
+          <button class="ui basic large button" id="editor_c2_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
+          <div id="editor_c2"></div>
+          <button class="ui basic large button" id="editor_c2_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
+        </div>
+        <div class="column">
+          <button class="ui basic large button" id="editor_c3_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
+          <div id="editor_c3"></div>
+          <button class="ui basic large button" id="editor_c3_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
+        </div>
+        <div class="column">
+          <button class="ui basic large button" id="editor_c4_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
+          <div id="editor_c4"></div>
+          <button class="ui basic large button" id="editor_c4_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
+        </div>
+        <div class="column">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="actions">
+    <div class="ui primary button" id="edit_next_section" onclick="currentEditor.btnNext();">Edit nobles</div>
+  </div>
+</div>
+
+
+
+<script>main();</script>
+</body>
+</html>

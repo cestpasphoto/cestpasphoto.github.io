@@ -10,6 +10,8 @@ All AI are running on client side, need 10\~20s to load it first time.
 
 **Santorini**
 - <https://cestpasphoto.github.io/splendor.html>
+- <https://cestpasphoto.github.io/splendor_3pl.html>
+- <https://cestpasphoto.github.io/splendor_4pl.html>
 
 **Wordle**
 - <https://cestpasphoto.github.io/pyodide_wordle.html>
@@ -25,7 +27,7 @@ Compared to best AI I found:
   * Even running a degraded version of mine leads to >90% winrate - 10 wins in 10 games
 * 98+% win rate against [BoardSpace AI](https://www.boardspace.net/english/index.shtml), using BestBot
 
-Details: games use no god power, other AI always starting first, both with random initial positions. Mine was running at 800 rollouts per move (50 for degraded version), Ai Ai was set with a timelimit of 15+15sec/move (about 900k iterations on my computer). 
+Details: these games use no god power, other AI always starting first, both with random initial positions. Mine was running at 800 rollouts per move (50 for degraded version), Ai Ai was set with a timelimit of 15+15sec/move (about 900k iterations on my computer). 
 
 The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general) and [this ReadMe](https://github.com/cestpasphoto/alpha-zero-general/blob/master/santorini/README.md).
 
@@ -39,7 +41,7 @@ You can find higher performance application on this [repo](https://github.com/ce
 
 ## Online Splendor AI
 
-Using same AI as Santorini, described above.
+Using same AI as Santorini, described above. Supporting 2, 3 and 4 players.
 
 ### Strength
 
