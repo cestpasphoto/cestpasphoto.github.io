@@ -745,7 +745,7 @@ function refreshBoard() {
 				let selectMode = _getSelectMode('gemback', color);
 				document.getElementById('p' + player + '_g' + color).innerHTML = `<a onclick="clickToSelect('gemback', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getPlayerGems(player, color), selectMode)} </a>`;
 			} else {
-				let selectMode = _getSelectMode('gemback', color, lastAction, false);
+				let selectMode = (player == game.previousPlayer) ?  _getSelectMode('gemback', color, lastAction, false) : 0;
 				document.getElementById('p' + player + '_g' + color).innerHTML = generateSvgGem(color, game.getPlayerGems(player, color), selectMode);
 			}
 		}
@@ -755,7 +755,6 @@ function refreshBoard() {
 		for (let rsvIndex = 0; rsvIndex < 3; rsvIndex++) {
 			let cardInfo = game.getPlayerReserved(player, rsvIndex);
 			
-				
 			if (game.is_human_player(player)) {
 				if (cardInfo[0] < 0) {
 					document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = ``;
@@ -764,7 +763,7 @@ function refreshBoard() {
 					document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = `<a onclick="clickToSelect('buyrsv', ${rsvIndex});event.preventDefault();"> ${generateSvgSmall(cardInfo[0], cardInfo[1], cardInfo[2], selectMode)} </a>`;
 				}
 			} else {
-				let selectMode = _getSelectMode('buyrsv', rsvIndex, lastAction, currentMove=false);
+				let selectMode = (player == game.previousPlayer) ? _getSelectMode('buyrsv', rsvIndex, lastAction, currentMove=false) : 0;
 				if (cardInfo[0] < 0) {
 					if (selectMode == 0) {
 						document.getElementById('p' + player + '_r' + rsvIndex).innerHTML = ``;
