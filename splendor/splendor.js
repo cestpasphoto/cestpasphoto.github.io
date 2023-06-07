@@ -42,14 +42,10 @@ const list_of_files = [
 	['splendor/Game.py', 'Game.py'],
 	['splendor/proxy.py', 'proxy.py'],
 	['splendor/MCTS.py', 'MCTS.py'],
-	['splendor/SplendorGame.py', 'SplendorGame.py'],
+	[pyConstantsFileName, 'SplendorGame.py'],
 	['splendor/SplendorLogic.py', 'SplendorLogic.py'],
 	['splendor/SplendorLogicNumba.py', 'SplendorLogicNumba.py'],
 ];
-
-const defaultModelFileName = 'splendor/model.onnx';
-const sizeCB = [1, 56, 7];
-const sizeV = [1, 81];
 
 const tokensCoord      = [["20%", "83%"], ["20%", "53%"], ["50%", "83%"], ["50%", "53%"]];
 const tokensCoordSmall = [["20%", "83%"], ["20%", "50%"], ["50%", "83%"], ["50%", "50%"]];
@@ -740,7 +736,7 @@ function refreshBoard() {
 	}
 
 
-	for (let player = 0; player < 2; player++) {
+	for (let player = 0; player < nb_players; player++) {
 		for (let color = 0; color < 6; color++) {
 			if (color < 5) {
 				document.getElementById('p' + player + '_c' + color).innerHTML = generateSvgNbCards(color, game.getPlayerNbCards(player, color));
@@ -755,7 +751,7 @@ function refreshBoard() {
 		}
 	}
 
-	for (let player = 0; player < 2; player++) {
+	for (let player = 0; player < nb_players; player++) {
 		for (let rsvIndex = 0; rsvIndex < 3; rsvIndex++) {
 			let cardInfo = game.getPlayerReserved(player, rsvIndex);
 			

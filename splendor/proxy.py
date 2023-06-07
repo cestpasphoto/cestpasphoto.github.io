@@ -204,7 +204,7 @@ def resetNoble(index):
 
 def changeNoble(index, nobleId, assignedPlayer):
 	g.board.nobles[index, :] = np_all_nobles[nobleId, :] if assignedPlayer < 0 else 0
-	for p in range(2):
+	for p in range(g.num_players):
 		g.board.players_nobles[3*p+index, :] = np_all_nobles[nobleId, :] if assignedPlayer == p else 0
 
 	end = g.getGameEnded(board, player)

@@ -190,22 +190,17 @@ async function ai_play_one_move() {
 }
 
 async function ai_play_if_needed() {
-  if (game.gameMode == 'AI') {
-    while (game.gameEnded.every(x => !x)) {
-      await ai_play_one_move();
-    }
-  } else
-  {
-    if ((game.nextPlayer == 0 && game.gameMode == 'P1') ||
-        (game.nextPlayer == 1 && game.gameMode == 'P0')) {
-      await ai_play_one_move();
-    }
-    move_sel.resetAndStart();
-
+  while (game.gameEnded.every(x => !x) && !game.is_human_player('next')) {
+    await ai_play_one_move();
+    
     refreshBoard();
     refreshButtons();
     changeMoveText(moveToString(game.lastMove, 'AI'), 'add');
   }
+
+  move_sel.resetAndStart();
+  refreshBoard();
+  refreshButtons();
 }
 
 async function changeGameMode(mode) {
