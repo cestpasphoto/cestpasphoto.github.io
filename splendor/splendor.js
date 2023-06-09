@@ -75,6 +75,14 @@ class Splendor extends AbstractGame {
 		}
   }
 
+  async ready_to_guess() {
+	  const poll = resolve => {
+	    if(!editionOngoing) resolve();
+	    else setTimeout(_ => poll(resolve), 400);
+	  }
+	  return new Promise(poll);
+  }
+
   getBank(color) {
 		return this.py.getBank(color);
   }
@@ -863,9 +871,7 @@ function confirmSelect() {
 	refreshBoard();
 	refreshButtons();
 
-	if (!editionOngoing) {
-		ai_play_if_needed();
-	}
+	ai_play_if_needed();
 }
 
 function startEdit(tier=0, index=0, singleCard=false, lapidaryMode=false) {
@@ -889,8 +895,6 @@ function afterEdit() {
 	refreshButtons();
 	changeMoveText();
 	editionOngoing = false;
-
-	ai_play_if_needed();
 
 	return true;
 }

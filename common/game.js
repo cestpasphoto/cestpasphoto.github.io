@@ -91,8 +91,12 @@ class AbstractGame {
       console.log('Not guessing, game is finished');
       return;
     }
+    await this.ready_to_guess();
     var best_action = await this.py.guessBestAction();
     this.move(best_action, false);
+  }
+
+  async ready_to_guess() {  
   }
 
   revert_to_previous_human_move() {
