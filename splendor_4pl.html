@@ -13,61 +13,34 @@
 <script src="./splendor/constants_4pl.js"></script>
 <script src="./splendor/splendor.js"></script>
 <style>
-  /* Mobile */
-  @media only screen and                        (max-width: 767px) {
-    [class*="mobile hidden"],
-    [class*="tablet only"]:not(.mobile),
-    [class*="computer only"]:not(.mobile) {
+  /* Computer / Desktop / iPad Landscape */
+  @media only screen and (min-width: 992px) {
+    [class*="mobile only"]:not(.computer), [class*="tablet only"]:not(.computer), [class*="computer hidden"] {
       display: none !important;
     }
-
-    [class*="svgS"] {
-      width: 2.5rem;
-      max-width: 100%;
-    }
-
-    [class*="svgL"] {
-      width: 5rem;
-      max-width: 100%;
-    }
+    [class*="svgS"] { width: 3.5rem; max-width: 100%; }
+    [class*="svgM"] { width: 4.0rem; max-width: 100%; }
+    [class*="svgL"] { width: 7.0rem; max-width: 100%; }
   }
 
   /* Tablet / iPad Portrait */
   @media only screen and (min-width: 768px) and (max-width: 991px) {
-    [class*="mobile only"]:not(.tablet),
-    [class*="tablet hidden"],
-    [class*="computer only"]:not(.tablet) {
+    [class*="mobile only"]:not(.tablet), [class*="tablet hidden"], [class*="computer only"]:not(.tablet) {
       display: none !important;
     }
-
-    [class*="svgS"] {
-      width: 3rem;
-      max-width: 100%;
-    }
-
-    [class*="svgL"] {
-      width: 5rem;
-      max-width: 100%;
-    }
+    [class*="svgS"] { width: 2.6rem; max-width: 100%; }
+    [class*="svgM"] { width: 3.0rem; max-width: 100%; }
+    [class*="svgL"] { width: 5.0rem; max-width: 100%; }
   }
 
-  /* Computer / Desktop / iPad Landscape */
-  @media only screen and (min-width: 992px) {
-    [class*="mobile only"]:not(.computer),
-    [class*="tablet only"]:not(.computer),
-    [class*="computer hidden"] {
+  /* Mobile */
+  @media only screen and                        (max-width: 767px) {
+    [class*="mobile hidden"], [class*="tablet only"]:not(.mobile), [class*="computer only"]:not(.mobile) {
       display: none !important;
     }
-
-    [class*="svgS"] {
-      width: 4rem;
-      max-width: 100%;
-    }
-
-    [class*="svgL"] {
-      width: 7rem;
-      max-width: 100%;
-    }
+    [class*="svgS"] { width: 2.2rem; max-width: 100%; }
+    [class*="svgM"] { width: 2.5rem; max-width: 100%; }
+    [class*="svgL"] { width: 4.5rem; max-width: 100%; }
   }
 </style>
 <body>
@@ -119,6 +92,13 @@
   <div class="ui hidden divider"></div>
 
   <div class="ui very compact equal width center aligned grid">
+    <div class="column" id="noble0"></div>
+    <div class="column" id="noble1"></div>
+    <div class="column" id="noble2"></div>
+    <div class="column" id="noble3"></div>
+    <div class="column" id="noble4"></div>
+  </div>
+  <div class="ui very compact equal width center aligned grid">
     <div class="ui row">
       <div class="column" id="lv2_deck"></div>
       <div class="column" id="lv2_0"></div>
@@ -142,7 +122,6 @@
     </div>
   </div>
 
-  <div class="ui hidden divider computer only"></div>
   <div class="ui very compact equal width center aligned grid">
     <div class="column" id="bank_c0"></div>
     <div class="column" id="bank_c1"></div>
@@ -150,9 +129,6 @@
     <div class="column" id="bank_c3"></div>
     <div class="column" id="bank_c4"></div>
     <div class="column" id="bank_c5"></div>
-    <div class="column" id="noble0"></div>
-    <div class="column" id="noble1"></div>
-    <div class="column" id="noble2"></div>
   </div>
 
   <div class="ui hidden divider mobile hidden"></div>
@@ -162,7 +138,7 @@
   </div>
   <button class="ui fluid large active loading button" id="loadingBtn">‌</button>
 
-  <div class="ui hidden divider computer only"></div>
+  <div class="ui hidden divider mobile hidden"></div>
   <div class="ui horizontal divider" id="p0_details">
     Your gems and cards below
   </div>
@@ -197,7 +173,7 @@
     </div>
   </div>
 
-  <div class="ui hidden divider computer only"></div>
+  <div class="ui hidden divider mobile hidden"></div>
   <div class="ui horizontal divider" id="p1_details">
     AI below
   </div>
@@ -232,7 +208,7 @@
     </div>
   </div>
 
-  <div class="ui hidden divider computer only"></div>
+  <div class="ui hidden divider mobile hidden"></div>
   <div class="ui horizontal divider" id="p2_details">
     AI bis below
   </div>
@@ -267,7 +243,7 @@
     </div>
   </div>
 
-  <div class="ui hidden divider computer only"></div>
+  <div class="ui hidden divider mobile hidden"></div>
   <div class="ui horizontal divider" id="p3_details">
     AI ter below
   </div>

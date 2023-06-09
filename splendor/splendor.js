@@ -604,12 +604,12 @@ function generateSvgNbCards(colorIndex, nbCards, hideIfZero=true) {
 	return svg;
 }
 
-function generateSvgGem(colorIndex, nbGems, selected, hideIfZero=true) {
+function generateSvgGem(colorIndex, nbGems, selected, hideIfZero=true, bank=false) {
 	if (nbGems <= 0 && hideIfZero) {
-		return `<svg class="svgS" viewBox="0 0 32 32">${_svgIfSelected(selected, true)}</svg>`;
+		return `<svg class="${bank ? 'svgM' : 'svgS'}" viewBox="0 0 32 32">${_svgIfSelected(selected, true)}</svg>`;
 	}
 	let [bgColor, mainColor, fontColor] = colors[colorIndex]
-	let svg = `<svg class="svgS" viewBox="0 0 32 32">`;
+	let svg = `<svg class="${bank ? 'svgM' : 'svgS'}" viewBox="0 0 32 32">`;
 	svg += `<circle cx="50%" cy="50%" r="50%" fill="${mainColor}" />`;
 	svg += `<text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" fill="${fontColor}">${nbGems}</text>`;
 	svg += _svgIfSelected(selected, true) + `</svg>`;
@@ -647,6 +647,7 @@ function generateSvgNoble(tokens, selected=0) {
 	let svg = `<svg class="svgS" viewBox="0 0 32 32">`;
 	// Draw background first
 	svg += `<rect width="100%" height="100%" fill="${bgColor}"/>`;
+	svg += `<rect width="50%" height="100%" fill="white" fill-opacity="50%"/>`;
 	for (const [index, token] of tokens.entries()) {
 		let [x, y] = tokensCoordNoble[index];
 		let [col, tokValue] = tokens[index];
@@ -711,6 +712,11 @@ function refreshBoard() {
 		lastAction = game.getLastActionDetails();
 	}
 
+
+	for (let noble = 0; noble < nb_players+1; noble++) {
+		document.getElementById('noble' + noble).innerHTML = generateSvgNoble(game.getNoble(noble));
+	}
+
 	for (let tier = 2; tier >= 0; tier--) {
 		for (let index = 0; index < 4; index++) {
 			let cardInfo = game.getTierCard(tier, index);
@@ -722,16 +728,12 @@ function refreshBoard() {
 		document.getElementById('lv' + tier + '_deck').innerHTML = `<a onclick="clickToSelect('deck', ${tier});event.preventDefault();"> ${generateDeck(nbCardsInDeck, selectMode)} </a>`;
 	}
 
-	for (let noble = 0; noble < 3; noble++) {
-		document.getElementById('noble' + noble).innerHTML = generateSvgNoble(game.getNoble(noble));
-	}
-
 	for (let color = 0; color < 6; color++) {
 		let selectMode = _getSelectMode('gem', color);
 		if (color < 5) {
-			document.getElementById('bank_c' + color).innerHTML = `<a onclick="clickToSelect('gem', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getBank(color), selectMode)} </a>`;
+			document.getElementById('bank_c' + color).innerHTML = `<a onclick="clickToSelect('gem', ${color});event.preventDefault();"> ${generateSvgGem(color, game.getBank(color), selectMode, true, true)} </a>`;
 		} else {
-			document.getElementById('bank_c' + color).innerHTML = generateSvgGem(color, game.getBank(color), selectMode);
+			document.getElementById('bank_c' + color).innerHTML = generateSvgGem(color, game.getBank(color), selectMode, true, true);
 		}
 	}
 
