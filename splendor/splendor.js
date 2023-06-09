@@ -400,11 +400,11 @@ class NobleEditor {
 
 	setInitialState() {
 		this.selectedSlot = 0;
-		this.assignations = [-1, -1, -1];
+		this.assignations = Array(nb_players+1).fill(-1);
 
-		this.noblesId = [-2, -2, -2];
+		this.noblesId = Array(nb_players+1).fill(-2);
 		if (game.py !== null) {
-			for (let i = 0; i < 3; ++i) {
+			for (let i = 0; i < nb_players+1; ++i) {
 				this.noblesId[i] = this._findNobleId(game.getNoble(i));
 			}
 		}
@@ -416,13 +416,13 @@ class NobleEditor {
 		document.getElementById('mod_head').innerHTML = title;
 
 		// Bank nobles
-		for (let index = 0; index < 3; index++) {
+		for (let index = 0; index < nb_players+1; index++) {
 			let noble = all_nobles[this.noblesId[index]];
 			document.getElementById('bank_noble' + index).innerHTML = generateSvgNoble(noble, (index == this.selectedSlot) ? 1 : 0);
 		}
 
 		// Buttons
-		for (let index = -1; index < 2; index++) {
+		for (let index = -1; index < nb_players; index++) {
 			if (index == this.assignations[this.selectedSlot]) {
 				document.getElementById('noble_assign_P' + index).classList.remove('basic');
 			} else {
@@ -446,7 +446,7 @@ class NobleEditor {
 		game._changeNoble(this.selectedSlot, this.noblesId[this.selectedSlot], this.assignations[this.selectedSlot]);
 
 
-		if (this.selectedSlot+1 < 3) {
+		if (this.selectedSlot+1 < nb_players+1) {
 			++this.selectedSlot;
 			this.refresh();
 		} else {
@@ -495,7 +495,7 @@ class GemEditor {
 		document.getElementById('mod_head').innerHTML = title;
 
 		// Buttons
-		for (let index = -1; index < 2; index++) {
+		for (let index = -1; index < nb_players; index++) {
 			if (index == this.selectedPlayer) {
 				document.getElementById('editor_P' + index).classList.remove('basic');
 			} else {
