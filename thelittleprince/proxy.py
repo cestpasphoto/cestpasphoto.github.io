@@ -94,4 +94,6 @@ def getBoard():
 	result += 'Market           : ' + np.array_str(g.board.market) + '<br>';
 	result += 'Players score    : ' + np.array_str(g.board.players_score) + '<br>';
 	result += 'Players cards    : ' + np.array_str(g.board.players_cards) + '<br>';
+	result += '<br>'
+	result += 'Valid moves      : ' + np.array_str(np.flatnonzero(g.getValidMoves(board, player)));
 	return result

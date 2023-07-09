@@ -35,7 +35,7 @@ const nb_players = 2;
 class Minivilles extends AbstractGame {
   constructor() {
     super()
-    this.validMoves = Array(21); this.validMoves.fill(false);
+    this.validMoves = Array(sizeV[1]); this.validMoves.fill(false);
   }
 
   post_init_game() {
@@ -68,6 +68,16 @@ function moveToString(move, gameMode) {
 /* =================== */
 /* ===== DISPLAY ===== */
 /* =================== */
+
+function userMove() {
+  let move = Number(document.getElementById('userMoveID').value);
+  game.move(move, true);
+  move_sel.reset();
+  refreshBoard();
+  refreshButtons();
+
+  ai_play_if_needed();
+}
 
 function refreshBoard() {
   console.log('refresh board');

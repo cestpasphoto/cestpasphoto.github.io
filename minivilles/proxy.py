@@ -90,11 +90,13 @@ def get_last_action():
 
 def getBoard():
 	result = '';
-	result += 'Round            : ' + np.array_str(g.board.round) + '<br>';
-	result += 'Last dice        : ' + np.array_str(g.board.last_dice) + '<br>';
-	result += 'Player state     : ' + np.array_str(g.board.player_state) + '<br>';
-	result += 'Market           : ' + np.array_str(g.board.market) + '<br>';
-	result += 'Players money    : ' + np.array_str(g.board.players_money) + '<br>';
-	result += 'Players cards    : ' + np.array_str(g.board.players_cards) + '<br>';
-	result += 'Players monuments: ' + np.array_str(g.board.players_monuments) + '<br>';
+	result += 'Round            : ' + np.array_str(g.board.round[:1]) + '<br>';
+	result += 'Last dice        : ' + np.array_str(g.board.last_dice[:1]) + '<br>';
+	result += 'Player state     : ' + np.array_str(g.board.player_state[:1]) + '<br>';
+	result += 'Market           : ' + np.array_str(g.board.market[:,0]) + '<br>';
+	result += 'Players money    : ' + np.array_str(g.board.players_money[:,0]) + '<br>';
+	result += 'Players cards    : ' + np.array_str(g.board.players_cards[:,0]) + '<br>';
+	result += 'Players monuments: ' + np.array_str(g.board.players_monuments[:,0]) + '<br>';
+	result += '<br>'
+	result += 'Valid moves      : ' + np.array_str(np.flatnonzero(g.getValidMoves(board, player)));
 	return result
