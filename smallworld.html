@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.2/dist/semantic.min.css">
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.22.1/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
+  
+  <!-- <script src="./smallworld/constants.js"></script> -->
+  <script src="./common/game.js"></script>
+  <script src="./smallworld/main.js"></script>
+</head>
+</head>
+<body>
+
+<div class="ui borderless menu">
+  <div class="ui container">    
+    <div class="fitted item">
+      <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
+    </div> 
+    <div class="fitted item"> 
+      <button class="ui icon disabled button" id="editBtn"><i class="edit icon"></i></button>
+    </div> 
+    <div class="fitted item"> 
+      <div class="ui small form">
+        <div class="field">
+          <select onchange="game.changeDifficulty(this.value)" id="difficultyForm">
+            <optgroup label="Above optimal">
+            <option value="3200"       >God-like</option>
+            <option value="800"        >Boosted</option>
+            <optgroup label="Level used during training">
+            <option value="200"        >Native</option>
+            <optgroup label="Sub optimal levels">
+            <option value="50" selected>Easy</option>
+            <option value="12"         >Easier</option>
+            <option value="3"          >Come on</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="fitted item"> 
+      <div class="ui small form">
+        <div class="field">
+          <select onchange="changeGameMode(this.value)">
+            <option value="P0" selected>You vs AI</option>
+            <option value="P1"         >AI vs you</option>
+            <option value="Human"      >No AI</option>
+            <option value="AI"         >WarGames</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="ui main container">
+
+  <h1 class="ui huge center aligned header">Smallworld game with AI</h1> 
+  <div class="ui hidden divider"></div>
+
+
+<!-- Players name and power -->
+
+
+<!-- Table -->
+  <div class="ui basic segment">
+    <p id="boardSgmt"></p>
+  </div>
+
+  <div class="ui action input">
+    <input type="number" placeholder="ID of your move" id="userMoveID">
+    <button class="ui button" onclick="userMove()">Move</button>
+  </div>
+
+<!-- Button -->
+
+
+  <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
+    <button class="ui icon button" id="undoBtn" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
+  </div>
+  <button class="ui fluid large active loading button" id="loadingBtn">‌</button>
+
+  <div class="ui basic segment">
+    <p id="moveSgmt">Loading pyodide, numpy, onnx; please wait...</p>
+  </div>
+</div>
+
+
+<script>
+  const allBtn      = document.getElementById('allBtn');
+  const undoBtn     = document.getElementById('undoBtn');
+  const loadingBtn  = document.getElementById('loadingBtn');
+  const editBtn     = document.getElementById('editBtn');
+  const moveSgmt    = document.getElementById('moveSgmt');
+
+  main(usePyodide=true);
+</script>
+</body>
+</html>
