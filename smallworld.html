@@ -57,17 +57,43 @@
 
 <div class="ui main container">
 
-  <h1 class="ui huge center aligned header">Smallworld game with AI</h1> 
+  <h1 class="ui huge center aligned header">Smallworld with AI</h1> 
   <div class="ui hidden divider"></div>
 
+  <!-- Board -->
+  <table class="ui unstackable tiny compact table" id="mainBoard"><tbody>
+  </tbody></table>
 
-<!-- Players name and power -->
+  <!-- Peoples -->
+  <table class="ui unstackable compact table" id="peoplesTbl">
+  <thead>
+    <tr>
+      <th class="center aligned" id="p0Score">Player 0 - 0<i class="star icon"></i></th>
+      <th class="center aligned" id="p1Score">0<i class="star icon"></i> - Player 1</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr id="ppl2Descr">
+    </tr>
+    <tr id="ppl1Descr">
+    </tr>
+    <tr id="ppl0Descr">
+    </tr>
+  </tbody>
+  </table>
 
+  <p id="roundP">Round</p>
 
-<!-- Table -->
-  <div class="ui basic segment">
-    <p id="boardSgmt"></p>
-  </div>
+  <!-- Deck -->
+  <details class="ui accordion" close="">
+    <summary class="title">
+      <i class="dropdown icon"></i> Deck of peoples
+    </summary>
+    <div class="content" id="deckContent">
+    </div>
+  </details>
+
+  <!-- Additional text info -->
 
   <div class="ui action input">
     <input type="number" placeholder="ID of your move" id="userMoveID">
@@ -94,6 +120,7 @@
   const loadingBtn  = document.getElementById('loadingBtn');
   const editBtn     = document.getElementById('editBtn');
   const moveSgmt    = document.getElementById('moveSgmt');
+  const mainBoard   = document.getElementById('mainBoard');
 
   main(usePyodide=true);
 </script>

@@ -1,6 +1,8 @@
 from MCTS import MCTS
 from SmallworldGame import SmallworldGame as Game
 from SmallworldDisplay import move_to_str
+from SmallworldConstants import *
+from SmallworldMaps import *
 import numpy as np
 
 g, board, mcts, player = None, None, None, 0
@@ -20,6 +22,7 @@ def init_game(numMCTSSims):
 		'prob_fullMCTS'   : 1.,
 		'forced_playouts' : True,
 		'no_mem_optim'    : False,
+		'universes'       : 2,
 	})
 
 	g = Game()
@@ -57,7 +60,7 @@ async def guessBestAction():
 	for i, (action, p) in enumerate(sorted_probs):
 		if p < sorted_probs[0][1] / 3. or i >= 3:
 			break
-		print(f'{int(100*p)}% [{action}] {move_to_str(action, short=False)}')
+		print(f'{int(100*p)}% [{action}] {move_to_str(action, player=player)}')
 
 	return best_action
 
@@ -99,3 +102,67 @@ def getBoard():
 	result += '<br>'
 	result += 'Valid moves  : ' + np.array_str(np.flatnonzero(g.getValidMoves(board, player)));
 	return result
+
+terrains_col = [
+	'green',  # FORESTT
+	'yellow', # FARMLAND
+	'olive',  # HILLT
+	'red',    # SWAMPT
+	'grey',   # MOUNTAIN
+	'blue',   # WATER
+]
+powers_str = [' ', '⅏','ℵ', '⍎']
+
+ppl_str      = [' ', 'A' , 'D' , 'E', 'g', 'G' , 'h', 'H' , 'O' , 'R' , 's', 'S' , 't', 'T' , 'W' , 'l']
+ppl_decl_str = [' ', '🄐', '🄓', '🄔', '🄖', '🄖', '🄗', '🄗', '🄞', '🄡', '🄢', '🄢', '🄣', '🄣', '🄦', '🄛']
+ppl_long_str = [' ', 'AMAZON','DWARF','ELF','GHOUL','GIANT','HALFLING','HUMAN','ORC','RATMAN','SKELETON','SORCERER','TRITON','TROLL','WIZARD', 'LOST_TRIBE']
+power_long_str = [' ','ALCHEMIST','BERSERK','BIVOUACKING','COMMANDO','DIPLOMAT','DRAGONMASTER', 'FLYING','FOREST','FORTIFIED','HEROIC','HILL','MERCHANT','MOUNTED','PILLAGING','SEAFARING','SPIRIT','STOUT','SWAMP','UNDERWORLD','WEALTHY']
+ac_or_dec_str = ['decline-spirit ppl', 'decline ppl', 'active ppl', '']
+
+def getBackground(y, x):
+	area, txt = map_display[y][x]
+	terrain = descr[area][0]
+	return terrains_col[terrain]
+
+def getScore(p):
+	return g.board.game_status[p, 6] + SCORE_OFFSET
+
+def getRound():
+	return g.board.game_status[:, 3].min()
+
+def getPplInfo(p, ppl):
+	return np.abs(g.board.peoples[p, ppl, :3])
+
+def getDeckInfo(i):
+	return g.board.visible_deck[i][[0,1,2,6]]
+
+def getCurrentPlayerAndPeople():
+	current_p = np.argwhere(g.board.game_status[:, 4] + 1)[0]
+	current_ppl = g.board.game_status[current_p, 4]
+	return current_p, current_ppl
+
+def getTerritory(y, x):
+	area, txt = map_display[y][x]
+	# terrain = descr[area][0]
+
+	if txt == 1 and g.board.territories[area,0] > 0:
+		data = str(g.board.territories[area,0])
+	elif txt == 2:
+		if g.board.territories[area,1] >= 0:
+			data = ppl_str     [ g.board.territories[area,1]]
+		else:
+			data = ppl_decl_str[-g.board.territories[area,1]]	
+	elif txt == 3:
+		data = ''
+		for i in range(1, 4):
+			if descr[area][i]:
+				data += powers_str[i]
+		data += ' ' * (2-len(data))
+	elif txt == 4 and g.board.territories[area, 3:5].sum() > 0:
+		if g.board.territories[area, 3:5].sum() >= IMMUNITY:
+			data = '**'
+		else:
+			data = '+' + str(g.board.territories[area, 3:5].sum())
+	else:
+		data = ''
+	return data
