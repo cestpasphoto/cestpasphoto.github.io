@@ -60,45 +60,59 @@
   <h1 class="ui huge center aligned header">Smallworld with AI</h1> 
   <div class="ui hidden divider"></div>
 
-  <!-- Board -->
-  <table class="ui unstackable tiny compact table" id="mainBoard"><tbody>
-  </tbody></table>
 
-  <!-- Peoples -->
-  <table class="ui unstackable compact table" id="peoplesTbl">
-  <thead>
-    <tr>
-      <th class="center aligned" id="p0Score">Player 0 - 0<i class="star icon"></i></th>
-      <th class="center aligned" id="p1Score">0<i class="star icon"></i> - Player 1</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr id="ppl2Descr">
-    </tr>
-    <tr id="ppl1Descr">
-    </tr>
-    <tr id="ppl0Descr">
-    </tr>
-  </tbody>
-  </table>
+  <!-- Action buttons -->
+  <div class="ui fluid compact buttons">
+    <button class="ui toggle button" id="choseBtn"    onclick="move_sel.clickOnButton(this.id)">Choose <i class="users icon"></i> + <i class="magic icon"></i></button>
+    <button class="ui toggle button" id="abandonBtn"  onclick="move_sel.clickOnButton(this.id)">Abandon</button>
+    <button class="ui toggle button" id="attackBtn"   onclick="move_sel.clickOnButton(this.id)">Attack</button>
+    <button class="ui toggle button" id="usePplBtn"   onclick="move_sel.clickOnButton(this.id)">Use <i class="users icon"></i></button>
+    <button class="ui toggle button" id="usePwrBtn"   onclick="move_sel.clickOnButton(this.id)">Use <i class="magic icon"></i></button>
+    <button class="ui toggle button" id="deploy1Btn"  onclick="move_sel.clickOnButton(this.id)">Redeploy 1</button>
+    <button class="ui toggle button" id="deployNBtn"  onclick="move_sel.clickOnButton(this.id)">Redeploy N</button>
+    <button class="ui toggle button" id="noDeployBtn" onclick="move_sel.clickOnButton(this.id)">No redeploy</button>    
+    <button class="ui toggle button" id="declineBtn"  onclick="move_sel.clickOnButton(this.id)">Decline</button>    
+    <button class="ui toggle button" id="endTurnBtn"  onclick="move_sel.clickOnButton(this.id)">End turn</button>    
+  </div>
+  <span class="ui small text">Chose your people in deck below</span>
+  <button class="ui fluid compact button" id="confirmBtn" onclick="move_sel.confirm()">Confirm</button>    
 
-  <p id="roundP">Round</p>
 
   <!-- Deck -->
-  <details class="ui accordion" close="">
-    <summary class="title">
-      <i class="dropdown icon"></i> Deck of peoples
-    </summary>
-    <div class="content" id="deckContent">
-    </div>
-  </details>
+  <div class="ui horizontal divider" id="deckDivider">Deck</div>
+  <div class="ui middle aligned very compact grid" id="deckGrid">
+      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(0)">0 <i class="coins icon"></i></button></div>
+      <div class="thirteen wide column" id="deck0Descr">-</div>
 
-  <!-- Additional text info -->
+      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(1)">1 <i class="coins icon"></i></button></div>
+      <div class="thirteen wide column" id="deck1Descr">-</div>
 
-  <div class="ui action input">
-    <input type="number" placeholder="ID of your move" id="userMoveID">
-    <button class="ui button" onclick="userMove()">Move</button>
+      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(2)">2 <i class="coins icon"></i></button></div>
+      <div class="thirteen wide column" id="deck2Descr">-</div>
+
+      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(3)">3 <i class="coins icon"></i></button></div>
+      <div class="thirteen wide column" id="deck3Descr">-</div>
+
+      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(4)">4 <i class="coins icon"></i></button></div>
+      <div class="thirteen wide column" id="deck4Descr">-</div>
+
+      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(5)">5 <i class="coins icon"></i></button></div>
+      <div class="thirteen wide column" id="deck5Descr">-</div>
   </div>
+
+  <!-- Current players -->
+  <div class="ui horizontal divider" id="p0Score">Player 0</i></div>
+  <div class="ui very compact middle aligned grid" id="p0Ppl"></div>
+
+  <div class="ui horizontal divider" id="p1Score">Player 1</div>
+  <div class="ui very compact middle aligned grid" id="p1Ppl"></div>
+  <div class="ui hidden divider"></div>
+
+  <!-- Board -->
+  <div class="ui horizontal divider">Board</div>
+  <svg viewBox="0 0 100 70" id="boardSvg"></svg>
+
+  <p id="roundP">Round</p>
 
 <!-- Button -->
 
@@ -120,7 +134,6 @@
   const loadingBtn  = document.getElementById('loadingBtn');
   const editBtn     = document.getElementById('editBtn');
   const moveSgmt    = document.getElementById('moveSgmt');
-  const mainBoard   = document.getElementById('mainBoard');
 
   main(usePyodide=true);
 </script>

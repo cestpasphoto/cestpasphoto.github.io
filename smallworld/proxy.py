@@ -103,27 +103,6 @@ def getBoard():
 	result += 'Valid moves  : ' + np.array_str(np.flatnonzero(g.getValidMoves(board, player)));
 	return result
 
-terrains_col = [
-	'green',  # FORESTT
-	'yellow', # FARMLAND
-	'olive',  # HILLT
-	'red',    # SWAMPT
-	'grey',   # MOUNTAIN
-	'blue',   # WATER
-]
-powers_str = [' ', '⅏','ℵ', '⍎']
-
-ppl_str      = [' ', 'A' , 'D' , 'E', 'g', 'G' , 'h', 'H' , 'O' , 'R' , 's', 'S' , 't', 'T' , 'W' , 'l']
-ppl_decl_str = [' ', '🄐', '🄓', '🄔', '🄖', '🄖', '🄗', '🄗', '🄞', '🄡', '🄢', '🄢', '🄣', '🄣', '🄦', '🄛']
-ppl_long_str = [' ', 'AMAZON','DWARF','ELF','GHOUL','GIANT','HALFLING','HUMAN','ORC','RATMAN','SKELETON','SORCERER','TRITON','TROLL','WIZARD', 'LOST_TRIBE']
-power_long_str = [' ','ALCHEMIST','BERSERK','BIVOUACKING','COMMANDO','DIPLOMAT','DRAGONMASTER', 'FLYING','FOREST','FORTIFIED','HEROIC','HILL','MERCHANT','MOUNTED','PILLAGING','SEAFARING','SPIRIT','STOUT','SWAMP','UNDERWORLD','WEALTHY']
-ac_or_dec_str = ['decline-spirit ppl', 'decline ppl', 'active ppl', '']
-
-def getBackground(y, x):
-	area, txt = map_display[y][x]
-	terrain = descr[area][0]
-	return terrains_col[terrain]
-
 def getScore(p):
 	return g.board.game_status[p, 6] + SCORE_OFFSET
 
@@ -131,7 +110,7 @@ def getRound():
 	return g.board.game_status[:, 3].min()
 
 def getPplInfo(p, ppl):
-	return np.abs(g.board.peoples[p, ppl, :3])
+	return g.board.peoples[p, ppl, :3]
 
 def getDeckInfo(i):
 	return g.board.visible_deck[i][[0,1,2,6]]
@@ -141,28 +120,11 @@ def getCurrentPlayerAndPeople():
 	current_ppl = g.board.game_status[current_p, 4]
 	return current_p, current_ppl
 
-def getTerritory(y, x):
-	area, txt = map_display[y][x]
-	# terrain = descr[area][0]
-
-	if txt == 1 and g.board.territories[area,0] > 0:
-		data = str(g.board.territories[area,0])
-	elif txt == 2:
-		if g.board.territories[area,1] >= 0:
-			data = ppl_str     [ g.board.territories[area,1]]
-		else:
-			data = ppl_decl_str[-g.board.territories[area,1]]	
-	elif txt == 3:
-		data = ''
-		for i in range(1, 4):
-			if descr[area][i]:
-				data += powers_str[i]
-		data += ' ' * (2-len(data))
-	elif txt == 4 and g.board.territories[area, 3:5].sum() > 0:
-		if g.board.territories[area, 3:5].sum() >= IMMUNITY:
-			data = '**'
-		else:
-			data = '+' + str(g.board.territories[area, 3:5].sum())
-	else:
-		data = ''
+def getTerritoryInfo2(area):
+	data = [
+		g.board.territories[area, 0].item(), # 0 number of people
+		g.board.territories[area, 1].item(), # 1 type of people
+		g.board.territories[area, 3:5].sum().item(), # 2 added defense
+		descr[area][0].item(),               # 3 terrain type
+	]
 	return data
