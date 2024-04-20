@@ -28,11 +28,11 @@ const nb_players = 2;
 /* =====  UTILS  ===== */
 /* =================== */
 
-function toShortString(nb, ppl, power) {
+function toShortString(nb, ppl) {
   if (ppl == 0) {
     return '';
   } else if (ppl > 0) {
-    return nb + ppl_short_str[ ppl].toUpperCase();
+     return nb + ppl_short_str[ ppl].toUpperCase();
   } else {
     return nb + ppl_short_str[-ppl];
   }
@@ -62,6 +62,7 @@ class Smallworld extends AbstractGame {
   }
 
   pre_move(action, manualMove) {
+    move_sel._registerMove(action);
   }
 
   post_move(action, manualMove) {
@@ -108,14 +109,20 @@ const buttonInfos = [
   ["deployNBtn" , 93, 93,         true ],
   ["usePplBtn"  , 46, 68,         false],
   ["usePwrBtn"  , 69, 91,         false],
+  ["endTurnBtn" , 130, 130,       true ],
   ["abandonBtn" , 0, 22,          false],
   ["choseBtn"   , 123, 128,       false],
   ["declineBtn" , 129, 129,       true ],
-  ["endTurnBtn" , 130, 130,       true ],
   // deploy 94-99 not proposed
 ];
 
 class MoveSelector extends AbstractMoveSelector {
+  constructor() {
+    super();
+    this.previousAttacks = [];
+    this.previousPlayer = -1;
+  }
+
   // Going back to default, between moves for instance
   reset() {
   }
@@ -164,6 +171,22 @@ class MoveSelector extends AbstractMoveSelector {
     document.getElementById('deckGrid').style = (this.showDeck) ? "" : "display: none";
   }
 
+  _registerMove(action) {
+    if (this.previousPlayer != game.nextPlayer) {
+      this.previousAttacks = [];
+      this.previousPlayer = game.nextPlayer;
+    }
+    const rowAttack = buttonInfos.find(row => row[0] === 'attackBtn');
+    if (action >= rowAttack[1] && action <= rowAttack[2]) {
+      const area = action - rowAttack[1];
+      this.previousAttacks.push(area);
+    }
+  }
+
+  _wasAPreviousAttack(area) {
+    return this.previousAttacks.includes(area);
+  }
+
   clickOnButton(btn) {
     this.selectedMoveType = buttonInfos.findIndex(row => row[0] === btn);
     this.show2ndButtons = buttonInfos[this.selectedMoveType][3];
@@ -186,6 +209,7 @@ class MoveSelector extends AbstractMoveSelector {
   }
 
   clickOnDeck(index) {
+    console.assert(buttonInfos[this.selectedMoveType][0] == 'choseBtn', 'deck was clicked but was move_sel wasnot in mode choose');
     this.nextMove = 123 + index;
     userMove();
   }
@@ -356,6 +380,12 @@ function _genBoard() {
   for (var i = 0 ; i < mapAreas.length; i++) {
     const data = game.getTerritoryInfo2(i);
 
+    result += '<g';
+    if (move_sel.territoryIsClickable(i)) {
+      result += ' onclick="move_sel.clickOnTerritory(' + i + ')"';
+    }
+    result += '>';
+
     // Draw polygon
     result += '<polygon points="';
     let list_of_points = [];
@@ -363,10 +393,7 @@ function _genBoard() {
       list_of_points.push(mapPoints[point]);
       result += mapPoints[point][0] + "," + mapPoints[point][1] + " ";
     }
-    result += '" fill="' + (terrains_col[data[3]][0]) + '" stroke="black" stroke-width="0.3" ';
-    if (move_sel.territoryIsClickable(i)) {
-      result += 'onclick="move_sel.clickOnTerritory(' + i + ')"';
-    }
+    result += '" fill="' + (terrains_col[data[3]][0]) + '" stroke="white" stroke-width="0.6" ';
     result += '></polygon>';
 
     // Draw text
@@ -374,16 +401,23 @@ function _genBoard() {
     if (data[0] > 0) {
       result += '<text x="' + textAreas[0][0] + '" y="' + textAreas[0][1] + '"';
       result += ' text-anchor="middle" dominant-baseline="central" font-size="0.3em" font-weight="bolder" fill="white">';
-      result += toShortString(data[0], data[1], data[2])
+      result += toShortString(data[0], data[1])
       result += '</text>';
 
       if (data[2] > 0) {
         result += '<text x="' + textAreas[1][0] + '" y="' + textAreas[1][1] + '"';
         result += ' text-anchor="middle" dominant-baseline="central" font-size="0.3em" font-weight="bolder" fill="white">';
-        result += '+' + data[2];
+        result += (data[2] >= 20) ? '🚫' : ('+'+data[2]);
         result += '</text>';
       }
     }
+
+    // Draw dot
+    if (move_sel._wasAPreviousAttack(i)) {
+      result += '<circle r="1" cx="' + textAreas[2][0] + '" cy="' + textAreas[2][1] + '" fill="blue"/>';
+    }
+
+    result += '</g>';
   }
 
   // Draw contours for clickable areas
@@ -394,7 +428,7 @@ function _genBoard() {
       for (const point of mapAreas[i]) {
         result += mapPoints[point][0] + "," + mapPoints[point][1] + " ";
       }
-      result += '" fill="none" stroke="red" stroke-align="inset" stroke-width="1"';
+      result += '" fill="none" stroke="red" stroke-width="0.3"';
       result += '></polygon>';
     }
   }
@@ -411,7 +445,7 @@ function _genPlayersInfo(p) {
       // Header
       const rowColor = (p == curPlayPpl[0] && ppl == curPlayPpl[1]) ? 'blue' : '';
       descr += '<div class="three wide ' + rowColor + ' column"><span class="ui big text">';
-      descr += toShortString(pplInfo[0], pplInfo[1], pplInfo[2]);
+      descr += toShortString(pplInfo[0], pplInfo[1]);
       descr += '</span></div>';
 
       // Full name
