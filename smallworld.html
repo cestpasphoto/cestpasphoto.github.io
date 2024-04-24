@@ -76,7 +76,7 @@
   <span class="ui small text">Chose your people in deck below</span>
   <button class="ui fluid compact secondary button" id="confirmBtn" onclick="move_sel.confirm()">Confirm</button>    
 
-  <div class="ui two column doubling stackable grid container">
+  <div class="ui two column doubling stackable very compact grid container">
     <div class="column">
       <!-- Current players -->
       <div class="ui large horizontal divider" id="p0Score">Player 0</i></div>
@@ -87,9 +87,9 @@
 
       <!-- Board -->
       <div class="ui large horizontal divider">Board</div>
-      <svg viewBox="0 0 100 70" id="boardSvg"></svg>
+      <svg viewBox="0 0 1 1" id="boardSvg"></svg>
 
-      <p id="roundP">Round</p>
+      <div class="ui circular labels" id="roundP" style="max-width: fit-content; margin-inline: auto;"></div>
     </div>
 
     <div class="column">

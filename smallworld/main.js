@@ -48,6 +48,56 @@ function toLongString(nb, ppl, power) {
   }
 }
 
+function _miscPolygonComputations(points) {
+  let sumX = 0, sumY = 0, totalArea = 0;
+  let maxX = 0, maxY = 0, minX = 999, minY = 999;
+
+  // Compute simultaneously barycenter and surrounding box
+  for (let i = 0; i < points.length; i++) {
+    const [x1, y1] = points[i];
+    const [x2, y2] = points[(i + 1) % points.length];
+    const triangleArea = (x1 * y2 - x2 * y1);
+    
+    sumX += (x1 + x2) * triangleArea;
+    sumY += (y1 + y2) * triangleArea;
+    totalArea += triangleArea;
+
+    minX = Math.min(minX, x1);
+    maxX = Math.max(maxX, x1);
+    minY = Math.min(minY, y1);
+    maxY = Math.max(maxY, y1);
+  }
+
+  // Barycenter
+  const baryX = sumX / (3 * totalArea);
+  const baryY = sumY / (3 * totalArea);
+
+  // Check overall shape, and deduce 3 areas
+  const shiftX = 6, shiftY = 4;
+  let areas = [];
+  if ((maxX-minX) > 1.5*(maxY-minY)) {
+    // shape is mostly horizontal
+    areas = [ [baryX-shiftX, baryY], [baryX, baryY], [baryX+shiftX, baryY] ];
+  } else if ((maxY-minY) > 1.5*(maxX-minX)) {
+    // shape is mostly vertical
+    areas = [ [baryX, baryY-shiftY], [baryX, baryY], [baryX, baryY+shiftY] ];
+  } else {
+    // shape is mostly square
+    areas = [ [baryX-shiftX/2, baryY-shiftY/2], [baryX+shiftX/2, baryY-shiftY/2], [baryX, baryY+shiftY/2] ];
+  }
+
+  // Compute erosion
+  const erosionR = 0.8;
+  for (const point of points) {
+    const vectorToCenter = [baryX-point[0], baryY-point[1]];
+    const vectorLength = Math.sqrt(vectorToCenter[0]*vectorToCenter[0]+vectorToCenter[1]*vectorToCenter[1]);
+    const newPoint = [point[0] + erosionR*vectorToCenter[0]/vectorLength, point[1] + erosionR*vectorToCenter[1]/vectorLength];
+    areas.push(newPoint);
+  }
+
+  return areas;
+}
+
 /* =================== */
 /* =====  LOGIC  ===== */
 /* =================== */
@@ -105,9 +155,9 @@ class Smallworld extends AbstractGame {
 
 const buttonInfos = [
   // button     range of moveID  HTMLcolor FomanticColor  confirmation needed
-  ["attackBtn"  , 23, 45,       'purple',    'purple',    false],
+  ["attackBtn"  , 23, 45,       'lime',      'green',     false],
   ["noDeployBtn", 92, 92,       'black',     'blue',      true ],
-  ["deploy1Btn" , 100, 122,     'lime',      'green',     false],
+  ["deploy1Btn" , 100, 122,     'hotpink',   'pink',      false],
   ["usePplBtn"  , 46, 68,       'black',     'blue',      false],
   ["usePwrBtn"  , 69, 91,       'black',     'blue',      false],
   ["endTurnBtn" , 130, 130,     'black',     'blue',      true ],
@@ -342,56 +392,6 @@ const mapAreas = [
   [16, 15, 22, 21, 17],     // 22
 ];
 
-function _miscPolygonComputations(points) {
-  let sumX = 0, sumY = 0, totalArea = 0;
-  let maxX = 0, maxY = 0, minX = 999, minY = 999;
-
-  // Compute simultaneously barycenter and surrounding box
-  for (let i = 0; i < points.length; i++) {
-    const [x1, y1] = points[i];
-    const [x2, y2] = points[(i + 1) % points.length];
-    const triangleArea = (x1 * y2 - x2 * y1);
-    
-    sumX += (x1 + x2) * triangleArea;
-    sumY += (y1 + y2) * triangleArea;
-    totalArea += triangleArea;
-
-    minX = Math.min(minX, x1);
-    maxX = Math.max(maxX, x1);
-    minY = Math.min(minY, y1);
-    maxY = Math.max(maxY, y1);
-  }
-
-  // Barycenter
-  const baryX = sumX / (3 * totalArea);
-  const baryY = sumY / (3 * totalArea);
-
-  // Check overall shape, and deduce 3 areas
-  const shift = 6;
-  let areas = [];
-  if ((maxX-minX) > 1.5*(maxY-minY)) {
-    // shape is mostly horizontal
-    areas = [ [baryX-shift, baryY], [baryX, baryY], [baryX+shift, baryY] ];
-  } else if ((maxY-minY) > 1.5*(maxX-minX)) {
-    // shape is mostly vertical
-    areas = [ [baryX, baryY-shift], [baryX, baryY], [baryX, baryY+shift] ];
-  } else {
-    // shape is mostly square
-    areas = [ [baryX-shift/2, baryY-shift/2], [baryX+shift/2, baryY-shift/2], [baryX, baryY+shift/2] ];
-  }
-
-  // Compute erosion
-  const erosionR = 0.8;
-  for (const point of points) {
-    const vectorToCenter = [baryX-point[0], baryY-point[1]];
-    const vectorLength = Math.sqrt(vectorToCenter[0]*vectorToCenter[0]+vectorToCenter[1]*vectorToCenter[1]);
-    const newPoint = [point[0] + erosionR*vectorToCenter[0]/vectorLength, point[1] + erosionR*vectorToCenter[1]/vectorLength];
-    areas.push(newPoint);
-  }
-
-  return areas;
-}
-
 function _genBoard() {
   let result = '';
   let strokeColor = buttonInfos[move_sel.selectedMoveType][3]
@@ -490,9 +490,22 @@ function refreshBoard() {
 
   // update board contents
   document.getElementById("boardSvg").innerHTML = _genBoard();
+  document.getElementById("boardSvg").setAttribute("viewBox", "0 0 100 70");
 
   // update round
-  document.getElementById("roundP").innerHTML = "Round " + game.getRound() + "/10";
+  // "Round " + game.getRound() + "/10";
+  let roundDescr = '';
+  const round = game.getRound();
+  for (var i = 1; i <= 10; ++i) {
+    roundDescr += '<div class="ui'; 
+    if (i == round) {
+      roundDescr += ' black';
+    } else if (i > round) {
+      roundDescr += ' disabled';
+    }
+    roundDescr += ' label">' + i + "</div>";
+  }
+  document.getElementById("roundP").innerHTML = roundDescr;
 
   for (let p = 0; p < nb_players; p++) {
     pplDescr = document.getElementById("p"+p+"Ppl");
