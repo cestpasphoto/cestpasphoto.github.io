@@ -194,15 +194,19 @@ async function ai_play_one_move() {
 }
 
 async function ai_play_if_needed() {
+  did_ai_played = false;
   while (game.gameEnded.every(x => !x) && !game.is_human_player('next')) {
     await ai_play_one_move();
     
+    did_ai_played = true;
     refreshBoard();
     refreshButtons();
     changeMoveText(moveToString(game.lastMove, 'AI'), 'add');
   }
 
-  move_sel.resetAndStart();
+  if (did_ai_played) {
+    move_sel.resetAndStart();
+  }
   refreshBoard();
   refreshButtons();
 }

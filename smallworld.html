@@ -63,59 +63,61 @@
 
   <!-- Action buttons -->
   <div class="ui fluid compact buttons">
-    <button class="ui toggle button" id="choseBtn"    onclick="move_sel.clickOnButton(this.id)">Choose <i class="users icon"></i> + <i class="magic icon"></i></button>
-    <button class="ui toggle button" id="abandonBtn"  onclick="move_sel.clickOnButton(this.id)">Abandon</button>
-    <button class="ui toggle button" id="attackBtn"   onclick="move_sel.clickOnButton(this.id)">Attack</button>
-    <button class="ui toggle button" id="usePplBtn"   onclick="move_sel.clickOnButton(this.id)">Use <i class="users icon"></i></button>
-    <button class="ui toggle button" id="usePwrBtn"   onclick="move_sel.clickOnButton(this.id)">Use <i class="magic icon"></i></button>
-    <button class="ui toggle button" id="deploy1Btn"  onclick="move_sel.clickOnButton(this.id)">Redeploy 1</button>
-    <button class="ui toggle button" id="deployNBtn"  onclick="move_sel.clickOnButton(this.id)">Redeploy N</button>
-    <button class="ui toggle button" id="noDeployBtn" onclick="move_sel.clickOnButton(this.id)">No redeploy</button>    
-    <button class="ui toggle button" id="declineBtn"  onclick="move_sel.clickOnButton(this.id)">Decline</button>    
-    <button class="ui toggle button" id="endTurnBtn"  onclick="move_sel.clickOnButton(this.id)">End turn</button>    
+    <button class="ui button" id="choseBtn"    onclick="move_sel.clickOnButton(this.id)">Choose <i class="users icon"></i> + <i class="magic icon"></i></button>
+    <button class="ui button" id="abandonBtn"  onclick="move_sel.clickOnButton(this.id)">Abandon</button>
+    <button class="ui button" id="attackBtn"   onclick="move_sel.clickOnButton(this.id)">Attack</button>
+    <button class="ui button" id="usePplBtn"   onclick="move_sel.clickOnButton(this.id)">Use <i class="users icon"></i></button>
+    <button class="ui button" id="usePwrBtn"   onclick="move_sel.clickOnButton(this.id)">Use <i class="magic icon"></i></button>
+    <button class="ui button" id="deploy1Btn"  onclick="move_sel.clickOnButton(this.id)">Redeploy</button>
+    <button class="ui button" id="noDeployBtn" onclick="move_sel.clickOnButton(this.id)">No redeploy</button>    
+    <button class="ui button" id="declineBtn"  onclick="move_sel.clickOnButton(this.id)">Decline</button>    
+    <button class="ui button" id="endTurnBtn"  onclick="move_sel.clickOnButton(this.id)">End turn</button>    
   </div>
   <span class="ui small text">Chose your people in deck below</span>
-  <button class="ui fluid compact button" id="confirmBtn" onclick="move_sel.confirm()">Confirm</button>    
+  <button class="ui fluid compact secondary button" id="confirmBtn" onclick="move_sel.confirm()">Confirm</button>    
 
+  <div class="ui two column doubling stackable grid container">
+    <div class="column">
+      <!-- Current players -->
+      <div class="ui large horizontal divider" id="p0Score">Player 0</i></div>
+      <div class="ui very compact middle aligned grid" id="p0Ppl"></div>
 
-  <!-- Deck -->
-  <div class="ui horizontal divider" id="deckDivider">Deck</div>
-  <div class="ui middle aligned very compact grid" id="deckGrid">
-      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(0)">0 <i class="coins icon"></i></button></div>
-      <div class="thirteen wide column" id="deck0Descr">-</div>
+      <div class="ui large horizontal divider" id="p1Score">Player 1</div>
+      <div class="ui very compact middle aligned grid" id="p1Ppl"></div>
 
-      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(1)">1 <i class="coins icon"></i></button></div>
-      <div class="thirteen wide column" id="deck1Descr">-</div>
+      <!-- Board -->
+      <div class="ui large horizontal divider">Board</div>
+      <svg viewBox="0 0 100 70" id="boardSvg"></svg>
 
-      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(2)">2 <i class="coins icon"></i></button></div>
-      <div class="thirteen wide column" id="deck2Descr">-</div>
+      <p id="roundP">Round</p>
+    </div>
 
-      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(3)">3 <i class="coins icon"></i></button></div>
-      <div class="thirteen wide column" id="deck3Descr">-</div>
+    <div class="column">
+      <!-- Deck -->
+      <div class="ui large horizontal divider" id="deckDivider">Deck</div>
+      <div class="ui middle aligned very compact grid" id="deckGrid">
+          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(0)">0 <i class="coins icon"></i></button></div>
+          <div class="thirteen wide column" id="deck0Descr">-</div>
 
-      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(4)">4 <i class="coins icon"></i></button></div>
-      <div class="thirteen wide column" id="deck4Descr">-</div>
+          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(1)">1 <i class="coins icon"></i></button></div>
+          <div class="thirteen wide column" id="deck1Descr">-</div>
 
-      <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(5)">5 <i class="coins icon"></i></button></div>
-      <div class="thirteen wide column" id="deck5Descr">-</div>
-  </div>
+          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(2)">2 <i class="coins icon"></i></button></div>
+          <div class="thirteen wide column" id="deck2Descr">-</div>
 
-  <!-- Current players -->
-  <div class="ui horizontal divider" id="p0Score">Player 0</i></div>
-  <div class="ui very compact middle aligned grid" id="p0Ppl"></div>
+          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(3)">3 <i class="coins icon"></i></button></div>
+          <div class="thirteen wide column" id="deck3Descr">-</div>
 
-  <div class="ui horizontal divider" id="p1Score">Player 1</div>
-  <div class="ui very compact middle aligned grid" id="p1Ppl"></div>
+          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(4)">4 <i class="coins icon"></i></button></div>
+          <div class="thirteen wide column" id="deck4Descr">-</div>
 
-  <!-- Board -->
-  <div class="ui horizontal divider">Board</div>
-  <svg viewBox="0 0 100 70" id="boardSvg"></svg>
+          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(5)">5 <i class="coins icon"></i></button></div>
+          <div class="thirteen wide column" id="deck5Descr">-</div>
+        </div>
+      </div>
+    </div>
 
-  <p id="roundP">Round</p>
-
-<!-- Button -->
-
-
+  <!-- Button -->
   <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
     <button class="ui icon button" id="undoBtn" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
   </div>

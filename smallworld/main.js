@@ -66,6 +66,8 @@ class Smallworld extends AbstractGame {
   }
 
   post_move(action, manualMove) {
+    // Check if attack succeeded ?
+    // Print move
   }
 
   post_set_data() {
@@ -102,18 +104,17 @@ class Smallworld extends AbstractGame {
 }
 
 const buttonInfos = [
-  // button     range of moveID   confirmation needed
-  ["attackBtn"  , 23, 45,         false],  
-  ["noDeployBtn", 92, 92,         true ],
-  ["deploy1Btn" , 100, 122,       false],
-  ["deployNBtn" , 93, 93,         true ],
-  ["usePplBtn"  , 46, 68,         false],
-  ["usePwrBtn"  , 69, 91,         false],
-  ["endTurnBtn" , 130, 130,       true ],
-  ["abandonBtn" , 0, 22,          false],
-  ["choseBtn"   , 123, 128,       false],
-  ["declineBtn" , 129, 129,       true ],
-  // deploy 94-99 not proposed
+  // button     range of moveID  HTMLcolor FomanticColor  confirmation needed
+  ["attackBtn"  , 23, 45,       'purple',    'purple',    false],
+  ["noDeployBtn", 92, 92,       'black',     'blue',      true ],
+  ["deploy1Btn" , 100, 122,     'lime',      'green',     false],
+  ["usePplBtn"  , 46, 68,       'black',     'blue',      false],
+  ["usePwrBtn"  , 69, 91,       'black',     'blue',      false],
+  ["endTurnBtn" , 130, 130,     'black',     'blue',      true ],
+  ["abandonBtn" , 0, 22,        'red',       'red',       false],
+  ["choseBtn"   , 123, 128,     'black',     'blue',      false],
+  ["declineBtn" , 129, 129,     'black',     'blue',      true ],
+  // deployN 93-99 not proposed
 ];
 
 class MoveSelector extends AbstractMoveSelector {
@@ -152,17 +153,26 @@ class MoveSelector extends AbstractMoveSelector {
       return;
     }
     // decide which elements to show
-    this.show2ndButtons = buttonInfos[this.selectedMoveType][3];
+    this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
     this.showDeck = ['choseBtn', 'declineBtn'].includes(buttonInfos[this.selectedMoveType][0]);
 
     // update UI
     this._updateHTML();
   }
 
+  end() {
+    this.selectedMoveType = 0;
+    this.allowedMoveTypes = new Array(buttonInfos.length).fill(false);
+    this.show2ndButtons = false;
+    this.showDeck = false;
+    this.nextMove = -1;
+    this._updateHTML();
+  }
+
   _updateHTML() {
     for (let i = 0; i < buttonInfos.length; i++) {
       document.getElementById(buttonInfos[i][0]).style = this.allowedMoveTypes[i] ? "" : "display: none";
-      document.getElementById(buttonInfos[i][0]).classList.toggle('active', i == this.selectedMoveType);
+      document.getElementById(buttonInfos[i][0]).classList.toggle(buttonInfos[i][4], i == this.selectedMoveType);
     }
 
     document.getElementById('confirmBtn').style = (this.show2ndButtons) ? "" : "display: none";
@@ -189,7 +199,7 @@ class MoveSelector extends AbstractMoveSelector {
 
   clickOnButton(btn) {
     this.selectedMoveType = buttonInfos.findIndex(row => row[0] === btn);
-    this.show2ndButtons = buttonInfos[this.selectedMoveType][3];
+    this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
     this.showDeck = ['choseBtn', 'declineBtn'].includes(buttonInfos[this.selectedMoveType][0]);
     this._updateHTML();
     refreshBoard();
@@ -201,7 +211,7 @@ class MoveSelector extends AbstractMoveSelector {
   }
 
   territoryIsClickable(area) {
-    if (['deployNBtn', 'choseBtn', 'endTurn'].includes(buttonInfos[this.selectedMoveType][0])) {
+    if (['choseBtn', 'noDeployBtn', 'declineBtn', 'endTurn'].includes(buttonInfos[this.selectedMoveType][0])) {
       return false;  
     }
     const virtualMove = buttonInfos[this.selectedMoveType][1] + area;
@@ -217,8 +227,6 @@ class MoveSelector extends AbstractMoveSelector {
   confirm() {
     if (buttonInfos[this.selectedMoveType][0] == 'noDeployBtn') {
       this.nextMove = 92;
-    } else if (buttonInfos[this.selectedMoveType][0] == 'deployNBtn') {
-      this.nextMove = 93;
     } else if (buttonInfos[this.selectedMoveType][0] == 'declineBtn') {
       this.nextMove = 129;
     } else if (buttonInfos[this.selectedMoveType][0] == 'endTurnBtn') {
@@ -334,7 +342,7 @@ const mapAreas = [
   [16, 15, 22, 21, 17],     // 22
 ];
 
-function _genTextAreas(points) {
+function _miscPolygonComputations(points) {
   let sumX = 0, sumY = 0, totalArea = 0;
   let maxX = 0, maxY = 0, minX = 999, minY = 999;
 
@@ -372,12 +380,28 @@ function _genTextAreas(points) {
     areas = [ [baryX-shift/2, baryY-shift/2], [baryX+shift/2, baryY-shift/2], [baryX, baryY+shift/2] ];
   }
 
+  // Compute erosion
+  const erosionR = 0.8;
+  for (const point of points) {
+    const vectorToCenter = [baryX-point[0], baryY-point[1]];
+    const vectorLength = Math.sqrt(vectorToCenter[0]*vectorToCenter[0]+vectorToCenter[1]*vectorToCenter[1]);
+    const newPoint = [point[0] + erosionR*vectorToCenter[0]/vectorLength, point[1] + erosionR*vectorToCenter[1]/vectorLength];
+    areas.push(newPoint);
+  }
+
   return areas;
 }
 
 function _genBoard() {
   let result = '';
+  let strokeColor = buttonInfos[move_sel.selectedMoveType][3]
+
   for (var i = 0 ; i < mapAreas.length; i++) {
+    let list_of_points = [];
+    for (const point of mapAreas[i]) {
+      list_of_points.push(mapPoints[point]);
+    }
+    const computedPoints = _miscPolygonComputations(list_of_points);
     const data = game.getTerritoryInfo2(i);
 
     result += '<g';
@@ -388,49 +412,36 @@ function _genBoard() {
 
     // Draw polygon
     result += '<polygon points="';
-    let list_of_points = [];
-    for (const point of mapAreas[i]) {
-      list_of_points.push(mapPoints[point]);
-      result += mapPoints[point][0] + "," + mapPoints[point][1] + " ";
+    for (var j = 3 ; j < computedPoints.length; j++) {
+      result += computedPoints[j][0] + ',' + computedPoints[j][1] + ' ';
     }
-    result += '" fill="' + (terrains_col[data[3]][0]) + '" stroke="white" stroke-width="0.6" ';
+    result += '" fill="' + (terrains_col[data[3]][0]) + '"';
+    if (move_sel.territoryIsClickable(i)) {
+      result += ' stroke="'+  strokeColor + '" stroke-width="0.4"';
+    }
     result += '></polygon>';
 
     // Draw text
-    const textAreas = _genTextAreas(list_of_points);
     if (data[0] > 0) {
-      result += '<text x="' + textAreas[0][0] + '" y="' + textAreas[0][1] + '"';
+      result += '<text x="' + computedPoints[0][0] + '" y="' + computedPoints[0][1] + '"';
       result += ' text-anchor="middle" dominant-baseline="central" font-size="0.3em" font-weight="bolder" fill="white">';
       result += toShortString(data[0], data[1])
       result += '</text>';
+    }
 
-      if (data[2] > 0) {
-        result += '<text x="' + textAreas[1][0] + '" y="' + textAreas[1][1] + '"';
-        result += ' text-anchor="middle" dominant-baseline="central" font-size="0.3em" font-weight="bolder" fill="white">';
-        result += (data[2] >= 20) ? '🚫' : ('+'+data[2]);
-        result += '</text>';
-      }
+    if (data[2] > 0) {
+      result += '<text x="' + computedPoints[1][0] + '" y="' + computedPoints[1][1] + '"';
+      result += ' text-anchor="middle" dominant-baseline="central" font-size="0.3em" font-weight="bolder" fill="white">';
+      result += (data[2] >= 20) ? '🚫' : ('+'+data[2]);
+      result += '</text>';
     }
 
     // Draw dot
     if (move_sel._wasAPreviousAttack(i)) {
-      result += '<circle r="1" cx="' + textAreas[2][0] + '" cy="' + textAreas[2][1] + '" fill="blue"/>';
+      result += '<circle r="1" cx="' + computedPoints[2][0] + '" cy="' + computedPoints[2][1] + '" fill="blue" />';
     }
 
     result += '</g>';
-  }
-
-  // Draw contours for clickable areas
-  for (var i = 0 ; i < mapAreas.length; i++) {
-    const data = game.getTerritoryInfo2(i);
-    if (move_sel.territoryIsClickable(i)) {
-      result += '<polygon points="'
-      for (const point of mapAreas[i]) {
-        result += mapPoints[point][0] + "," + mapPoints[point][1] + " ";
-      }
-      result += '" fill="none" stroke="red" stroke-width="0.3"';
-      result += '></polygon>';
-    }
   }
 
   return result;
@@ -483,11 +494,6 @@ function refreshBoard() {
   // update round
   document.getElementById("roundP").innerHTML = "Round " + game.getRound() + "/10";
 
-  // update peoples and scores
-  for (let p = 0; p < nb_players; p++) {
-    document.getElementById("p"+p+"Score").innerHTML = "Player " + p + " - " + game.getScore(p) + '<i class="coins icon"></i>';
-  }
-  
   for (let p = 0; p < nb_players; p++) {
     pplDescr = document.getElementById("p"+p+"Ppl");
     pplDescr.innerHTML = _genPlayersInfo(p);
@@ -514,11 +520,20 @@ function refreshButtons(loading=false) {
     loadingBtn.style = "display: none";
   }
 
-  // update move selector
-  move_sel.update();
+  if (game.is_ended()) {
+    console.log('End of game');
+    move_sel.end();
+  } else {
+    // update move selector
+    move_sel.update();
+  }
 }
 
 function refreshPlayersText() {
+  // update peoples and scores
+  for (let p = 0; p < nb_players; p++) {
+    document.getElementById("p"+p+"Score").innerHTML = "Player " + p + " - " + game.getScore(p) + '<i class="coins icon"></i>';
+  }
 }
 
 function changeMoveText() {

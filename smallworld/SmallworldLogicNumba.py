@@ -135,7 +135,7 @@ class Board():
 		# Fill map with lost tribe
 		nb_lt = initial_nb_people[-LOST_TRIBE]
 		for i in range(NB_AREAS):
-			self.territories[i,:] = [nb_lt, LOST_TRIBE, NOPOWER, 0, 0, nb_lt+int(descr[i, 0] == MOUNTAIN), 0, -1] if descr[i][4] else [0, NOPPL, NOPOWER, 0, 0, 0, 0, -1]
+			self.territories[i,:] = [nb_lt, LOST_TRIBE, NOPOWER, 0, 0, nb_lt+int(descr[i, 0] == MOUNTAIN), 0, -1] if descr[i][4] else [0, NOPPL, NOPOWER, 0, 0, int(descr[i, 0] == MOUNTAIN), 0, -1]
 
 		# Init deck
 		self._init_deck()
