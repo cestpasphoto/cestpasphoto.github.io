@@ -126,5 +126,6 @@ def getTerritoryInfo2(area):
 		g.board.territories[area, 1].item(), # 1 type of people
 		(g.board.territories[area, 5]-g.board.territories[area, 0]).item(), # 2 added defense
 		descr[area][0].item(),               # 3 terrain type
+		[descr[area][1].item(), descr[area][2].item(), descr[area][3].item()], # 4 terrain power
 	]
 	return data

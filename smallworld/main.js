@@ -28,279 +28,19 @@ const nb_players = 2;
 /* =====  UTILS  ===== */
 /* =================== */
 
-function toShortString(nb, ppl) {
-  if (ppl == 0) {
-    return '';
-  } else if (ppl > 0) {
-     return nb + ppl_short_str[ ppl].toUpperCase();
-  } else {
-    return nb + ppl_short_str[-ppl];
-  }
-}
-
-function toLongString(nb, ppl, power) {
-  if (ppl == 0) {
-    return '';
-  } else if (ppl > 0) {
-    return nb + 'x ' + ppl_str[ ppl] + ' + ' + pwr_str[power];
-  } else {
-    return nb + 'x ' + ppl_str[-ppl] + ' <i class="skull crossbones icon"></i>';
-  }
-}
-
-function _miscPolygonComputations(points) {
-  let sumX = 0, sumY = 0, totalArea = 0;
-  let maxX = 0, maxY = 0, minX = 999, minY = 999;
-
-  // Compute simultaneously barycenter and surrounding box
-  for (let i = 0; i < points.length; i++) {
-    const [x1, y1] = points[i];
-    const [x2, y2] = points[(i + 1) % points.length];
-    const triangleArea = (x1 * y2 - x2 * y1);
-    
-    sumX += (x1 + x2) * triangleArea;
-    sumY += (y1 + y2) * triangleArea;
-    totalArea += triangleArea;
-
-    minX = Math.min(minX, x1);
-    maxX = Math.max(maxX, x1);
-    minY = Math.min(minY, y1);
-    maxY = Math.max(maxY, y1);
-  }
-
-  // Barycenter
-  const baryX = sumX / (3 * totalArea);
-  const baryY = sumY / (3 * totalArea);
-
-  // Check overall shape, and deduce 3 areas
-  const shiftX = 6, shiftY = 4;
-  let areas = [];
-  if ((maxX-minX) > 1.5*(maxY-minY)) {
-    // shape is mostly horizontal
-    areas = [ [baryX-shiftX, baryY], [baryX, baryY], [baryX+shiftX, baryY] ];
-  } else if ((maxY-minY) > 1.5*(maxX-minX)) {
-    // shape is mostly vertical
-    areas = [ [baryX, baryY-shiftY], [baryX, baryY], [baryX, baryY+shiftY] ];
-  } else {
-    // shape is mostly square
-    areas = [ [baryX-shiftX/2, baryY-shiftY/2], [baryX+shiftX/2, baryY-shiftY/2], [baryX, baryY+shiftY/2] ];
-  }
-
-  // Compute erosion
-  const erosionR = 0.8;
-  for (const point of points) {
-    const vectorToCenter = [baryX-point[0], baryY-point[1]];
-    const vectorLength = Math.sqrt(vectorToCenter[0]*vectorToCenter[0]+vectorToCenter[1]*vectorToCenter[1]);
-    const newPoint = [point[0] + erosionR*vectorToCenter[0]/vectorLength, point[1] + erosionR*vectorToCenter[1]/vectorLength];
-    areas.push(newPoint);
-  }
-
-  return areas;
-}
-
-/* =================== */
-/* =====  LOGIC  ===== */
-/* =================== */
-
-class Smallworld extends AbstractGame {
-  constructor() {
-    super()
-    this.validMoves = Array(sizeV[1]); this.validMoves.fill(false);
-  }
-
-  post_init_game() {
-  }
-
-  pre_move(action, manualMove) {
-    move_sel._registerMove(action);
-  }
-
-  post_move(action, manualMove) {
-    // Check if attack succeeded ?
-    // Print move
-  }
-
-  post_set_data() {
-  }
-
-  has_changed_on_last_move(item_vector) {
-    return 0;
-  }
-
-  getTerritoryInfo2(area) {
-    return this.py.getTerritoryInfo2(area).toJs({create_proxies: false});
-  }
-
-  getScore(p) {
-    return this.py.getScore(p);
-  }
-
-  getPplInfo(p, ppl) {
-    return this.py.getPplInfo(p, ppl).toJs({create_proxies: false});
-  }
-
-  getCurrentPlayerAndPeople() {
-    return this.py.getCurrentPlayerAndPeople().toJs({create_proxies: false});
-  }
-
-  getDeckInfo(i) {
-    return this.py.getDeckInfo(i).toJs({create_proxies: false});
-  }
-
-  getRound() {
-    return this.py.getRound();
-  }
-
-}
-
 const buttonInfos = [
   // button     range of moveID  HTMLcolor FomanticColor  confirmation needed
-  ["attackBtn"  , 23, 45,       'lime',      'green',     false],
-  ["noDeployBtn", 92, 92,       'black',     'blue',      true ],
+  ["attackBtn"  , 23, 45,       'tomato',    'orange',    false],
+  ["noDeployBtn", 92, 92,       'mediumblue','blue',      true ],
   ["deploy1Btn" , 100, 122,     'hotpink',   'pink',      false],
-  ["usePplBtn"  , 46, 68,       'black',     'blue',      false],
-  ["usePwrBtn"  , 69, 91,       'black',     'blue',      false],
-  ["endTurnBtn" , 130, 130,     'black',     'blue',      true ],
+  ["usePplBtn"  , 46, 68,       'mediumblue','blue',      false],
+  ["usePwrBtn"  , 69, 91,       'mediumblue','blue',      false],
+  ["endTurnBtn" , 130, 130,     'mediumblue','blue',      true ],
   ["abandonBtn" , 0, 22,        'red',       'red',       false],
-  ["choseBtn"   , 123, 128,     'black',     'blue',      false],
-  ["declineBtn" , 129, 129,     'black',     'blue',      true ],
+  ["choseBtn"   , 123, 128,     'mediumblue','blue',      false],
+  ["declineBtn" , 129, 129,     'mediumblue','blue',      true ],
   // deployN 93-99 not proposed
 ];
-
-class MoveSelector extends AbstractMoveSelector {
-  constructor() {
-    super();
-    this.previousAttacks = [];
-    this.previousPlayer = -1;
-  }
-
-  // Going back to default, between moves for instance
-  reset() {
-  }
-
-  // First start
-  start() {
-    this.selectedMoveType = -1;
-    this.allowedMoveTypes = new Array(buttonInfos.length).fill(false);
-    this.show2ndButtons = false;
-    this.showDeck = false;
-    this.nextMove = -1;
-    this.update();
-  }
-
-  update() {
-    // reset nextMove (but not selectedMoveType)
-    this.nextMove = -1;
-    // check allowed types
-    for (let i = 0; i < buttonInfos.length; i++) {
-      this.allowedMoveTypes[i] = game.validMoves.slice(buttonInfos[i][1], buttonInfos[i][2]+1).some(Boolean);
-    }
-    // decide which type to select
-    if (this.selectedMoveType < 0 || !this.allowedMoveTypes[this.selectedMoveType]) {
-      this.selectedMoveType = this.allowedMoveTypes.indexOf(true);
-    }
-    if (this.selectedMoveType < 0) {
-      return;
-    }
-    // decide which elements to show
-    this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
-    this.showDeck = ['choseBtn', 'declineBtn'].includes(buttonInfos[this.selectedMoveType][0]);
-
-    // update UI
-    this._updateHTML();
-  }
-
-  end() {
-    this.selectedMoveType = 0;
-    this.allowedMoveTypes = new Array(buttonInfos.length).fill(false);
-    this.show2ndButtons = false;
-    this.showDeck = false;
-    this.nextMove = -1;
-    this._updateHTML();
-  }
-
-  _updateHTML() {
-    for (let i = 0; i < buttonInfos.length; i++) {
-      document.getElementById(buttonInfos[i][0]).style = this.allowedMoveTypes[i] ? "" : "display: none";
-      document.getElementById(buttonInfos[i][0]).classList.toggle(buttonInfos[i][4], i == this.selectedMoveType);
-    }
-
-    document.getElementById('confirmBtn').style = (this.show2ndButtons) ? "" : "display: none";
-
-    document.getElementById('deckDivider').style = (this.showDeck) ? "" : "display: none";
-    document.getElementById('deckGrid').style = (this.showDeck) ? "" : "display: none";
-  }
-
-  _registerMove(action) {
-    if (this.previousPlayer != game.nextPlayer) {
-      this.previousAttacks = [];
-      this.previousPlayer = game.nextPlayer;
-    }
-    const rowAttack = buttonInfos.find(row => row[0] === 'attackBtn');
-    if (action >= rowAttack[1] && action <= rowAttack[2]) {
-      const area = action - rowAttack[1];
-      this.previousAttacks.push(area);
-    }
-  }
-
-  _wasAPreviousAttack(area) {
-    return this.previousAttacks.includes(area);
-  }
-
-  clickOnButton(btn) {
-    this.selectedMoveType = buttonInfos.findIndex(row => row[0] === btn);
-    this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
-    this.showDeck = ['choseBtn', 'declineBtn'].includes(buttonInfos[this.selectedMoveType][0]);
-    this._updateHTML();
-    refreshBoard();
-  }
-
-  clickOnTerritory(area) {
-    this.nextMove = buttonInfos[this.selectedMoveType][1] + area;
-    userMove();
-  }
-
-  territoryIsClickable(area) {
-    if (['choseBtn', 'noDeployBtn', 'declineBtn', 'endTurn'].includes(buttonInfos[this.selectedMoveType][0])) {
-      return false;  
-    }
-    const virtualMove = buttonInfos[this.selectedMoveType][1] + area;
-    return game.validMoves[virtualMove];
-  }
-
-  clickOnDeck(index) {
-    console.assert(buttonInfos[this.selectedMoveType][0] == 'choseBtn', 'deck was clicked but was move_sel wasnot in mode choose');
-    this.nextMove = 123 + index;
-    userMove();
-  }
-
-  confirm() {
-    if (buttonInfos[this.selectedMoveType][0] == 'noDeployBtn') {
-      this.nextMove = 92;
-    } else if (buttonInfos[this.selectedMoveType][0] == 'declineBtn') {
-      this.nextMove = 129;
-    } else if (buttonInfos[this.selectedMoveType][0] == 'endTurnBtn') {
-      this.nextMove = 130;
-    } else {
-      return;
-    } 
-    userMove();
-  }
-
-  // return move, or -1 if move is undefined
-  getMove() {
-    return this.nextMove;
-  }
-
-}
-
-function moveToString(move, gameMode) {
-  return ''
-}
-
-/* =================== */
-/* ===== DISPLAY ===== */
-/* =================== */
 
 const ppl_str       = [' ', 'amazon','dwarf','elf','ghoul','giant','halfling','human','orc','ratman','skeleton','sorcerer','triton','troll','wizard', 'lost_tribe'];
 const ppl_short_str = [' ', 'a'     ,'d'    ,'e'  ,'h'    ,'g'    ,'f'       ,'u'    ,'o'  ,'r'     ,'k'       ,'s'       ,'n'     ,'t'    ,'w'     , 'l'];
@@ -308,11 +48,17 @@ const pwr_str = [' ','alchemist','berserk','bivouacking','commando','diplomat','
 
 const terrains_col = [
   ['#266e3c'  ,  'green' ],  // FORESTT
-  ['#eaba5e'  , 'brown' ],  // FARMLAND
-  ['#39a35f'  ,  'green' ],  // HILLT
-  ['#886a44'  , 'purple'],  // SWAMPT
-  ['lightgrey',   'black' ],  // MOUNTAIN
-  ['#61a6cf'  ,   'blue'  ],  // WATER
+  ['#eaba5e'  ,  'brown' ],  // FARMLAND
+  ['#74a339'  ,  'olive' ],  // HILLT
+  ['#886a44'  ,  'purple'],  // SWAMPT
+  ['#c8c8c8'  ,  'black' ],  // MOUNTAIN
+  ['#61a6cf'  ,  'blue'  ],  // WATER
+];
+
+const terrains_symb = [
+  '⌘', // cavern
+  '★', // magic
+  '⏚', // mine
 ];
 
 const mapPoints = [
@@ -392,6 +138,365 @@ const mapAreas = [
   [16, 15, 22, 21, 17],     // 22
 ];
 
+function formatArea(areaName) {
+  if (areaName == 'forest') {
+    return '<span class="ui text" style="color: ' + terrains_col[0][0] + '">forest</span>';
+  }
+  if (areaName == 'farmland') {
+    return '<span class="ui text" style="color: ' + terrains_col[1][0] + '">farmland</span>';
+  }
+  if (areaName == 'hill') {
+    return '<span class="ui text" style="color: ' + terrains_col[2][0] + '">hill</span>';
+  }
+  if (areaName == 'swamp') {
+    return '<span class="ui text" style="color: ' + terrains_col[3][0] + '">swamp</span>';
+  }
+  if (areaName == 'mountain') {
+    return '<span class="ui text" style="color: ' + terrains_col[4][0] + '">mountain</span>';
+  }
+  if (areaName == 'water') {
+    return '<span class="ui text" style="color: ' + terrains_col[5][0] + '">water</span>';
+  }
+  if (areaName == 'cavern') {
+    return '<span class="ui text">' + terrains_symb[0] + '</span>';
+  }
+  if (areaName == 'magic') {
+    return '<span class="ui text">' + terrains_symb[1] + '</span>';
+  }
+  if (areaName == 'mine') {
+    return '<span class="ui text">' + terrains_symb[2] + '</span>';
+  }
+}
+
+const pplDescr = [
+  'No people', // NOPPL     = 0
+  '+4 <i class="user icon"></i> during attack',                               // AMAZON    = 1  #  +4 pour attaque
+  '+1 <i class="coins icon"></i> for each ' + formatArea('mine') + ' occupied, even in decline', // DWARF     = 2  #  +1 victoire sur mine, même en déclin
+  'Do not discard 1 <i class="user icon"></i> when attacked',                 // ELF       = 3  #  pas de défausse lors d'une défaite
+  'In decline, <i class="users icon"></i> arent discarded and can even play', // GHOUL     = 4  #  tous les zombies restent en déclin, peuvent attaquer
+  '-1 <i class="user icon"></i> when attacking a ' + formatArea('mountain'),  // GIANT     = 5  #  -1 pour attaque voisin montagne
+  'Can start anywhere, receive immunity on 2 first regions until abandoned or decline', // HALFLING  = 6  #  départ n'importe où, immunité sur 2 prem régions
+  '+1 <i class="coins icon"></i> for each ' + formatArea('farmland') + ' occupied', // HUMAN     = 7  #  +1 victoire sur champs
+  '+1 <i class="coins icon"></i> for each attacked non-empty area',           // ORC       = 8  #  +1 victoire pour région non-vide conquise
+  'They are numerous',                                                        // RATMAN    = 9  #  leur nombre                                             
+  '+1 <i class="user icon"></i> for every 2 attacked non-empty areas',        // SKELETON  = 10 #  +1 pion pour toutes 2 régions non-vide conquises
+  'Replace a single active neighbour enemy by new sorcerer',                  // SORCERER  = 11 #  remplace pion unique adversaire actif par un sorcier
+  'Need -1 <i class="user icon"></i> when attacking a area neighbour to ' + formatArea('water'), // TRITON    = 12 #  -1 pour attaque région côtière
+  '+1 defense on each owned area, even in decline',                           // TROLL     = 13 #  +1 défense sur chaque territoire même en déclin
+  '+1 <i class="coins icon"></i> for each ' + formatArea('magic') + ' occupied', // WIZARD    = 14 #  +1 victoire sur source magique
+]
+
+const pwrDescr = [
+  'No power',                                                               // NOPOWER     = 0
+  '+2 <i class="coins icon"></i> at each round',                            // ALCHEMIST   = 1  # +2 chaque tour
+  'Roll die before each attack',                                            // BERSERK     = 2  # Lancer de dé AVANT chaque attaque
+  '5 defenses to place every turn, also immunising against sorcerer',       // BIVOUACKING = 3  # 5 défenses à placer à chaque tour + immunité au sorcier
+  'Need -1 <i class="user icon"></i> when attacking',                       // COMMANDO    = 4  # -1 attaque
+  'Peace with an enemy people at end of turn, if you havent attacked them', // DIPLOMAT    = 5  # Paix avec un peuple actif à choisir à chaque tour
+  'Can conqueer an area with a dragon, which gives immunity',               // DRAGONMASTER= 6  # 1 attaque dragon par tour + immunité complète
+  'All areas are neighbour',                                                // FLYING      = 7  # Toutes les régions sont voisines
+  '+1 <i class="coins icon"></i> for each ' + formatArea('forest') + ' occupied', // FOREST      = 8  # +1 victoire si forêt
+  'Can place 1 fortress per turn up to 6, giving +1 <i class="coins icon"></i> when active and +1 defense always', // FORTIFIED   = 9  # +1 défense avec forteresse mm en déclin, +1 par tour actif (max 6- doit limiter à +une fortress / tour
+  '2 defenses to place every turn, giving full immunity',                   // HEROIC      = 10 # 2 immunités complètes
+  '+1 <i class="coins icon"></i> for each ' + formatArea('hill') + ' occupied', // HILL        = 11 # +1 victoire par colline
+  '+1 <i class="coins icon"></i> for each area occupied',                   // MERCHANT    = 12 # +1 victoire par région
+  'Need -1 <i class="user icon"></i> when attacking a ' + formatArea('hill') + ' or ' + formatArea('farmland'), // MOUNTED     = 13 # -1 attaque colline/ferme
+  '+1 <i class="coins icon"></i> for each attacked non-empty area',         // PILLAGING   = 14 # +1 par région non vide conquise
+  'Only ones allowed to attack ' + formatArea('water') + ' areas',          // SEAFARING   = 15 # Conquête possible des mers/lacs, conservées en déclin
+  'Can be 2 different ppl in decline, spirits never disappear',             // SPIRIT      = 16 # 2e peuple en déclin, et le reste jusqu'au bout
+  'Can decline at end of the turn',                                         // STOUT       = 17 # Déclin possible juste après tour classique
+  '+1 <i class="coins icon"></i> for each ' + formatArea('swamp') + ' occupied', // SWAMP       = 18 # +1 victoire par marais
+  '-1 <i class="coins icon"></i> when attacking  a' + formatArea('cavern'),  // UNDERWORLD  = 19 # -1 attaque caverne, et les cavernes sont adjacentes
+  '+7 <i class="coins icon"></i> after first turn',                         // WEALTHY     = 20 # +7 victoire à la fin premier tour
+];
+
+const actionsDescr = [
+  'Attack one of the highlighted areas on the board',         // "attackBtn"
+  'Confirm no redeploy of your people',                       // "noDeployBtn"
+  'Redeploy 1 people on one board area (after keeping only 1 people per area)', // "deploy1Btn"
+  'Chose one area on which apply the ability of your people', // "usePplBtn"
+  'Chose one area on which apply the power of your people',   // "usePwrBtn"
+  'Confirm to end your turn',                                 // "endTurnBtn"
+  'Chose one area to abandon',                                // "abandonBtn"
+  'Chose your people in deck below',                          // "choseBtn"
+  'Confirm to decline your people',                           // "declineBtn"
+];
+
+function toShortString(nb, ppl) {
+  if (ppl == 0) {
+    return '';
+  } else if (ppl > 0) {
+     return nb + ppl_short_str[ ppl].toUpperCase();
+  } else {
+    return nb + ppl_short_str[-ppl];
+  }
+}
+
+function toLongString(nb, ppl, power) {
+  if (ppl == 0) {
+    return '';
+  } else if (ppl > 0) {
+    return nb + 'x ' + ppl_str[ ppl] + ' + ' + pwr_str[power];
+  } else {
+    return nb + 'x ' + ppl_str[-ppl] + ' <i class="skull crossbones icon"></i>';
+  }
+}
+
+function toDescr(nb, ppl, power) {
+  let result = '';
+  result += pplDescr[Math.abs(ppl)] + ' ; ';
+  if (ppl > 0) {
+    result += pwrDescr[power];
+  } else {
+    result += pwrDescr[0];
+  }
+
+  return result;
+}
+
+function _miscPolygonComputations(points) {
+  let sumX = 0, sumY = 0, totalArea = 0;
+  let maxX = 0, maxY = 0, minX = 999, minY = 999;
+
+  // Compute simultaneously barycenter and surrounding box
+  for (let i = 0; i < points.length; i++) {
+    const [x1, y1] = points[i];
+    const [x2, y2] = points[(i + 1) % points.length];
+    const triangleArea = (x1 * y2 - x2 * y1);
+    
+    sumX += (x1 + x2) * triangleArea;
+    sumY += (y1 + y2) * triangleArea;
+    totalArea += triangleArea;
+
+    minX = Math.min(minX, x1);
+    maxX = Math.max(maxX, x1);
+    minY = Math.min(minY, y1);
+    maxY = Math.max(maxY, y1);
+  }
+
+  // Barycenter
+  const baryX = sumX / (3 * totalArea);
+  const baryY = sumY / (3 * totalArea);
+
+  // Check overall shape, and deduce 3 areas
+  const shiftX = 6, shiftY = 4;
+  let areas = [];
+  if ((maxX-minX) > 1.5*(maxY-minY)) {
+    // shape is mostly horizontal
+    areas = [ [baryX-shiftX, baryY], [baryX, baryY], [baryX+shiftX, baryY] ];
+  } else if ((maxY-minY) > 1.5*(maxX-minX)) {
+    // shape is mostly vertical
+    areas = [ [baryX, baryY-shiftY], [baryX, baryY], [baryX, baryY+shiftY] ];
+  } else {
+    // shape is mostly square
+    areas = [ [baryX-shiftX/2, baryY-shiftY/2], [baryX+shiftX/2, baryY-shiftY/2], [baryX, baryY+shiftY/2] ];
+  }
+
+  // Compute erosion
+  const erosionR = 1.2;
+  for (const point of points) {
+    const vectorToCenter = [baryX-point[0], baryY-point[1]];
+    const vectorLength = Math.sqrt(vectorToCenter[0]*vectorToCenter[0]+vectorToCenter[1]*vectorToCenter[1]);
+    const newPoint = [point[0] + erosionR*vectorToCenter[0]/vectorLength, point[1] + erosionR*vectorToCenter[1]/vectorLength];
+    areas.push(newPoint);
+  }
+
+  return areas;
+}
+
+/* =================== */
+/* =====  LOGIC  ===== */
+/* =================== */
+
+class Smallworld extends AbstractGame {
+  constructor() {
+    super()
+    this.validMoves = Array(sizeV[1]); this.validMoves.fill(false);
+  }
+
+  post_init_game() {
+  }
+
+  pre_move(action, manualMove) {
+    move_sel._registerMove(action);
+  }
+
+  post_move(action, manualMove) {
+    // Check if attack succeeded ?
+    // Print move
+  }
+
+  post_set_data() {
+  }
+
+  has_changed_on_last_move(item_vector) {
+    return 0;
+  }
+
+  getTerritoryInfo2(area) {
+    return this.py.getTerritoryInfo2(area).toJs({create_proxies: false});
+  }
+
+  getScore(p) {
+    return this.py.getScore(p);
+  }
+
+  getPplInfo(p, ppl) {
+    return this.py.getPplInfo(p, ppl).toJs({create_proxies: false});
+  }
+
+  getCurrentPlayerAndPeople() {
+    return this.py.getCurrentPlayerAndPeople().toJs({create_proxies: false});
+  }
+
+  getDeckInfo(i) {
+    return this.py.getDeckInfo(i).toJs({create_proxies: false});
+  }
+
+  getRound() {
+    return this.py.getRound();
+  }
+
+}
+
+class MoveSelector extends AbstractMoveSelector {
+  constructor() {
+    super();
+    this.previousAttacks = [];
+    this.previousPlayer = -1;
+  }
+
+  // Going back to default, between moves for instance
+  reset() {
+  }
+
+  // First start
+  start() {
+    this.selectedMoveType = -1;
+    this.allowedMoveTypes = new Array(buttonInfos.length).fill(false);
+    this.show2ndButtons = false;
+    this.showDeck = false;
+    this.nextMove = -1;
+    this.update();
+  }
+
+  update() {
+    // reset nextMove (but not selectedMoveType)
+    this.nextMove = -1;
+    // check allowed types
+    for (let i = 0; i < buttonInfos.length; i++) {
+      this.allowedMoveTypes[i] = game.validMoves.slice(buttonInfos[i][1], buttonInfos[i][2]+1).some(Boolean);
+    }
+    // decide which type to select
+    if (this.selectedMoveType < 0 || !this.allowedMoveTypes[this.selectedMoveType]) {
+      this.selectedMoveType = this.allowedMoveTypes.indexOf(true);
+    }
+    if (this.selectedMoveType < 0) {
+      return;
+    }
+    // decide which elements to show
+    this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
+    //this.showDeck = ['choseBtn', 'declineBtn'].includes(buttonInfos[this.selectedMoveType][0]);
+    this.showDeck = true;
+
+    // update UI
+    this._updateHTML();
+  }
+
+  end() {
+    this.selectedMoveType = 0;
+    this.allowedMoveTypes = new Array(buttonInfos.length).fill(false);
+    this.show2ndButtons = false;
+    this.showDeck = false;
+    this.nextMove = -1;
+    this._updateHTML();
+  }
+
+  _updateHTML() {
+    for (let i = 0; i < buttonInfos.length; i++) {
+      document.getElementById(buttonInfos[i][0]).style = this.allowedMoveTypes[i] ? "" : "display: none";
+      document.getElementById(buttonInfos[i][0]).classList.toggle(buttonInfos[i][4], i == this.selectedMoveType);
+    }
+
+    document.getElementById('confirmBtn').style = (this.show2ndButtons) ? "" : "display: none";
+    document.getElementById('actionDescr').innerHTML = (this.selectedMoveType<0) ? '' : actionsDescr[this.selectedMoveType];
+
+    document.getElementById('deckDivider').style = (this.showDeck) ? "" : "display: none";
+    document.getElementById('deckGrid').style = (this.showDeck) ? "" : "display: none";
+  }
+
+  _registerMove(action) {
+    if (this.previousPlayer != game.nextPlayer) {
+      this.previousAttacks = [];
+      this.previousPlayer = game.nextPlayer;
+    }
+    const rowAttack = buttonInfos.find(row => row[0] === 'attackBtn');
+    if (action >= rowAttack[1] && action <= rowAttack[2]) {
+      const area = action - rowAttack[1];
+      this.previousAttacks.push(area);
+    }
+  }
+
+  _wasAPreviousAttack(area) {
+    return this.previousAttacks.includes(area);
+  }
+
+  clickOnButton(btn) {
+    this.selectedMoveType = buttonInfos.findIndex(row => row[0] === btn);
+    this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
+    // this.showDeck = ['choseBtn', 'declineBtn'].includes(buttonInfos[this.selectedMoveType][0]);
+    this.showDeck = true;
+    this._updateHTML();
+    refreshBoard();
+  }
+
+  clickOnTerritory(area) {
+    this.nextMove = buttonInfos[this.selectedMoveType][1] + area;
+    userMove();
+  }
+
+  territoryIsClickable(area) {
+    if (['choseBtn', 'noDeployBtn', 'declineBtn', 'endTurn'].includes(buttonInfos[this.selectedMoveType][0])) {
+      return false;  
+    }
+    const virtualMove = buttonInfos[this.selectedMoveType][1] + area;
+    return game.validMoves[virtualMove];
+  }
+
+  clickOnDeck(index) {
+    console.assert(buttonInfos[this.selectedMoveType][0] == 'choseBtn', 'deck was clicked but was move_sel wasnot in mode choose');
+    this.nextMove = 123 + index;
+    userMove();
+  }
+
+  confirm() {
+    if (buttonInfos[this.selectedMoveType][0] == 'noDeployBtn') {
+      this.nextMove = 92;
+    } else if (buttonInfos[this.selectedMoveType][0] == 'declineBtn') {
+      this.nextMove = 129;
+    } else if (buttonInfos[this.selectedMoveType][0] == 'endTurnBtn') {
+      this.nextMove = 130;
+    } else {
+      return;
+    } 
+    userMove();
+  }
+
+  // return move, or -1 if move is undefined
+  getMove() {
+    return this.nextMove;
+  }
+
+}
+
+function moveToString(move, gameMode) {
+  return ''
+}
+
+/* =================== */
+/* ===== DISPLAY ===== */
+/* =================== */
+
 function _genBoard() {
   let result = '';
   let strokeColor = buttonInfos[move_sel.selectedMoveType][3]
@@ -417,14 +522,14 @@ function _genBoard() {
     }
     result += '" fill="' + (terrains_col[data[3]][0]) + '"';
     if (move_sel.territoryIsClickable(i)) {
-      result += ' stroke="'+  strokeColor + '" stroke-width="0.4"';
+      result += ' stroke="'+  strokeColor + '" stroke-width="0.8"';
     }
     result += '></polygon>';
 
     // Draw text
     if (data[0] > 0) {
       result += '<text x="' + computedPoints[0][0] + '" y="' + computedPoints[0][1] + '"';
-      result += ' text-anchor="middle" dominant-baseline="central" font-size="0.3em" font-weight="bolder" fill="white">';
+      result += ' text-anchor="middle" dominant-baseline="central" font-size="0.4em" font-weight="bolder" fill="white">';
       result += toShortString(data[0], data[1])
       result += '</text>';
     }
@@ -432,13 +537,27 @@ function _genBoard() {
     if (data[2] > 0) {
       result += '<text x="' + computedPoints[1][0] + '" y="' + computedPoints[1][1] + '"';
       result += ' text-anchor="middle" dominant-baseline="central" font-size="0.3em" font-weight="bolder" fill="white">';
-      result += (data[2] >= 20) ? '🚫' : ('+'+data[2]);
+      result += (data[2] >= 20) ? '🛇' : ('+'+data[2]);
       result += '</text>';
     }
 
+    // Draw symbols
+    result += '<text x="' + computedPoints[2][0] + '" y="' + computedPoints[2][1] + '"';
+    result += ' text-anchor="middle" dominant-baseline="central" font-size="0.2em" font-weight="bolder" fill="white">';
+    if (data[4][0]) {
+      result += terrains_symb[0] + ' ';
+    }
+    if (data[4][1]) {
+      result += terrains_symb[1] + ' ';
+    }
+    if (data[4][2]) {
+      result += terrains_symb[2] + ' ';
+    }
+    result += '</text>';
+
     // Draw dot
     if (move_sel._wasAPreviousAttack(i)) {
-      result += '<circle r="1" cx="' + computedPoints[2][0] + '" cy="' + computedPoints[2][1] + '" fill="blue" />';
+      result += '<circle r="1" cx="' + (computedPoints[2][0]+2) + '" cy="' + (computedPoints[2][1]+2) + '" fill="blue" />';
     }
 
     result += '</g>';
@@ -465,9 +584,7 @@ function _genPlayersInfo(p) {
       descr += '<br>';
 
       // Explanation
-      descr += '<span class="ui small text">Can sorcerize surrounding people if only 1 active.';
-      descr += 'Can steal 1 coin to somebody once per turn if on <span class="ui brown text">swamp</span></span>';
-
+      descr += '<span class="ui small text">' + toDescr(pplInfo[0], pplInfo[1], pplInfo[2]) + '</span>';
       descr += '</div>';
     }
   }
@@ -492,6 +609,25 @@ function refreshBoard() {
   document.getElementById("boardSvg").innerHTML = _genBoard();
   document.getElementById("boardSvg").setAttribute("viewBox", "0 0 100 70");
 
+  // update peoples and scores
+  for (let p = 0; p < nb_players; p++) {
+    document.getElementById("p"+p+"Score").innerHTML = "Player " + p + " - " + game.getScore(p) + '<i class="coins icon"></i>';
+    document.getElementById("p"+p+"Ppl").innerHTML = _genPlayersInfo(p);
+  }
+
+  // update deck
+  for (let i = 0; i < 6; i++) {
+    deckInfo = game.getDeckInfo(i); // number, power, ppl, points
+    let descr = toLongString(deckInfo[0], deckInfo[1], deckInfo[2]);
+    if (deckInfo[3] > 0) {
+      descr += " + " + deckInfo[3] + '<i class="coins icon"></i>';
+    }
+
+    descr += '<br>';
+    descr += '<span class="ui small text">' + toDescr(deckInfo[0], deckInfo[1], deckInfo[2]) + '</span>';
+    document.getElementById("deck"+i+"Descr").innerHTML = descr;
+  }
+
   // update round
   // "Round " + game.getRound() + "/10";
   let roundDescr = '';
@@ -506,24 +642,6 @@ function refreshBoard() {
     roundDescr += ' label">' + i + "</div>";
   }
   document.getElementById("roundP").innerHTML = roundDescr;
-
-  for (let p = 0; p < nb_players; p++) {
-    pplDescr = document.getElementById("p"+p+"Ppl");
-    pplDescr.innerHTML = _genPlayersInfo(p);
-  }
-
-  // update deck
-  for (let i = 0; i < 6; i++) {
-    deckInfo = game.getDeckInfo(i); // number, power, ppl, points
-    let descr = toLongString(deckInfo[0], deckInfo[1], deckInfo[2]);
-    if (deckInfo[3] > 0) {
-      descr += " + " + deckInfo[3] + '<i class="coins icon"></i>';
-    }
-
-    descr += '<br>';
-    descr += '<span class="ui small text">Can sorcerize surrounding people if only 1 active. Can steal 1 coin to somebody once per turn if on <span class="ui brown text">swamp</span></span>';
-    document.getElementById("deck"+i+"Descr").innerHTML = descr;
-  }
 }
 
 function refreshButtons(loading=false) {
@@ -543,10 +661,6 @@ function refreshButtons(loading=false) {
 }
 
 function refreshPlayersText() {
-  // update peoples and scores
-  for (let p = 0; p < nb_players; p++) {
-    document.getElementById("p"+p+"Score").innerHTML = "Player " + p + " - " + game.getScore(p) + '<i class="coins icon"></i>';
-  }
 }
 
 function changeMoveText() {

@@ -73,7 +73,7 @@
     <button class="ui button" id="declineBtn"  onclick="move_sel.clickOnButton(this.id)">Decline</button>    
     <button class="ui button" id="endTurnBtn"  onclick="move_sel.clickOnButton(this.id)">End turn</button>    
   </div>
-  <span class="ui small text">Chose your people in deck below</span>
+  <span class="ui small text" id="actionDescr"></span>
   <button class="ui fluid compact secondary button" id="confirmBtn" onclick="move_sel.confirm()">Confirm</button>    
 
   <div class="ui two column doubling stackable very compact grid container">
@@ -96,22 +96,22 @@
       <!-- Deck -->
       <div class="ui large horizontal divider" id="deckDivider">Deck</div>
       <div class="ui middle aligned very compact grid" id="deckGrid">
-          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(0)">0 <i class="coins icon"></i></button></div>
+          <div class="three wide column"><button class="ui fluid compact big icon button" onclick="move_sel.clickOnDeck(0)">0 <i class="coins icon"></i></button></div>
           <div class="thirteen wide column" id="deck0Descr">-</div>
 
-          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(1)">1 <i class="coins icon"></i></button></div>
+          <div class="three wide column"><button class="ui fluid compact big icon button" onclick="move_sel.clickOnDeck(1)">1 <i class="coins icon"></i></button></div>
           <div class="thirteen wide column" id="deck1Descr">-</div>
 
-          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(2)">2 <i class="coins icon"></i></button></div>
+          <div class="three wide column"><button class="ui fluid compact big icon button" onclick="move_sel.clickOnDeck(2)">2 <i class="coins icon"></i></button></div>
           <div class="thirteen wide column" id="deck2Descr">-</div>
 
-          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(3)">3 <i class="coins icon"></i></button></div>
+          <div class="three wide column"><button class="ui fluid compact big icon button" onclick="move_sel.clickOnDeck(3)">3 <i class="coins icon"></i></button></div>
           <div class="thirteen wide column" id="deck3Descr">-</div>
 
-          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(4)">4 <i class="coins icon"></i></button></div>
+          <div class="three wide column"><button class="ui fluid compact big icon button" onclick="move_sel.clickOnDeck(4)">4 <i class="coins icon"></i></button></div>
           <div class="thirteen wide column" id="deck4Descr">-</div>
 
-          <div class="three wide column"><button class="ui fluid compact icon button" onclick="move_sel.clickOnDeck(5)">5 <i class="coins icon"></i></button></div>
+          <div class="three wide column"><button class="ui fluid compact big icon button" onclick="move_sel.clickOnDeck(5)">5 <i class="coins icon"></i></button></div>
           <div class="thirteen wide column" id="deck5Descr">-</div>
         </div>
       </div>
