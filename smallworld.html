@@ -62,6 +62,12 @@
 
 
   <!-- Action buttons -->
+    <!-- Button -->
+  <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
+    <button class="ui icon button" id="undoBtn" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
+  </div>
+  <button class="ui fluid large active loading button" id="loadingBtn">‌</button>
+
   <div class="ui fluid compact buttons">
     <button class="ui button" id="choseBtn"    onclick="move_sel.clickOnButton(this.id)">Choose <i class="users icon"></i> + <i class="magic icon"></i></button>
     <button class="ui button" id="abandonBtn"  onclick="move_sel.clickOnButton(this.id)">Abandon</button>
@@ -117,15 +123,6 @@
       </div>
     </div>
 
-  <!-- Button -->
-  <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
-    <button class="ui icon button" id="undoBtn" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
-  </div>
-  <button class="ui fluid large active loading button" id="loadingBtn">‌</button>
-
-  <div class="ui basic segment">
-    <p id="moveSgmt">Loading pyodide, numpy, onnx; please wait...</p>
-  </div>
 </div>
 
 
