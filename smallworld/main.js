@@ -222,6 +222,16 @@ const actionsDescr = [
   'Confirm to decline your people',                           // "declineBtn"
 ];
 
+function _bitfieldToBits(n) {
+  return Array.from({ length: 8 }, (_, i) => !!(n & (1 << (7 - i))));
+}
+
+function _bitfieldToTrue(n) {
+  const bitsArray = _bitfieldToBits(n);
+  const indices = bitsArray.reduce((out, bool, index) => bool ? out.concat(index) : out, []);
+  return indices;
+}
+
 function toShortString(nb, ppl) {
   if (ppl == 0) {
     return '';
@@ -240,6 +250,64 @@ function toLongString(nb, ppl, power) {
   } else {
     return nb + 'x ' + ppl_str[-ppl] + ' <i class="skull crossbones icon"></i>';
   }
+}
+
+function toDetailString(ppl, power, pplDetails, pwrDetails) {
+  let result = '';
+
+  if (ppl == 1) {         // AMAZON
+    if (pplDetails > 0) {
+      result += pplDetails + ' <i class="users icon"></i> loaned. ';
+    }
+  } else if (ppl == 6) {  // HALFLING
+    if (pplDetails != 2) {
+      result += (2-pplDetails) + ' <i class="shield alternate icon"></i> remaining. ';
+    }
+  } else if (ppl == 11) { // SORCERER
+    const players = _bitfieldToTrue(pplDetails);
+    if (players.length > 0) {
+      for (pl of players) {
+        //result += 'P+' + pl;
+        result += 'Other player';
+      }
+      result += ' sorcerized. '
+    }
+  }
+
+  if (power == 2) { // BERSERK
+    if (pwrDetails >= 2**6) {
+      result += 'Dice is ' + (pwrDetails-2**6) + '. ';
+    }
+  } else if (power == 5) { // DIPLOMAT
+    if (pwrDetails >= 2**6) {
+      const players = _bitfieldToTrue(pwrDetails-2**6);
+      if (players.length > 0) {
+        result += 'Cant use diplomacy with';
+        for (pl of players) {
+          //result += 'P+' + pl;
+          result += ' other player.';
+        }
+      }
+    } else if (pwrDetails > 0) {
+      result += 'Ongoing diplomacy with';
+      //result += 'P+' + pl;
+      result += ' other player.';
+    }
+  } else if (power == 3) { // BIVOUACKING
+    if (pwrDetails > 0) {
+      result += pwrDetails + ' <i class="shield alternate icon"></i> remaining. ';
+    }
+  } else if (power == 9) { // FORTIFIED
+    if (pwrDetails > 0) {
+      result += pwrDetails + ' <i class="shield alternate icon"></i> remaining. ';
+    }
+  } else if (power == 10) { // HEROIC
+    if (pwrDetails > 0) {
+      result += pwrDetails + ' <i class="shield alternate icon"></i> remaining. ';
+    }
+  }
+
+  return result;
 }
 
 function toDescr(nb, ppl, power) {
@@ -304,6 +372,11 @@ function _miscPolygonComputations(points) {
   return areas;
 }
 
+function _actionType(action) {
+  const type = buttonInfos.findIndex(row => row[1] <= action && action <= row[2]);
+  return type;
+}
+
 /* =================== */
 /* =====  LOGIC  ===== */
 /* =================== */
@@ -318,12 +391,24 @@ class Smallworld extends AbstractGame {
   }
 
   pre_move(action, manualMove) {
-    move_sel._registerMove(action);
   }
 
   post_move(action, manualMove) {
-    // Check if attack succeeded ?
-    // Print move
+    let success = true;
+    const type = _actionType(action);
+    if (type >= 0 && buttonInfos[type][0] == 'attackBtn') {
+      // Check if attack actually succeeded
+      const area = action - buttonInfos[type][1];
+      const areaPpl = this.getTerritoryInfo2(area)[1];
+
+      const current = this.getCurrentPlayerAndPeople();
+      const curPplType = this.getPplInfo(current[0], current[1])[1];
+      if (areaPpl != curPplType) {
+        success = false;
+      }
+    }
+
+    move_sel.registerMove(action, success);
   }
 
   post_set_data() {
@@ -362,7 +447,7 @@ class Smallworld extends AbstractGame {
 class MoveSelector extends AbstractMoveSelector {
   constructor() {
     super();
-    this.previousAttacks = [];
+    this.previousMoves = [];
     this.previousPlayer = -1;
   }
 
@@ -425,20 +510,42 @@ class MoveSelector extends AbstractMoveSelector {
     document.getElementById('deckGrid').style = (this.showDeck) ? "" : "display: none";
   }
 
-  _registerMove(action) {
+  registerMove(action, success) {
     if (this.previousPlayer != game.nextPlayer) {
-      this.previousAttacks = [];
+      this.previousMoves = [];
       this.previousPlayer = game.nextPlayer;
     }
-    const rowAttack = buttonInfos.find(row => row[0] === 'attackBtn');
-    if (action >= rowAttack[1] && action <= rowAttack[2]) {
-      const area = action - rowAttack[1];
-      this.previousAttacks.push(area);
+
+    const type = _actionType(action);
+    if (type >= 0) {
+      if (['attackBtn', 'usePplBtn', 'usePwrBtn', 'abandonBtn'].includes(buttonInfos[type][0])) {
+        const area = action - buttonInfos[type][1];
+        this.previousMoves.push([area, type, success]);
+      } else if (['declineBtn'].includes(buttonInfos[type][0])) {
+        this.previousMoves.push([-1, type, success]);
+      }
     }
   }
 
-  _wasAPreviousAttack(area) {
-    return this.previousAttacks.includes(area);
+  getTypeOfMoveOnArea(area) {
+    const moveTypes = this.previousMoves.filter(x => x[0] === area);
+    if (moveTypes.length == 0) {
+      return null;
+    }
+
+    let mainType = Math.min(...moveTypes.map(x => x[1]));
+    if (buttonInfos[mainType][0] == 'attackBtn') {
+      if (!moveTypes.some(x => x[1] === mainType && x[2] === true)) {
+        mainType = -1;
+      }
+    }
+
+    return mainType;
+  }
+
+  hasDeclined() {
+    const anyDecline = this.previousMoves.filter(x => x[0] === 8).length;
+    return !!anyDecline;
   }
 
   clickOnButton(btn) {
@@ -556,8 +663,10 @@ function _genBoard() {
     result += '</text>';
 
     // Draw dot
-    if (move_sel._wasAPreviousAttack(i)) {
-      result += '<circle r="1" cx="' + (computedPoints[2][0]+2) + '" cy="' + (computedPoints[2][1]+2) + '" fill="blue" />';
+    const lastMoveOnArea = move_sel.getTypeOfMoveOnArea(i);
+    if (lastMoveOnArea !== null) {
+      const moveColor = (lastMoveOnArea < 0) ? 'gray' : buttonInfos[lastMoveOnArea][3];
+      result += '<circle r="1" cx="' + (computedPoints[2][0]+2) + '" cy="' + (computedPoints[2][1]+2) + '" fill="' + moveColor + '" />';
     }
 
     result += '</g>';
@@ -570,7 +679,7 @@ function _genPlayersInfo(p) {
   const curPlayPpl = game.getCurrentPlayerAndPeople();
   let descr = "";
   for (let ppl = 2; ppl >= 0; ppl--) {
-    const pplInfo = game.getPplInfo(p, ppl); // number, ppl, power
+    const pplInfo = game.getPplInfo(p, ppl); // number in hand, ppl, power, total number
     if (pplInfo[1] != 0) {
       // Header
       const rowColor = (p == curPlayPpl[0] && ppl == curPlayPpl[1]) ? 'blue' : '';
@@ -580,11 +689,20 @@ function _genPlayersInfo(p) {
 
       // Full name
       descr += '<div class="thirteen wide column">';
-      descr += toLongString(pplInfo[0], pplInfo[1], pplInfo[2]);
-      descr += '<br>';
+      descr += toLongString(pplInfo[5], pplInfo[1], pplInfo[2]);
+      if (ppl < 2 && move_sel.hasDeclined()) {
+        // Has just declined, add a dot
+        descr += '<span class="ui ' + buttonInfos[8][4] + ' text">⬤</span>'
+      }
+
+      // Specific details for power/people
+      const details = toDetailString(pplInfo[1], pplInfo[2], pplInfo[3], pplInfo[4]);
+      if (details.length > 0) {
+        descr += ' <span class="ui grey text">' + details + "</span>";
+      }
 
       // Explanation
-      descr += '<span class="ui small text">' + toDescr(pplInfo[0], pplInfo[1], pplInfo[2]) + '</span>';
+      descr += '<br><span class="ui small text">' + toDescr(pplInfo[0], pplInfo[1], pplInfo[2]) + '</span>';
       descr += '</div>';
     }
   }

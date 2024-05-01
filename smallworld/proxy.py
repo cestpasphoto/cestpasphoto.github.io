@@ -110,14 +110,15 @@ def getRound():
 	return g.board.game_status[:, 3].min()
 
 def getPplInfo(p, ppl):
-	return g.board.peoples[p, ppl, :3]
+	total_number_of_people = g.board._total_number_of_ppl(g.board.peoples[p, ppl, :])
+	return np.append(g.board.peoples[p, ppl, :5], total_number_of_people)
 
 def getDeckInfo(i):
 	return g.board.visible_deck[i][[0,1,2,6]]
 
 def getCurrentPlayerAndPeople():
-	current_p = np.argwhere(g.board.game_status[:, 4] + 1)[0]
-	current_ppl = g.board.game_status[current_p, 4]
+	current_p = np.argwhere(g.board.game_status[:, 4] + 1)[0].item()
+	current_ppl = g.board.game_status[current_p, 4].item()
 	return current_p, current_ppl
 
 def getTerritoryInfo2(area):
