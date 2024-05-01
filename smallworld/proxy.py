@@ -130,3 +130,13 @@ def getTerritoryInfo2(area):
 		[descr[area][1].item(), descr[area][2].item(), descr[area][3].item()], # 4 terrain power
 	]
 	return data
+
+def needDiceToAttack(area):
+	# How many ppl are currently available
+	current_p, current_ppl = getCurrentPlayerAndPeople()
+	current_number = getPplInfo(current_p, current_ppl)[0]
+
+	# check versus area defense
+	area_defense = g.board.territories[area, 5]
+
+	return bool(current_number < area_defense+2)

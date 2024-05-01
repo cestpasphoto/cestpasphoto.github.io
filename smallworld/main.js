@@ -442,6 +442,10 @@ class Smallworld extends AbstractGame {
     return this.py.getRound();
   }
 
+  needDiceToAttack(area) {
+    return this.py.needDiceToAttack(area);
+  }
+
 }
 
 class MoveSelector extends AbstractMoveSelector {
@@ -511,9 +515,9 @@ class MoveSelector extends AbstractMoveSelector {
   }
 
   registerMove(action, success) {
-    if (this.previousPlayer != game.nextPlayer) {
+    if (this.previousPlayer != game.previousPlayer) {
       this.previousMoves = [];
-      this.previousPlayer = game.nextPlayer;
+      this.previousPlayer = game.previousPlayer;
     }
 
     const type = _actionType(action);
@@ -630,6 +634,9 @@ function _genBoard() {
     result += '" fill="' + (terrains_col[data[3]][0]) + '"';
     if (move_sel.territoryIsClickable(i)) {
       result += ' stroke="'+  strokeColor + '" stroke-width="0.8"';
+      if (buttonInfos[move_sel.selectedMoveType][0] == 'attackBtn' && game.needDiceToAttack(i)) {
+        result += ' stroke-dasharray="1"';
+      }
     }
     result += '></polygon>';
 
