@@ -736,7 +736,8 @@ function refreshBoard() {
 
   // update peoples and scores
   for (let p = 0; p < nb_players; p++) {
-    document.getElementById("p"+p+"Score").innerHTML = "Player " + p + " - " + game.getScore(p) + '<i class="coins icon"></i>';
+    // document.getElementById("p"+p+"Score").innerHTML = "Player " + p + " - " + game.getScore(p) + '<i class="coins icon"></i>';
+    document.getElementById("p"+p+"Score").innerHTML = (p ? "AI" : "You") + " - " + game.getScore(p) + '<i class="coins icon"></i>';
     document.getElementById("p"+p+"Ppl").innerHTML = _genPlayersInfo(p);
   }
 
