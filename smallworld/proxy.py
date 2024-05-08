@@ -117,9 +117,8 @@ def getDeckInfo(i):
 	return g.board.visible_deck[i][[0,1,2,6]]
 
 def getCurrentPlayerAndPeople():
-	current_p = np.argwhere(g.board.game_status[:, 4] + 1)[0].item()
-	current_ppl = g.board.game_status[current_p, 4].item()
-	return current_p, current_ppl
+	current_ppl = g.board.game_status[player, 4].item()
+	return player, current_ppl
 
 def getTerritoryInfo2(area):
 	data = [
@@ -140,3 +139,10 @@ def needDiceToAttack(area):
 	area_defense = g.board.territories[area, 5]
 
 	return bool(current_number < area_defense+2)
+
+def gather_current_ppl_but_one():
+	current_ppl, _ = g.board._current_ppl(player)
+	g.board._gather_current_ppl_but_one(current_ppl)
+
+def ongoingRedeploy():
+	return (g.board.round_status[player, 4] == PHASE_REDEPLOY).item()

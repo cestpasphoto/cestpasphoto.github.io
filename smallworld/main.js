@@ -32,6 +32,7 @@ const buttonInfos = [
   // button     range of moveID  HTMLcolor FomanticColor  confirmation needed
   ["attackBtn"  , 23, 45,       'tomato',    'orange',    false],
   ["noDeployBtn", 92, 92,       'mediumblue','blue',      true ],
+  ["startDplBtn", 131, 131,     'hotpink',   'pink',      true ],
   ["deploy1Btn" , 100, 122,     'hotpink',   'pink',      false],
   ["usePplBtn"  , 46, 68,       'mediumblue','blue',      false],
   ["usePwrBtn"  , 69, 91,       'mediumblue','blue',      false],
@@ -40,6 +41,19 @@ const buttonInfos = [
   ["choseBtn"   , 123, 128,     'mediumblue','blue',      false],
   ["declineBtn" , 129, 129,     'mediumblue','blue',      true ],
   // deployN 93-99 not proposed
+];
+
+const actionsDescr = [
+  'Attack one of the highlighted areas on the board',         // "attackBtn"
+  'Confirm no redeploy of your people',                       // "noDeployBtn"
+  'Confirm to gather your people before redeploy',            // "startDplBtn"
+  'Redeploy 1 people on one board area (after keeping only 1 people per area)', // "deploy1Btn"
+  'Chose one area on which apply the ability of your people', // "usePplBtn"
+  'Chose one area on which apply the power of your people',   // "usePwrBtn"
+  'Confirm to end your turn',                                 // "endTurnBtn"
+  'Chose one area to abandon',                                // "abandonBtn"
+  'Chose your people in deck below',                          // "choseBtn"
+  'Confirm to decline your people',                           // "declineBtn"
 ];
 
 const ppl_str       = [' ', 'amazon','dwarf','elf','ghoul','giant','halfling','human','orc','ratman','skeleton','sorcerer','triton','troll','wizard', 'lost_tribe'];
@@ -210,18 +224,6 @@ const pwrDescr = [
   '+7 <i class="coins icon"></i> after first turn',                         // WEALTHY     = 20 # +7 victoire à la fin premier tour
 ];
 
-const actionsDescr = [
-  'Attack one of the highlighted areas on the board',         // "attackBtn"
-  'Confirm no redeploy of your people',                       // "noDeployBtn"
-  'Redeploy 1 people on one board area (after keeping only 1 people per area)', // "deploy1Btn"
-  'Chose one area on which apply the ability of your people', // "usePplBtn"
-  'Chose one area on which apply the power of your people',   // "usePwrBtn"
-  'Confirm to end your turn',                                 // "endTurnBtn"
-  'Chose one area to abandon',                                // "abandonBtn"
-  'Chose your people in deck below',                          // "choseBtn"
-  'Confirm to decline your people',                           // "declineBtn"
-];
-
 function _bitfieldToBits(n) {
   return Array.from({ length: 8 }, (_, i) => !!(n & (1 << (7 - i))));
 }
@@ -384,16 +386,36 @@ function _actionType(action) {
 class Smallworld extends AbstractGame {
   constructor() {
     super()
-    this.validMoves = Array(sizeV[1]); this.validMoves.fill(false);
+    // Add fake action to list of valid actions
+    this.validMoves = Array(sizeV[1]+1); this.validMoves.fill(false);
+    this.canAddFakeAction = true;
   }
 
   post_init_game() {
+    this._addFakeAction();
   }
 
   pre_move(action, manualMove) {
   }
 
+  move(action, isManualMove) {
+    if (action == 131 && isManualMove) {
+      console.log('Intercepted move');
+
+      this.pre_move(action, isManualMove);
+      // Actually move
+      this.previousPlayer = this.nextPlayer;
+      this.py.gather_current_ppl_but_one();
+      //These values shouldn't change: this.nextPlayer, this.gameEnded, this.validMoves
+      this.validMoves = this.validMoves.slice(0, 131);
+      this.post_move(action, isManualMove);
+    } else {
+      super.move(action, isManualMove);
+    }
+  }
+
   post_move(action, manualMove) {
+    // Register past move, after checking its success
     let success = true;
     const type = _actionType(action);
     if (type >= 0 && buttonInfos[type][0] == 'attackBtn') {
@@ -407,11 +429,22 @@ class Smallworld extends AbstractGame {
         success = false;
       }
     }
-
     move_sel.registerMove(action, success);
+
+    // Switch "canAddFakeAction" depending on current move
+    if (action == 131) {
+      this.canAddFakeAction = false; // using fakeAction, can't use it again for this turn
+    }
+    if (Math.max(...this.validMoves.slice(100, 123)) == false) {
+      this.canAddFakeAction = true; // new turn, can use "canAddFakeAction" again
+    }
+
+    // Add fake action
+    this._addFakeAction();
   }
 
   post_set_data() {
+    this._addFakeAction();
   }
 
   has_changed_on_last_move(item_vector) {
@@ -446,6 +479,14 @@ class Smallworld extends AbstractGame {
     return this.py.needDiceToAttack(area);
   }
 
+  _addFakeAction() {
+    // Add fake action = prepare to redeploy
+    const validFakeAction = this.canAddFakeAction && Math.max(...this.validMoves.slice(100, 123));
+    this.validMoves.push(validFakeAction);
+    if (this.validMoves.length != 132) {
+      console.log('validMoves.length = ', this.validMoves.length, ', on a ajoute ', validFakeAction);
+    }
+  }
 }
 
 class MoveSelector extends AbstractMoveSelector {
@@ -464,7 +505,6 @@ class MoveSelector extends AbstractMoveSelector {
     this.selectedMoveType = -1;
     this.allowedMoveTypes = new Array(buttonInfos.length).fill(false);
     this.show2ndButtons = false;
-    this.showDeck = false;
     this.nextMove = -1;
     this.update();
   }
@@ -476,6 +516,8 @@ class MoveSelector extends AbstractMoveSelector {
     for (let i = 0; i < buttonInfos.length; i++) {
       this.allowedMoveTypes[i] = game.validMoves.slice(buttonInfos[i][1], buttonInfos[i][2]+1).some(Boolean);
     }
+    if (this.allowedMoveTypes[2])
+      this.allowedMoveTypes[3] = false; // Inhibit "deploy1" when "startDeploy" is valid
     // decide which type to select
     if (this.selectedMoveType < 0 || !this.allowedMoveTypes[this.selectedMoveType]) {
       this.selectedMoveType = this.allowedMoveTypes.indexOf(true);
@@ -485,8 +527,6 @@ class MoveSelector extends AbstractMoveSelector {
     }
     // decide which elements to show
     this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
-    //this.showDeck = ['choseBtn', 'declineBtn'].includes(buttonInfos[this.selectedMoveType][0]);
-    this.showDeck = true;
 
     // update UI
     this._updateHTML();
@@ -496,7 +536,6 @@ class MoveSelector extends AbstractMoveSelector {
     this.selectedMoveType = 0;
     this.allowedMoveTypes = new Array(buttonInfos.length).fill(false);
     this.show2ndButtons = false;
-    this.showDeck = false;
     this.nextMove = -1;
     this._updateHTML();
   }
@@ -510,8 +549,8 @@ class MoveSelector extends AbstractMoveSelector {
     document.getElementById('confirmBtn').style = (this.show2ndButtons) ? "" : "display: none";
     document.getElementById('actionDescr').innerHTML = (this.selectedMoveType<0) ? '' : actionsDescr[this.selectedMoveType];
 
-    document.getElementById('deckDivider').style = (this.showDeck) ? "" : "display: none";
-    document.getElementById('deckGrid').style = (this.showDeck) ? "" : "display: none";
+    document.getElementById('deckDivider').style = "";
+    document.getElementById('deckGrid').style = "";
   }
 
   registerMove(action, success) {
@@ -555,8 +594,6 @@ class MoveSelector extends AbstractMoveSelector {
   clickOnButton(btn) {
     this.selectedMoveType = buttonInfos.findIndex(row => row[0] === btn);
     this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
-    // this.showDeck = ['choseBtn', 'declineBtn'].includes(buttonInfos[this.selectedMoveType][0]);
-    this.showDeck = true;
     this._updateHTML();
     refreshBoard();
   }
@@ -567,7 +604,7 @@ class MoveSelector extends AbstractMoveSelector {
   }
 
   territoryIsClickable(area) {
-    if (['choseBtn', 'noDeployBtn', 'declineBtn', 'endTurn'].includes(buttonInfos[this.selectedMoveType][0])) {
+    if (['choseBtn', 'startDplBtn', 'noDeployBtn', 'declineBtn', 'endTurn'].includes(buttonInfos[this.selectedMoveType][0])) {
       return false;  
     }
     const virtualMove = buttonInfos[this.selectedMoveType][1] + area;
@@ -587,6 +624,8 @@ class MoveSelector extends AbstractMoveSelector {
       this.nextMove = 129;
     } else if (buttonInfos[this.selectedMoveType][0] == 'endTurnBtn') {
       this.nextMove = 130;
+    } else if (buttonInfos[this.selectedMoveType][0] == 'startDplBtn') {
+      this.nextMove = 131;
     } else {
       return;
     } 

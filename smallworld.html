@@ -81,12 +81,13 @@
     <button class="ui button" id="noDeployBtn" onclick="move_sel.clickOnButton(this.id)">No redeploy</button>    
     <button class="ui button" id="declineBtn"  onclick="move_sel.clickOnButton(this.id)">Decline</button>    
     <button class="ui button" id="endTurnBtn"  onclick="move_sel.clickOnButton(this.id)">End turn</button>  
+    <button class="ui button" id="startDplBtn" onclick="move_sel.clickOnButton(this.id)">Start depl</button>
     <button class="ui icon button" id="undoBtn" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
   </div>
   <button class="ui fluid active loading button" id="loadingBtn">‌</button>
 
   <span class="ui small text" id="actionDescr"></span>
-  <button class="ui fluid compact secondary button" id="confirmBtn" onclick="move_sel.confirm()">Confirm</button>    
+  <button class="ui fluid compact secondary button" id="confirmBtn" onclick="move_sel.confirm()" style="display: none">Confirm</button>    
 
   <!-- Board -->
   <svg viewBox="0 0 1 1" id="boardSvg"></svg>
