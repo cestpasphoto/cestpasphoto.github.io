@@ -44,10 +44,10 @@ const buttonInfos = [
 ];
 
 const actionsDescr = [
-  'Attack one of the highlighted areas on the board',         // "attackBtn"
+  'Attack one of the highlighted areas (dash means dice needed)', // "attackBtn"
   'Confirm no redeploy of your people',                       // "noDeployBtn"
   'Confirm to gather your people before redeploy',            // "startDplBtn"
-  'Redeploy 1 people on one board area (after keeping only 1 people per area)', // "deploy1Btn"
+  'Redeploy 1 people on a territory ',                        // "deploy1Btn"
   'Chose one area on which apply the ability of your people', // "usePplBtn"
   'Chose one area on which apply the power of your people',   // "usePwrBtn"
   'Confirm to end your turn',                                 // "endTurnBtn"
@@ -262,8 +262,8 @@ function toDetailString(ppl, power, pplDetails, pwrDetails) {
       result += pplDetails + ' <i class="users icon"></i> loaned. ';
     }
   } else if (ppl == 6) {  // HALFLING
-    if (pplDetails != 2) {
-      result += (2-pplDetails) + ' <i class="shield alternate icon"></i> remaining. ';
+    if (pplDetails > 0) {
+      result += pplDetails + ' <i class="shield alternate icon"></i> remaining. ';
     }
   } else if (ppl == 11) { // SORCERER
     const players = _bitfieldToTrue(pplDetails);
@@ -506,6 +506,7 @@ class MoveSelector extends AbstractMoveSelector {
     this.allowedMoveTypes = new Array(buttonInfos.length).fill(false);
     this.show2ndButtons = false;
     this.nextMove = -1;
+    this.disableDeck = false;
     this.update();
   }
 
@@ -527,6 +528,7 @@ class MoveSelector extends AbstractMoveSelector {
     }
     // decide which elements to show
     this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
+    this.disableDeck = (this.selectedMoveType >= 0 && buttonInfos[this.selectedMoveType][0] != 'choseBtn');
 
     // update UI
     this._updateHTML();
@@ -536,6 +538,7 @@ class MoveSelector extends AbstractMoveSelector {
     this.selectedMoveType = 0;
     this.allowedMoveTypes = new Array(buttonInfos.length).fill(false);
     this.show2ndButtons = false;
+    this.disableDeck = true;
     this.nextMove = -1;
     this._updateHTML();
   }
@@ -734,21 +737,25 @@ function _genPlayersInfo(p) {
       descr += '</span></div>';
 
       // Full name
-      descr += '<div class="thirteen wide column">';
-      descr += toLongString(pplInfo[5], pplInfo[1], pplInfo[2]);
+      descr += '<div class="thirteen wide column"> <span class="ui large text">';
+      descr += toLongString(pplInfo[0], pplInfo[1], pplInfo[2]);
       if (ppl < 2 && move_sel.hasDeclined()) {
         // Has just declined, add a dot
-        descr += '<span class="ui ' + buttonInfos[8][4] + ' text">⬤</span>'
+        descr += '<span class="ui ' + buttonInfos[8][4] + ' text">●</span>';
       }
+      descr += '</span>';
 
       // Specific details for power/people
       const details = toDetailString(pplInfo[1], pplInfo[2], pplInfo[3], pplInfo[4]);
       if (details.length > 0) {
-        descr += ' <span class="ui grey text">' + details + "</span>";
+        descr += ' <span class="ui grey text"> ' + details + "</span>";
       }
 
       // Explanation
-      descr += '<br><span class="ui small text">' + toDescr(pplInfo[0], pplInfo[1], pplInfo[2]) + '</span>';
+      descr += '<br><span class="ui small text">';
+      descr += pplInfo[5] + ' <i class="user icon"></i> total. ';
+      descr += toDescr(pplInfo[0], pplInfo[1], pplInfo[2])
+      descr += '</span>';
       descr += '</div>';
     }
   }
@@ -791,6 +798,7 @@ function refreshBoard() {
     descr += '<br>';
     descr += '<span class="ui small text">' + toDescr(deckInfo[0], deckInfo[1], deckInfo[2]) + '</span>';
     document.getElementById("deck"+i+"Descr").innerHTML = descr;
+    document.getElementById("deck"+i+"Btn").classList.toggle('disabled', move_sel.disableDeck);
   }
 
   // update round
@@ -798,11 +806,12 @@ function refreshBoard() {
   let roundDescr = '';
   const round = game.getRound();
   for (var i = 1; i <= 10; ++i) {
-    roundDescr += '<div class="ui'; 
     if (i == round) {
-      roundDescr += ' black';
+      roundDescr += '<div class="ui black';
     } else if (i > round) {
-      roundDescr += ' disabled';
+      roundDescr += '<div class="ui basic grey';
+    } else {
+      roundDescr += '<div class="ui disabled grey';
     }
     roundDescr += ' label">' + i + "</div>";
   }
