@@ -400,8 +400,6 @@ class Smallworld extends AbstractGame {
 
   move(action, isManualMove) {
     if (action == 131 && isManualMove) {
-      console.log('Intercepted move');
-
       this.pre_move(action, isManualMove);
       // Actually move
       this.previousPlayer = this.nextPlayer;
@@ -610,6 +608,9 @@ class MoveSelector extends AbstractMoveSelector {
     if (['choseBtn', 'startDplBtn', 'noDeployBtn', 'declineBtn', 'endTurn'].includes(buttonInfos[this.selectedMoveType][0])) {
       return false;  
     }
+    if (this.selectingDiplomacy()) {
+      return false;
+    }
     const virtualMove = buttonInfos[this.selectedMoveType][1] + area;
     return game.validMoves[virtualMove];
   }
@@ -635,11 +636,21 @@ class MoveSelector extends AbstractMoveSelector {
     userMove();
   }
 
+  selectingDiplomacy() {
+    // Check if need to enable special mode when using "diplomat" power
+    if (buttonInfos[this.selectedMoveType][0] != 'usePwrBtn') {
+      return false;
+    }
+
+    const curPlayPpl = game.getCurrentPlayerAndPeople();
+    const curPwr = game.getPplInfo(curPlayPpl[0], curPlayPpl[1])[2];
+    return (curPwr == 5); // DIPLOMAT = 5
+  }
+
   // return move, or -1 if move is undefined
   getMove() {
     return this.nextMove;
   }
-
 }
 
 function moveToString(move, gameMode) {
@@ -732,9 +743,19 @@ function _genPlayersInfo(p) {
     if (pplInfo[1] != 0) {
       // Header
       const rowColor = (p == curPlayPpl[0] && ppl == curPlayPpl[1]) ? 'blue' : '';
-      descr += '<div class="three wide ' + rowColor + ' column"><span class="ui big text">';
+      descr += '<div class="three wide ' + rowColor + ' column">';
+
+      // Display big text (except if diplomacy mode)
+      const relativePly = (p - curPlayPpl[0]) % nb_players;
+      const displayDiplomacyButton = move_sel.selectingDiplomacy() && (relativePly != 0) && (ppl == 2);
+      const validDiplomacyMove = game.validMoves[buttonInfos[5][1] + relativePly]; // 5 = usePwrBtn
+      if (displayDiplomacyButton && validDiplomacyMove) {
+        descr += '<div class="ui big compact button" onclick="move_sel.clickOnTerritory(' + relativePly + ')">';
+      } else {
+        descr += '<span class="ui big text">';
+      }
       descr += toShortString(pplInfo[0], pplInfo[1]);
-      descr += '</span></div>';
+      descr += displayDiplomacyButton ? '</div></div>' : '</span></div>';
 
       // Full name
       descr += '<div class="thirteen wide column"> <span class="ui large text">';
