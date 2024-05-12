@@ -220,7 +220,7 @@ const pwrDescr = [
   'Can be 2 different ppl in decline, spirits never disappear',             // SPIRIT      = 16 # 2e peuple en déclin, et le reste jusqu'au bout
   'Can decline at end of the turn',                                         // STOUT       = 17 # Déclin possible juste après tour classique
   '+1 <i class="coins icon"></i> for each ' + formatArea('swamp') + ' occupied', // SWAMP       = 18 # +1 victoire par marais
-  '-1 <i class="coins icon"></i> when attacking  a' + formatArea('cavern'),  // UNDERWORLD  = 19 # -1 attaque caverne, et les cavernes sont adjacentes
+  '-1 <i class="coins icon"></i> when attacking  a ' + formatArea('cavern'),// UNDERWORLD  = 19 # -1 attaque caverne, et les cavernes sont adjacentes
   '+7 <i class="coins icon"></i> after first turn',                         // WEALTHY     = 20 # +7 victoire à la fin premier tour
 ];
 
@@ -518,8 +518,8 @@ class MoveSelector extends AbstractMoveSelector {
     for (let i = 0; i < buttonInfos.length; i++) {
       this.allowedMoveTypes[i] = game.validMoves.slice(buttonInfos[i][1], buttonInfos[i][2]+1).some(Boolean);
     }
-    if (this.allowedMoveTypes[_typeFromBtnName('deploy1Btn')])
-      this.allowedMoveTypes[_typeFromBtnName('startDplBtn')] = false; // Inhibit "deploy1" when "startDeploy" is valid
+    if (this.allowedMoveTypes[_typeFromBtnName('startDplBtn')])
+      this.allowedMoveTypes[_typeFromBtnName('deploy1Btn')] = false; // Inhibit "deploy1" when "startDeploy" is valid
     // decide which type to select
     if (this.selectedMoveType < 0 || !this.allowedMoveTypes[this.selectedMoveType]) {
       this.selectedMoveType = this.allowedMoveTypes.indexOf(true);
