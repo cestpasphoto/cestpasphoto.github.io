@@ -552,9 +552,6 @@ class MoveSelector extends AbstractMoveSelector {
 
     document.getElementById('confirmBtn').style = (this.show2ndButtons) ? "" : "display: none";
     document.getElementById('actionDescr').innerHTML = (this.selectedMoveType<0) ? '' : actionsDescr[this.selectedMoveType];
-
-    document.getElementById('deckDivider').style = "";
-    document.getElementById('deckGrid').style = "";
   }
 
   registerMove(action, success) {
