@@ -117,8 +117,8 @@ def getDeckInfo(i):
 	return g.board.visible_deck[i][[0,1,2,6]]
 
 def getCurrentPlayerAndPeople():
-	current_ppl = g.board.game_status[player, 4].item()
-	return player, current_ppl
+	current_id = g.board.game_status[player, 4].item()
+	return player, current_id
 
 def getTerritoryInfo2(area):
 	data = [
@@ -132,13 +132,19 @@ def getTerritoryInfo2(area):
 
 def needDiceToAttack(area):
 	# How many ppl are currently available
-	current_p, current_ppl = getCurrentPlayerAndPeople()
-	current_number = getPplInfo(current_p, current_ppl)[0]
+	_, current_id = getCurrentPlayerAndPeople()
+	current_ppl = g.board.peoples[player, current_id, :]
 
-	# check versus area defense
-	area_defense = g.board.territories[area, 5]
+	territories_of_player = g.board._are_occupied_by(current_ppl)
+	how_many_ppl_available = g.board._ppl_virtually_available(player, current_ppl, PHASE_CONQUEST, territories_of_player)
+	# Take in account dice when berserk
+	if current_ppl[2] == BERSERK:
+		dataB, dataA = divmod(current_ppl[4], 2**6)
+		if bool(dataB):
+			how_many_ppl_available += dataA
 
-	return bool(current_number < area_defense+2)
+	minimum_ppl_for_attack = g.board._minimum_ppl_for_attack(area, current_ppl)
+	return bool(how_many_ppl_available < minimum_ppl_for_attack)
 
 def gather_current_ppl_but_one():
 	current_ppl, _ = g.board._current_ppl(player)
