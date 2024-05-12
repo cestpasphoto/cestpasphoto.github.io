@@ -588,7 +588,7 @@ class MoveSelector extends AbstractMoveSelector {
   }
 
   hasDeclined() {
-    const anyDecline = this.previousMoves.filter(x => x[0] === 8).length;
+    const anyDecline = this.previousMoves.filter(x => x[0] === -1).length;
     return !!anyDecline;
   }
 
@@ -605,7 +605,7 @@ class MoveSelector extends AbstractMoveSelector {
   }
 
   territoryIsClickable(area) {
-    if (['choseBtn', 'startDplBtn', 'noDeployBtn', 'declineBtn', 'endTurn'].includes(buttonInfos[this.selectedMoveType][0])) {
+    if (['choseBtn', 'startDplBtn', 'noDeployBtn', 'declineBtn', 'endTurnBtn'].includes(buttonInfos[this.selectedMoveType][0])) {
       return false;  
     }
     if (this.selectingDiplomacy()) {
