@@ -31,14 +31,14 @@ const nb_players = 2;
 const buttonInfos = [
   // button     range of moveID  HTMLcolor FomanticColor  confirmation needed
   ["attackBtn"  , 23, 45,       'tomato',    'orange',    false],
-  ["noDeployBtn", 92, 92,       'mediumblue','blue',      true ],
-  ["startDplBtn", 131, 131,     'hotpink',   'pink',      true ],
-  ["deploy1Btn" , 100, 122,     'hotpink',   'pink',      false],
   ["usePplBtn"  , 46, 68,       'mediumblue','blue',      false],
   ["usePwrBtn"  , 69, 91,       'mediumblue','blue',      false],
-  ["endTurnBtn" , 130, 130,     'mediumblue','blue',      true ],
-  ["abandonBtn" , 0, 22,        'red',       'red',       false],
+  ["startDplBtn", 131, 131,     'hotpink',   'pink',      true ],
+  ["deploy1Btn" , 100, 122,     'hotpink',   'pink',      false],
   ["choseBtn"   , 123, 128,     'mediumblue','blue',      false],
+  ["endTurnBtn" , 130, 130,     'mediumblue','blue',      true ],
+  ["noDeployBtn", 92, 92,       'mediumblue','blue',      true ],
+  ["abandonBtn" , 0, 22,        'red',       'red',       false],
   ["declineBtn" , 129, 129,     'mediumblue','blue',      true ],
   // deployN 93-99 not proposed
 ];
@@ -379,6 +379,11 @@ function _actionType(action) {
   return type;
 }
 
+function _typeFromBtnName(btnName) {
+  const type = buttonInfos.findIndex(row => row[0] == btnName);
+  return type;
+}
+
 /* =================== */
 /* =====  LOGIC  ===== */
 /* =================== */
@@ -433,7 +438,7 @@ class Smallworld extends AbstractGame {
     if (action == 131) {
       this.canAddFakeAction = false; // using fakeAction, can't use it again for this turn
     }
-    if (Math.max(...this.validMoves.slice(100, 123)) == false) {
+    if (Math.max(...this.validMoves.slice(23, 45)) == true) {
       this.canAddFakeAction = true; // new turn, can use "canAddFakeAction" again
     }
 
@@ -481,9 +486,7 @@ class Smallworld extends AbstractGame {
     // Add fake action = prepare to redeploy
     const validFakeAction = this.canAddFakeAction && Math.max(...this.validMoves.slice(100, 123));
     this.validMoves.push(validFakeAction);
-    if (this.validMoves.length != 132) {
-      console.log('validMoves.length = ', this.validMoves.length, ', on a ajoute ', validFakeAction);
-    }
+    console.assert(this.validMoves.length == 132, 'validMoves.length = ' + this.validMoves.length + ' ' + validFakeAction);
   }
 }
 
@@ -515,8 +518,8 @@ class MoveSelector extends AbstractMoveSelector {
     for (let i = 0; i < buttonInfos.length; i++) {
       this.allowedMoveTypes[i] = game.validMoves.slice(buttonInfos[i][1], buttonInfos[i][2]+1).some(Boolean);
     }
-    if (this.allowedMoveTypes[2])
-      this.allowedMoveTypes[3] = false; // Inhibit "deploy1" when "startDeploy" is valid
+    if (this.allowedMoveTypes[_typeFromBtnName('deploy1Btn')])
+      this.allowedMoveTypes[_typeFromBtnName('startDplBtn')] = false; // Inhibit "deploy1" when "startDeploy" is valid
     // decide which type to select
     if (this.selectedMoveType < 0 || !this.allowedMoveTypes[this.selectedMoveType]) {
       this.selectedMoveType = this.allowedMoveTypes.indexOf(true);
@@ -593,7 +596,7 @@ class MoveSelector extends AbstractMoveSelector {
   }
 
   clickOnButton(btn) {
-    this.selectedMoveType = buttonInfos.findIndex(row => row[0] === btn);
+    this.selectedMoveType = _typeFromBtnName(btn);
     this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
     this._updateHTML();
     refreshBoard();
@@ -748,7 +751,7 @@ function _genPlayersInfo(p) {
       // Display big text (except if diplomacy mode)
       const relativePly = (p - curPlayPpl[0]) % nb_players;
       const displayDiplomacyButton = move_sel.selectingDiplomacy() && (relativePly != 0) && (ppl == 2);
-      const validDiplomacyMove = game.validMoves[buttonInfos[5][1] + relativePly]; // 5 = usePwrBtn
+      const validDiplomacyMove = game.validMoves[buttonInfos[_typeFromBtnName('usePwrBtn')][1] + relativePly];
       if (displayDiplomacyButton && validDiplomacyMove) {
         descr += '<div class="ui big compact button" onclick="move_sel.clickOnTerritory(' + relativePly + ')">';
       } else {
@@ -762,7 +765,7 @@ function _genPlayersInfo(p) {
       descr += toLongString(pplInfo[0], pplInfo[1], pplInfo[2]);
       if (ppl < 2 && move_sel.hasDeclined()) {
         // Has just declined, add a dot
-        descr += '<span class="ui ' + buttonInfos[8][4] + ' text">●</span>';
+        descr += '<span class="ui ' + buttonInfos[_typeFromBtnName('declineBtn')][4] + ' text">●</span>';
       }
       descr += '</span>';
 
