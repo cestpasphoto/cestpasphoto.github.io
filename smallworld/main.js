@@ -844,6 +844,9 @@ function refreshButtons(loading=false) {
   if (!loading) {
     allBtn.style = "";
     loadingBtn.style = "display: none";
+  } else {
+    allBtn.style = "display: none";
+    loadingBtn.style = "";
   }
 
   if (game.is_ended()) {
