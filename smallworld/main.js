@@ -57,7 +57,7 @@ const actionsDescr = [
 ];
 
 const ppl_str       = [' ', 'amazon','dwarf','elf','ghoul','giant','halfling','human','orc','ratman','skeleton','sorcerer','triton','troll','wizard', 'lost_tribe'];
-const ppl_short_str = [' ', 'a'     ,'d'    ,'e'  ,'h'    ,'g'    ,'f'       ,'u'    ,'o'  ,'r'     ,'k'       ,'s'       ,'n'     ,'t'    ,'w'     , 'l'];
+const ppl_short_str = [' ', 'a'     ,'d'    ,'e'  ,'g'    ,'i'    ,'h'       ,'u'    ,'c'  ,'r'     ,'k'       ,'s'       ,'t'     ,'l'    ,'w'     , '古'];
 const pwr_str = [' ','alchemist','berserk','bivouacking','commando','diplomat','dragonmaster','flying','forest','fortified','heroic','hill','merchant','mounted','pillaging','seafaring','spirit','stout','swamp','underworld','wealthy'];
 
 const terrains_col = [
@@ -184,19 +184,19 @@ function formatArea(areaName) {
 
 const pplDescr = [
   'No people', // NOPPL     = 0
-  '+4 <i class="user icon"></i> during attack',                               // AMAZON    = 1  #  +4 pour attaque
+  '+4 <i class="user icon"></i> during attack',                                  // AMAZON    = 1  #  +4 pour attaque
   '+1 <i class="coins icon"></i> for each ' + formatArea('mine') + ' occupied, even in decline', // DWARF     = 2  #  +1 victoire sur mine, même en déclin
-  'Do not discard 1 <i class="user icon"></i> when attacked',                 // ELF       = 3  #  pas de défausse lors d'une défaite
-  'In decline, <i class="users icon"></i> arent discarded and can even play', // GHOUL     = 4  #  tous les zombies restent en déclin, peuvent attaquer
-  '-1 <i class="user icon"></i> when attacking a ' + formatArea('mountain'),  // GIANT     = 5  #  -1 pour attaque voisin montagne
-  'Can start anywhere, receive immunity on 2 first regions until abandoned or decline', // HALFLING  = 6  #  départ n'importe où, immunité sur 2 prem régions
+  'Do not discard 1 <i class="user icon"></i> when attacked',                    // ELF       = 3  #  pas de défausse lors d'une défaite
+  'In decline, <i class="users icon"></i> arent discarded and can even play',    // GHOUL     = 4  #  tous les zombies restent en déclin, peuvent attaquer
+  '-1 <i class="user icon"></i> when attacking a ' + formatArea('mountain'),     // GIANT     = 5  #  -1 pour attaque voisin montagne
+  'Can start anywhere, receive immunity 🛇 on 2 first regions until abandoned or decline', // HALFLING  = 6  #  départ n'importe où, immunité sur 2 prem régions
   '+1 <i class="coins icon"></i> for each ' + formatArea('farmland') + ' occupied', // HUMAN     = 7  #  +1 victoire sur champs
-  '+1 <i class="coins icon"></i> for each attacked non-empty area',           // ORC       = 8  #  +1 victoire pour région non-vide conquise
-  'They are numerous',                                                        // RATMAN    = 9  #  leur nombre                                             
-  '+1 <i class="user icon"></i> for every 2 attacked non-empty areas',        // SKELETON  = 10 #  +1 pion pour toutes 2 régions non-vide conquises
-  'Replace a single active neighbour enemy by new sorcerer',                  // SORCERER  = 11 #  remplace pion unique adversaire actif par un sorcier
+  '+1 <i class="coins icon"></i> for each attacked non-empty area',              // ORC       = 8  #  +1 victoire pour région non-vide conquise
+  'They are numerous',                                                           // RATMAN    = 9  #  leur nombre                                             
+  '+1 <i class="user icon"></i> for every 2 attacked non-empty areas',           // SKELETON  = 10 #  +1 pion pour toutes 2 régions non-vide conquises
+  'Replace a single active neighbour enemy by new sorcerer',                     // SORCERER  = 11 #  remplace pion unique adversaire actif par un sorcier
   'Need -1 <i class="user icon"></i> when attacking a area neighbour to ' + formatArea('water'), // TRITON    = 12 #  -1 pour attaque région côtière
-  '+1 defense on each owned area, even in decline',                           // TROLL     = 13 #  +1 défense sur chaque territoire même en déclin
+  '+1 defense ⛨ on each owned area, even in decline',                            // TROLL     = 13 #  +1 défense sur chaque territoire même en déclin
   '+1 <i class="coins icon"></i> for each ' + formatArea('magic') + ' occupied', // WIZARD    = 14 #  +1 victoire sur source magique
 ]
 
@@ -204,14 +204,14 @@ const pwrDescr = [
   'No power',                                                               // NOPOWER     = 0
   '+2 <i class="coins icon"></i> at each round',                            // ALCHEMIST   = 1  # +2 chaque tour
   'Roll die before each attack',                                            // BERSERK     = 2  # Lancer de dé AVANT chaque attaque
-  '5 defenses to place every turn, also immunising against sorcerer',       // BIVOUACKING = 3  # 5 défenses à placer à chaque tour + immunité au sorcier
+  '5 defenses ⛨ to place every turn, also immunising against sorcerer',     // BIVOUACKING = 3  # 5 défenses à placer à chaque tour + immunité au sorcier
   'Need -1 <i class="user icon"></i> when attacking',                       // COMMANDO    = 4  # -1 attaque
   'Peace with an enemy people at end of turn, if you havent attacked them', // DIPLOMAT    = 5  # Paix avec un peuple actif à choisir à chaque tour
-  'Can conqueer an area with a dragon, which gives immunity',               // DRAGONMASTER= 6  # 1 attaque dragon par tour + immunité complète
+  'Can conqueer an area with a dragon, which gives immunity 🛇',            // DRAGONMASTER= 6  # 1 attaque dragon par tour + immunité complète
   'All areas are neighbour',                                                // FLYING      = 7  # Toutes les régions sont voisines
   '+1 <i class="coins icon"></i> for each ' + formatArea('forest') + ' occupied', // FOREST      = 8  # +1 victoire si forêt
   'Can place 1 fortress per turn up to 6, giving +1 <i class="coins icon"></i> when active and +1 defense always', // FORTIFIED   = 9  # +1 défense avec forteresse mm en déclin, +1 par tour actif (max 6- doit limiter à +une fortress / tour
-  '2 defenses to place every turn, giving full immunity',                   // HEROIC      = 10 # 2 immunités complètes
+  '2 defenses ⛨ to place every turn, giving full immunity 🛇',              // HEROIC      = 10 # 2 immunités complètes
   '+1 <i class="coins icon"></i> for each ' + formatArea('hill') + ' occupied', // HILL        = 11 # +1 victoire par colline
   '+1 <i class="coins icon"></i> for each area occupied',                   // MERCHANT    = 12 # +1 victoire par région
   'Need -1 <i class="user icon"></i> when attacking a ' + formatArea('hill') + ' or ' + formatArea('farmland'), // MOUNTED     = 13 # -1 attaque colline/ferme
@@ -263,7 +263,7 @@ function toDetailString(ppl, power, pplDetails, pwrDetails) {
     }
   } else if (ppl == 6) {  // HALFLING
     if (pplDetails > 0) {
-      result += pplDetails + ' <i class="shield alternate icon"></i> remaining. ';
+      result += pplDetails + ' ⛨ remaining. ';
     }
   } else if (ppl == 11) { // SORCERER
     const players = _bitfieldToTrue(pplDetails);
@@ -297,15 +297,15 @@ function toDetailString(ppl, power, pplDetails, pwrDetails) {
     }
   } else if (power == 3) { // BIVOUACKING
     if (pwrDetails > 0) {
-      result += pwrDetails + ' <i class="shield alternate icon"></i> remaining. ';
+      result += pwrDetails + ' ⛨ remaining. ';
     }
   } else if (power == 9) { // FORTIFIED
     if (pwrDetails > 0) {
-      result += pwrDetails + ' <i class="shield alternate icon"></i> remaining. ';
+      result += pwrDetails + ' ⛨ remaining. ';
     }
   } else if (power == 10) { // HEROIC
     if (pwrDetails > 0) {
-      result += pwrDetails + ' <i class="shield alternate icon"></i> remaining. ';
+      result += pwrDetails + ' ⛨ remaining. ';
     }
   }
 
@@ -704,7 +704,14 @@ function _genBoard() {
     if (data[2] > 0) {
       result += '<text x="' + computedPoints[1][0] + '" y="' + computedPoints[1][1] + '"';
       result += ' text-anchor="middle" dominant-baseline="central" font-size="0.3em" font-weight="bolder" fill="white">';
-      result += (data[2] >= 20) ? '🛇' : ('+'+data[2]);
+      if (data[2] >= 20) {
+        result += '🛇';
+      } else if (data[2] <= 2) {
+        result += '⛨'.repeat(data[2]);
+      } else {
+        result += data[2] + '⛨';
+      }
+      
       result += '</text>';
     }
 
@@ -742,8 +749,12 @@ function _genPlayersInfo(p) {
     const pplInfo = game.getPplInfo(p, ppl); // number in hand, ppl, power, total number
     if (pplInfo[1] != 0) {
       // Header
-      const rowColor = (p == curPlayPpl[0] && ppl == curPlayPpl[1]) ? 'blue' : '';
-      descr += '<div class="three wide ' + rowColor + ' column">';
+      const isCurrent = (p == curPlayPpl[0] && ppl == curPlayPpl[1]);
+      if (isCurrent) {
+        descr += '<div class="three wide blue column">';
+      } else {
+        descr += '<div class="three wide column">';  
+      }
 
       // Display big text (except if diplomacy mode)
       const relativePly = (p - curPlayPpl[0]) % nb_players;
@@ -754,8 +765,15 @@ function _genPlayersInfo(p) {
       } else {
         descr += '<span class="ui big text">';
       }
+      if (isCurrent) {
+        descr += '<b>';
+      }
       descr += toShortString(pplInfo[0], pplInfo[1]);
-      descr += displayDiplomacyButton ? '</div></div>' : '</span></div>';
+      descr += displayDiplomacyButton ? '</div>' : '</span>';
+      if (isCurrent) {
+        descr += '</b>';
+      }
+      descr += '</div>'
 
       // Full name
       descr += '<div class="thirteen wide column"> <span class="ui large text">';
