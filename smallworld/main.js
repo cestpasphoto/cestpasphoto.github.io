@@ -45,14 +45,14 @@ const buttonInfos = [
 
 const actionsDescr = [
   'Attack one of the highlighted areas (dash means dice needed)', // "attackBtn"
-  'Confirm no redeploy of your people',                       // "noDeployBtn"
-  'Confirm to gather your people before redeploy',            // "startDplBtn"
-  'Redeploy 1 people on a territory ',                        // "deploy1Btn"
   'Chose one area on which apply the ability of your people', // "usePplBtn"
   'Chose one area on which apply the power of your people',   // "usePwrBtn"
+  'Confirm to gather your people before redeploy',            // "startDplBtn"  
+  'Chose one area to redeploy 1 people on',                   // "deploy1Btn"
+  'Chose your people + power in deck',                        // "choseBtn"
   'Confirm to end your turn',                                 // "endTurnBtn"
+  'Confirm no redeploy of your people',                       // "noDeployBtn"
   'Chose one area to abandon',                                // "abandonBtn"
-  'Chose your people in deck below',                          // "choseBtn"
   'Confirm to decline your people',                           // "declineBtn"
 ];
 
@@ -774,8 +774,8 @@ function _genPlayersInfo(p) {
 
       // Explanation
       descr += '<br><span class="ui small text">';
-      descr += pplInfo[5] + ' <i class="user icon"></i> total. ';
       descr += toDescr(pplInfo[0], pplInfo[1], pplInfo[2])
+      descr += '. ' + pplInfo[5] + ' <i class="user icon"></i> total';
       descr += '</span>';
       descr += '</div>';
     }
@@ -803,8 +803,7 @@ function refreshBoard() {
 
   // update peoples and scores
   for (let p = 0; p < nb_players; p++) {
-    // document.getElementById("p"+p+"Score").innerHTML = "Player " + p + " - " + game.getScore(p) + '<i class="coins icon"></i>';
-    document.getElementById("p"+p+"Score").innerHTML = (p ? "AI" : "You") + " - " + game.getScore(p) + '<i class="coins icon"></i>';
+    document.getElementById("p"+p+"Score").innerHTML = (p ? "AI" : "You") + " - " + game.getScore(p) + ' <i class="coins icon"></i>';
     document.getElementById("p"+p+"Ppl").innerHTML = _genPlayersInfo(p);
   }
 
