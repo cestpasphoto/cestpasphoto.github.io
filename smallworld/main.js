@@ -44,7 +44,7 @@ const buttonInfos = [
 ];
 
 const actionsDescr = [
-  'Attack one of the highlighted areas (dash means dice needed)', // "attackBtn"
+  'Attack one of the highlighted areas (dash means dice needed, and lost-tribe is 古)', // "attackBtn"
   'Chose one area on which apply the ability of your people', // "usePplBtn"
   'Chose one area on which apply the power of your people',   // "usePwrBtn"
   'Confirm to gather your people before redeploy',            // "startDplBtn"  
@@ -495,6 +495,7 @@ class MoveSelector extends AbstractMoveSelector {
     super();
     this.previousMoves = [];
     this.previousPlayer = -1;
+    this.details = false;
   }
 
   // Going back to default, between moves for instance
@@ -651,6 +652,12 @@ class MoveSelector extends AbstractMoveSelector {
   getMove() {
     return this.nextMove;
   }
+
+  toggleDetails() {
+    this.showDetails = !(this.showDetails);
+    refreshBoard();
+    document.getElementById('toggleDetailsBtn').classList.toggle('inverted', !(this.showDetails));
+  }
 }
 
 function moveToString(move, gameMode) {
@@ -778,7 +785,7 @@ function _genPlayersInfo(p) {
       // Full name
       descr += '<div class="thirteen wide column"> <span class="ui large text">';
       descr += toLongString(pplInfo[0], pplInfo[1], pplInfo[2]);
-      if (ppl < 2 && move_sel.hasDeclined()) {
+      if (ppl < 2 && relativePly == (nb_players - 1) && move_sel.hasDeclined() ) {
         // Has just declined, add a dot
         descr += '<span class="ui ' + buttonInfos[_typeFromBtnName('declineBtn')][4] + ' text">●</span>';
       }
@@ -791,11 +798,13 @@ function _genPlayersInfo(p) {
       }
 
       // Explanation
-      descr += '<br><span class="ui small text">';
-      descr += toDescr(pplInfo[0], pplInfo[1], pplInfo[2])
-      descr += '. ' + pplInfo[5] + ' <i class="user icon"></i> total';
-      descr += '</span>';
-      descr += '</div>';
+      if (move_sel.showDetails) {
+        descr += '<br><span class="ui small text">';
+        descr += toDescr(pplInfo[0], pplInfo[1], pplInfo[2])
+        descr += '. ' + pplInfo[5] + ' <i class="user icon"></i> total';
+        descr += '</span>';
+      }
+        descr += '</div>';
     }
   }
   return descr;
@@ -833,8 +842,10 @@ function refreshBoard() {
       descr += " + " + deckInfo[3] + '<i class="coins icon"></i>';
     }
 
-    descr += '<br>';
-    descr += '<span class="ui small text">' + toDescr(deckInfo[0], deckInfo[1], deckInfo[2]) + '</span>';
+    if (move_sel.showDetails) {
+      descr += '<br>';
+      descr += '<span class="ui small text">' + toDescr(deckInfo[0], deckInfo[1], deckInfo[2]) + '</span>';
+    }
     document.getElementById("deck"+i+"Descr").innerHTML = descr;
     document.getElementById("deck"+i+"Btn").classList.toggle('disabled', move_sel.disableDeck);
   }
