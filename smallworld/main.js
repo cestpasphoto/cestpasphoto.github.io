@@ -495,7 +495,7 @@ class MoveSelector extends AbstractMoveSelector {
     super();
     this.previousMoves = [];
     this.previousPlayer = -1;
-    this.details = false;
+    this.showDetails = true;
   }
 
   // Going back to default, between moves for instance
@@ -656,7 +656,7 @@ class MoveSelector extends AbstractMoveSelector {
   toggleDetails() {
     this.showDetails = !(this.showDetails);
     refreshBoard();
-    document.getElementById('toggleDetailsBtn').classList.toggle('inverted', !(this.showDetails));
+    document.getElementById('toggleDetailsBtn').classList.toggle('inverted', this.showDetails);
   }
 }
 
