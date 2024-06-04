@@ -848,6 +848,7 @@ function refreshBoard() {
     }
     document.getElementById("deck"+i+"Descr").innerHTML = descr;
     document.getElementById("deck"+i+"Btn").classList.toggle('disabled', move_sel.disableDeck);
+    document.getElementById("deck"+i+"Btn").classList.toggle('primary', !move_sel.disableDeck);
   }
 
   // update round
