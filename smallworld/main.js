@@ -30,16 +30,16 @@ const nb_players = 2;
 
 const buttonInfos = [
   // button     range of moveID  HTMLcolor FomanticColor  confirmation needed
-  ["attackBtn"  , 23, 45,       'tomato',    'orange',    false],
-  ["usePplBtn"  , 46, 68,       'mediumblue','blue',      false],
-  ["usePwrBtn"  , 69, 91,       'mediumblue','blue',      false],
-  ["startDplBtn", 131, 131,     'hotpink',   'pink',      true ],
-  ["deploy1Btn" , 100, 122,     'hotpink',   'pink',      false],
-  ["choseBtn"   , 123, 128,     'mediumblue','blue',      false],
-  ["endTurnBtn" , 130, 130,     'mediumblue','blue',      true ],
-  ["noDeployBtn", 92, 92,       'mediumblue','blue',      true ],
-  ["abandonBtn" , 0, 22,        'red',       'red',       false],
-  ["declineBtn" , 129, 129,     'mediumblue','blue',      true ],
+  ["attackBtn"  , 23, 45,       '#016936',   'green',     false],
+  ["usePplBtn"  , 46, 68,       '#0E6EB8',   'blue',      false],
+  ["usePwrBtn"  , 69, 91,       '#0E6EB8',   'blue',      false],
+  ["startDplBtn", 131, 131,     '#FF1493',   'pink',      true ],
+  ["deploy1Btn" , 100, 122,     '#FF1493',   'pink',      false],
+  ["choseBtn"   , 123, 128,     '#0E6EB8',   'blue',      false],
+  ["endTurnBtn" , 130, 130,     '#0E6EB8',   'blue',      true ],
+  ["noDeployBtn", 92, 92,       '#0E6EB8',   'blue',      true ],
+  ["abandonBtn" , 0, 22,        '#DB2828',   'red',       false],
+  ["declineBtn" , 129, 129,     '#0E6EB8',   'blue',      true ],
   // deployN 93-99 not proposed
 ];
 
@@ -61,17 +61,17 @@ const ppl_short_str = [' ', 'a'     ,'d'    ,'e'  ,'g'    ,'i'    ,'h'       ,'u
 const pwr_str = [' ','alchemist','berserk','bivouacking','commando','diplomat','dragonmaster','flying','forest','fortified','heroic','hill','merchant','mounted','pillaging','seafaring','spirit','stout','swamp','underworld','wealthy'];
 
 const terrains_col = [
-  ['#266e3c'  ,  'green' ],  // FORESTT
-  ['#eaba5e'  ,  'brown' ],  // FARMLAND
-  ['#74a339'  ,  'olive' ],  // HILLT
-  ['#886a44'  ,  'purple'],  // SWAMPT
-  ['#c8c8c8'  ,  'black' ],  // MOUNTAIN
-  ['#61a6cf'  ,  'blue'  ],  // WATER
+  ['#99e69c'  ,  'green' ],  // FORESTT
+  ['#f6e5ac'  ,  'brown' ],  // FARMLAND
+  ['#d1f6ac'  ,  'olive' ],  // HILLT
+  ['#f6c5ac'  ,  'purple'],  // SWAMPT
+  ['#e6e6e6'  ,  'black' ],  // MOUNTAIN
+  ['#acedf6'  ,  'blue'  ],  // WATER
 ];
 
 const terrains_symb = [
   '⌘', // cavern
-  '★', // magic
+  '☆', // magic ★
   '⏚', // mine
 ];
 
@@ -152,24 +152,52 @@ const mapAreas = [
   [16, 15, 22, 21, 17],     // 22
 ];
 
+const elementsCoord = [
+  // for each: centerX, centerY
+  // main   defense  territory
+  [ 6,  7,  14,  7,  -1, -1], // 0
+  [17, 17,  17, 24,   8, 24], // 1
+  [ 7, 40,  17, 40,  -1, -1], // 2
+  [ 6, 65,  12, 65,   9, 58], // 3
+  [34,  7,  34, 14,  26,  7], // 4
+  [34, 26,  41, 26,  -1, -1], // 5
+  [24, 57,  24, 65,  32, 65], // 6
+  [34, 45,  44, 45,  -1, -1], // 7
+  [46, 13,  54, 13,  50,  5], // 8
+  [54, 25,  54, 35,  -1, -1], // 9
+  [45, 56,  45, 64,  38, 56], // 10
+  [65, 16,  65, 24,  -1, -1], // 11
+  [57, 51,  64, 51,  64, 43], // 12
+  [70,  5,  76,  5,  64,  5], // 13
+  [57, 65,  64, 65,  -1, -1], // 14
+  [76, 35,  84, 35,  74, 29], // 15
+  [79, 15,  79, 22,  -1, -1], // 16
+  [75, 51,  75, 60,  -1, -1], // 17
+  [87,  5,  94,  5,  -1, -1], // 18
+  [88, 62,  95, 62,  -1, -1], // 19
+  [95, 40,  95, 46,  95, 34], // 20
+  [85, 45,  84, 51,  -1, -1], // 21
+  [89, 24,  95, 24,  94, 16], // 22
+];
+
 function formatArea(areaName) {
   if (areaName == 'forest') {
-    return '<span class="ui text" style="color: ' + terrains_col[0][0] + '">forest</span>';
+    return '<span class="ui text" style="color: ' + terrains_col[0][1] + '">forest</span>';
   }
   if (areaName == 'farmland') {
-    return '<span class="ui text" style="color: ' + terrains_col[1][0] + '">farmland</span>';
+    return '<span class="ui text" style="color: ' + terrains_col[1][1] + '">farmland</span>';
   }
   if (areaName == 'hill') {
-    return '<span class="ui text" style="color: ' + terrains_col[2][0] + '">hill</span>';
+    return '<span class="ui text" style="color: ' + terrains_col[2][1] + '">hill</span>';
   }
   if (areaName == 'swamp') {
-    return '<span class="ui text" style="color: ' + terrains_col[3][0] + '">swamp</span>';
+    return '<span class="ui text" style="color: ' + terrains_col[3][1] + '">swamp</span>';
   }
   if (areaName == 'mountain') {
-    return '<span class="ui text" style="color: ' + terrains_col[4][0] + '">mountain</span>';
+    return '<span class="ui text" style="color: ' + terrains_col[4][1] + '">mountain</span>';
   }
   if (areaName == 'water') {
-    return '<span class="ui text" style="color: ' + terrains_col[5][0] + '">water</span>';
+    return '<span class="ui text" style="color: ' + terrains_col[5][1] + '">water</span>';
   }
   if (areaName == 'cavern') {
     return '<span class="ui text">' + terrains_symb[0] + '</span>';
@@ -189,7 +217,7 @@ const pplDescr = [
   'Do not discard 1 <i class="user icon"></i> when attacked',                    // ELF       = 3  #  pas de défausse lors d'une défaite
   'In decline, <i class="users icon"></i> arent discarded and can even play',    // GHOUL     = 4  #  tous les zombies restent en déclin, peuvent attaquer
   '-1 <i class="user icon"></i> when attacking a ' + formatArea('mountain'),     // GIANT     = 5  #  -1 pour attaque voisin montagne
-  'Can start anywhere, receive immunity 🛇 on 2 first regions until abandoned or decline', // HALFLING  = 6  #  départ n'importe où, immunité sur 2 prem régions
+  'Can start anywhere, receive immunity ⦸ on 2 first regions until abandoned or decline', // HALFLING  = 6  #  départ n'importe où, immunité sur 2 prem régions
   '+1 <i class="coins icon"></i> for each ' + formatArea('farmland') + ' occupied', // HUMAN     = 7  #  +1 victoire sur champs
   '+1 <i class="coins icon"></i> for each attacked non-empty area',              // ORC       = 8  #  +1 victoire pour région non-vide conquise
   'They are numerous',                                                           // RATMAN    = 9  #  leur nombre                                             
@@ -207,11 +235,11 @@ const pwrDescr = [
   '5 defenses ⛨ to place every turn, also immunising against sorcerer',     // BIVOUACKING = 3  # 5 défenses à placer à chaque tour + immunité au sorcier
   'Need -1 <i class="user icon"></i> when attacking',                       // COMMANDO    = 4  # -1 attaque
   'Peace with an enemy people at end of turn, if you havent attacked them', // DIPLOMAT    = 5  # Paix avec un peuple actif à choisir à chaque tour
-  'Can conqueer an area with a dragon, which gives immunity 🛇',            // DRAGONMASTER= 6  # 1 attaque dragon par tour + immunité complète
+  'Can conqueer an area with a dragon, which gives immunity ⦸',            // DRAGONMASTER= 6  # 1 attaque dragon par tour + immunité complète
   'All areas are neighbour',                                                // FLYING      = 7  # Toutes les régions sont voisines
   '+1 <i class="coins icon"></i> for each ' + formatArea('forest') + ' occupied', // FOREST      = 8  # +1 victoire si forêt
   'Can place 1 fortress per turn up to 6, giving +1 <i class="coins icon"></i> when active and +1 defense always', // FORTIFIED   = 9  # +1 défense avec forteresse mm en déclin, +1 par tour actif (max 6- doit limiter à +une fortress / tour
-  '2 defenses ⛨ to place every turn, giving full immunity 🛇',              // HEROIC      = 10 # 2 immunités complètes
+  '2 defenses ⛨ to place every turn, giving full immunity ⦸',              // HEROIC      = 10 # 2 immunités complètes
   '+1 <i class="coins icon"></i> for each ' + formatArea('hill') + ' occupied', // HILL        = 11 # +1 victoire par colline
   '+1 <i class="coins icon"></i> for each area occupied',                   // MERCHANT    = 12 # +1 victoire par région
   'Need -1 <i class="user icon"></i> when attacking a ' + formatArea('hill') + ' or ' + formatArea('farmland'), // MOUNTED     = 13 # -1 attaque colline/ferme
@@ -224,6 +252,13 @@ const pwrDescr = [
   '+7 <i class="coins icon"></i> after first turn',                         // WEALTHY     = 20 # +7 victoire à la fin premier tour
 ];
 
+const pplColors = [
+  ['#8caef2', '#477eeb', '#bacff7'],
+  ['#b580ff', '#83f', '#d2b3ff'],
+  //['darkorange', 'orangered', 'lightsalmon'],
+];
+const declineBackground = '#f7f7f7';
+
 function _bitfieldToBits(n) {
   return Array.from({ length: 8 }, (_, i) => !!(n & (1 << (7 - i))));
 }
@@ -234,27 +269,30 @@ function _bitfieldToTrue(n) {
   return indices;
 }
 
-function toShortString(nb, ppl) {
+function toShortString(data) {
+  let nb = data[0], ppl = data[1];
   if (ppl == 0) {
     return '';
   } else if (ppl > 0) {
-     return nb + ppl_short_str[ ppl].toUpperCase();
+    return nb + ppl_short_str[ ppl].toUpperCase();
   } else {
     return nb + ppl_short_str[-ppl];
   }
 }
 
-function toLongString(nb, ppl, power) {
+function toLongString(data, showNumber = true) {
+  let nb = data[0], ppl = data[1], power = data[2];
   if (ppl == 0) {
     return '';
   } else if (ppl > 0) {
-    return nb + 'x ' + ppl_str[ ppl] + ' + ' + pwr_str[power];
+    return (showNumber ? nb + ' ' : '') + ppl_str[ ppl] + ' + ' + pwr_str[power];
   } else {
-    return nb + 'x ' + ppl_str[-ppl] + ' <i class="skull crossbones icon"></i>';
+    return (showNumber ? nb + ' ' : '') + ppl_str[-ppl] + ' <i class="skull crossbones icon"></i>';
   }
 }
 
-function toDetailString(ppl, power, pplDetails, pwrDetails) {
+function toDetailString(data) {
+  let ppl = data[1], power = data[2], pplDetails = data[3], pwrDetails = data[4];
   let result = '';
 
   if (ppl == 1) {         // AMAZON
@@ -312,6 +350,24 @@ function toDetailString(ppl, power, pplDetails, pwrDetails) {
   return result;
 }
 
+function toColors(data) {
+  //        color, nb , letter, letter color
+  let nb = data[0], ppl = data[1];
+  if (ppl == 0) {
+    return ['none', '', '', 'none'];
+  } else if (ppl == -15) {
+    return ['none', '' + nb, '', 'dimgray'];
+  } else {
+    let colorInfo = game.displayColors[Math.abs(ppl)];
+    let color = pplColors[colorInfo[0]][colorInfo[1]];
+    if (ppl < 0) {
+      return [declineBackground, '' + nb, ppl_short_str[-ppl], color];
+    } else {
+      return [color, '' + nb, ppl_short_str[ ppl].toUpperCase(), 'white'];
+    }
+  }
+}
+
 function toDescr(nb, ppl, power) {
   let result = '';
   result += pplDescr[Math.abs(ppl)] + ' ; ';
@@ -363,7 +419,7 @@ function _miscPolygonComputations(points) {
   }
 
   // Compute erosion
-  const erosionR = 1.2;
+  const erosionR = 1.0;
   for (const point of points) {
     const vectorToCenter = [baryX-point[0], baryY-point[1]];
     const vectorLength = Math.sqrt(vectorToCenter[0]*vectorToCenter[0]+vectorToCenter[1]*vectorToCenter[1]);
@@ -394,6 +450,8 @@ class Smallworld extends AbstractGame {
     // Add fake action to list of valid actions
     this.validMoves = Array(sizeV[1]+1); this.validMoves.fill(false);
     this.canAddFakeAction = true;
+    this.displayColors = {}; // For each pplID, list player and colorID
+    this.nextColors = [0, 0]; // For each player, list next colorID to use
   }
 
   post_init_game() {
@@ -444,6 +502,9 @@ class Smallworld extends AbstractGame {
 
     // Add fake action
     this._addFakeAction();
+
+    // Update color definition if needed
+    this._syncPplAndColors();
   }
 
   post_set_data() {
@@ -488,6 +549,51 @@ class Smallworld extends AbstractGame {
     this.validMoves.push(validFakeAction);
     console.assert(this.validMoves.length == 132, 'validMoves.length = ' + this.validMoves.length + ' ' + validFakeAction);
   }
+
+  _syncPplAndColors() {
+    let usedColors = Array.from({ length: 2 }, () => Array.from({ length: 3 }, () => false));
+    let newPplList = [];
+
+    //console.log('START:', this.displayColors, this.nextColors);
+
+    // Check if any new ppl, or any removed ppl
+    for (let p = 0; p < nb_players; p++) {
+      for (let ppl = 0; ppl < 3; ppl++) {
+        let info = this.getPplInfo(p, ppl);
+        let pplIDabs = Math.abs(info[1]);
+        if (pplIDabs != 0) {
+          if (pplIDabs in this.displayColors) {
+            let color = this.displayColors[pplIDabs][1];
+            //console.log('DEBUG IN: ', pplIDabs, color);
+            usedColors[p][color] = true;
+          } else {
+            // New people, will define color later
+            //console.log('DEBUG NOTIN: ', p, pplIDabs);
+            newPplList.push([p, pplIDabs]);
+          }
+        }
+      }
+    }
+    
+    //console.log('INTERMEDIATE: ', usedColors, newPplList);
+
+    // Find color for each new people
+    for (let i = 0; i < newPplList.length; ++i) {
+      let p = newPplList[i][0], pplIDabs = newPplList[i][1];
+      let colorCandidate = this.nextColors[p];
+      if (usedColors[p][colorCandidate]) {
+        // Use first available color otherwise
+        colorCandidate = usedColors[p].findIndex(x => !x);
+      }
+
+      this.displayColors[pplIDabs] = [p, colorCandidate];
+      this.nextColors[p] = (this.nextColors[p] + 1) % 3;
+      usedColors[p][colorCandidate] = true;
+      console.log('New color: ', p, pplIDabs, '=', colorCandidate, '=', pplColors[p][colorCandidate]);
+      //console.log('  ', this.displayColors, this.nextColors);
+    }
+  }
+
 }
 
 class MoveSelector extends AbstractMoveSelector {
@@ -668,6 +774,106 @@ function moveToString(move, gameMode) {
 /* ===== DISPLAY ===== */
 /* =================== */
 
+function _dispPeople(x, y, mainColor, bigChar, littleChar, charColor) {
+  let result = '<svg ';
+  if (!!x) {
+    result += 'width="6" height="6" x="' + (x-6/2) + '" y="' + (y-6/2) + '">';
+  } else {
+    result += 'width="3rem" height="3rem" viewBox="0 0 6 6" style="vertical-align: bottom;">';
+  }
+
+  result += '<rect width="6" height="6" x="0" y="0" fill="' + mainColor + '" />';
+  // if (stroke) {
+  //   result += '<rect width="6" height="6" x="0" y="0" fill="none" stroke="red" stroke-width="1" />';
+  // }
+  result += '<text x="3" y="3" text-anchor="middle" dominant-baseline="central" font-size="5" font-weight="bolder" fill="' + charColor + '">';
+  result += bigChar;
+  result += '</text>';
+  if (!!littleChar) {
+    result += '<text x="0.5" y="2" font-size="1.5" font-weight="bolder" fill="' + charColor + '">';
+    result += littleChar;
+    result += '</text>';
+  }
+
+  result += '</svg>';
+  return result;
+}
+
+function _boardDisplPeople(data, x, y, dotColor) {
+  if (x<=0 && y<=0) {
+    return '';
+  }
+  let info = toColors(data);
+  let mainColor = info[0], bigChar = info[1], littleChar = info[2], charColor = info[3];
+  if (charColor == 'none') {
+    return '';
+  }
+
+  let result = _dispPeople(x, y, mainColor, bigChar, null, charColor);
+  if (dotColor != null) {
+    result += '<circle r="1" cx="' + (x+6/2) + '" cy="' + (y-6/2) + '" fill="' + dotColor + '" stroke="white" stroke-width="0.2" />';
+  }
+
+  return result;
+}
+
+function _boardDisplDefense(data, x, y) {
+  if (x<=0 && y<=0) {
+    return  '';
+  }
+  let defense = data[2], terrain = data[3];
+  if (defense <= 0) {
+    return '';
+  }
+
+  let result = '<svg width="6" height="6" x="' + (x-6/2) + '" y="' + (y-6/2) + '" viewBox="0 0 24 24" fill="none">';
+
+  if (defense == 1 && terrain == 4) {
+    // Draw mountain
+    result += '<path d="M13 14L17 9L22 18H2.84444C2.46441 18 2.2233 17.5928 2.40603 17.2596L10.0509 3.31896C10.2429 2.96885 10.7476 2.97394 10.9325 3.32786L15.122 11.3476"';
+    result += 'stroke="black" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>';
+  } else if (defense >= 20) {
+    // Draw forbid
+    result += '<text x="12" y="12" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="bolder" fill="black">';
+    result += '⦸';
+    result += '</text>';
+  } else {
+    // Draw shield
+    result += '<path d="M20 6C20 6 19.1843 6 19.0001 6C16.2681 6 13.8871 4.93485 11.9999 3C10.1128 4.93478 7.73199 6 5.00009 6C4.81589 6 4.00009 6 4.00009 6C4.00009 6 4 8 4 9.16611C4 14.8596 7.3994 19.6436 12 21C16.6006 19.6436 20 14.8596 20 9.16611C20 8 20 6 20 6Z"';
+    result += 'stroke="black" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>';
+
+    result += '<text x="12" y="12" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="bolder" fill="black">';
+    result += defense;
+    result += '</text>';
+  }
+
+  result += '</svg>';
+  return result;
+}
+
+function _boardDisplTerritory(data, x, y) {
+  if (x<=0 && y<=0) {
+    return  '';
+  }
+
+  let terrainPowers = data[4];
+
+  let result = '<text x="' + x + '" y="' + y + '"';
+  result += 'text-anchor="middle" dominant-baseline="central" font-size="3" font-weight="bolder" fill="black">';
+  if (terrainPowers[0]) {
+    result += terrains_symb[0] + ' ';
+  }
+  if (terrainPowers[1]) {
+    result += terrains_symb[1] + ' ';
+  }
+  if (terrainPowers[2]) {
+    result += terrains_symb[2] + ' ';
+  }
+  result += '</text>';
+
+  return result;
+}
+
 function _genBoard() {
   let result = '';
   let strokeColor = buttonInfos[move_sel.selectedMoveType][3]
@@ -693,56 +899,26 @@ function _genBoard() {
     }
     result += '" fill="' + (terrains_col[data[3]][0]) + '"';
     if (move_sel.territoryIsClickable(i)) {
-      result += ' stroke="'+  strokeColor + '" stroke-width="0.8"';
+      result += ' stroke="'+  strokeColor + '" stroke-width="0.5"';
       if (buttonInfos[move_sel.selectedMoveType][0] == 'attackBtn' && game.needDiceToAttack(i)) {
         result += ' stroke-dasharray="1"';
       }
     }
     result += '></polygon>';
 
-    // Draw text
-    if (data[0] > 0) {
-      result += '<text x="' + computedPoints[0][0] + '" y="' + computedPoints[0][1] + '"';
-      result += ' text-anchor="middle" dominant-baseline="central" font-size="0.4em" font-weight="bolder" fill="white">';
-      result += toShortString(data[0], data[1])
-      result += '</text>';
-    }
-
-    if (data[2] > 0) {
-      result += '<text x="' + computedPoints[1][0] + '" y="' + computedPoints[1][1] + '"';
-      result += ' text-anchor="middle" dominant-baseline="central" font-size="0.3em" font-weight="bolder" fill="white">';
-      if (data[2] >= 20) {
-        result += '🛇';
-      } else if (data[2] <= 2) {
-        result += '⛨'.repeat(data[2]);
-      } else {
-        result += data[2] + '⛨';
-      }
-      
-      result += '</text>';
-    }
-
-    // Draw symbols
-    result += '<text x="' + computedPoints[2][0] + '" y="' + computedPoints[2][1] + '"';
-    result += ' text-anchor="middle" dominant-baseline="central" font-size="0.2em" font-weight="bolder" fill="white">';
-    if (data[4][0]) {
-      result += terrains_symb[0] + ' ';
-    }
-    if (data[4][1]) {
-      result += terrains_symb[1] + ' ';
-    }
-    if (data[4][2]) {
-      result += terrains_symb[2] + ' ';
-    }
-    result += '</text>';
-
-    // Draw dot
+    // Compute color of dot
     const lastMoveOnArea = move_sel.getTypeOfMoveOnArea(i);
-    if (lastMoveOnArea !== null) {
-      const moveColor = (lastMoveOnArea < 0) ? 'gray' : buttonInfos[lastMoveOnArea][3];
-      result += '<circle r="1" cx="' + (computedPoints[2][0]+2) + '" cy="' + (computedPoints[2][1]+2) + '" fill="' + moveColor + '" />';
-    }
+    let dotColor = (lastMoveOnArea == null) ? null : ((lastMoveOnArea < 0) ? 'gray' : buttonInfos[lastMoveOnArea][3]);
 
+    result += _boardDisplPeople(data, elementsCoord[i][0], elementsCoord[i][1], dotColor);
+    result += _boardDisplDefense(data, elementsCoord[i][2], elementsCoord[i][3]);
+    result += _boardDisplTerritory(data, elementsCoord[i][4], elementsCoord[i][5]);
+
+    // result += '<text x="' + computedPoints[0][0] + '" y="' + computedPoints[0][1] + '"';
+    // result += ' text-anchor="middle" dominant-baseline="central" font-size="0.4em" font-weight="bolder" fill="purple" fill-opacity="0.4">';
+    // result += i;
+    // result += '</text>';
+    
     result += '</g>';
   }
 
@@ -755,36 +931,32 @@ function _genPlayersInfo(p) {
   for (let ppl = 2; ppl >= 0; ppl--) {
     const pplInfo = game.getPplInfo(p, ppl); // number in hand, ppl, power, total number
     if (pplInfo[1] != 0) {
-      // Header
+      let colorInfo = toColors(pplInfo);
       const isCurrent = (p == curPlayPpl[0] && ppl == curPlayPpl[1]);
-      if (isCurrent) {
-        descr += '<div class="three wide blue column">';
-      } else {
-        descr += '<div class="three wide column">';  
-      }
-
-      // Display big text (except if diplomacy mode)
       const relativePly = (p - curPlayPpl[0]) % nb_players;
       const displayDiplomacyButton = move_sel.selectingDiplomacy() && (relativePly != 0) && (ppl == 2);
       const validDiplomacyMove = game.validMoves[buttonInfos[_typeFromBtnName('usePwrBtn')][1] + relativePly];
-      if (displayDiplomacyButton && validDiplomacyMove) {
-        descr += '<div class="ui big compact button" onclick="move_sel.clickOnTerritory(' + relativePly + ')">';
+      
+      // Display colored square + full name (or button if need to select diplomacy)
+      if (isCurrent) {
+        descr += '<div style="border: 0.2rem solid dodgerblue; padding: 0.2rem;">';
       } else {
-        descr += '<span class="ui big text">';
+        descr += '<div>';
       }
-      if (isCurrent) {
-        descr += '<b>';
-      }
-      descr += toShortString(pplInfo[0], pplInfo[1]);
-      descr += displayDiplomacyButton ? '</div>' : '</span>';
-      if (isCurrent) {
-        descr += '</b>';
-      }
-      descr += '</div>'
+      descr += _dispPeople(null, null, colorInfo[0], colorInfo[1], null, colorInfo[3]);
+      descr += '<span class="ui large text">';
+      descr += ' ';
 
-      // Full name
-      descr += '<div class="thirteen wide column"> <span class="ui large text">';
-      descr += toLongString(pplInfo[0], pplInfo[1], pplInfo[2]);
+      if (displayDiplomacyButton && validDiplomacyMove) {
+        descr += '<div class="ui big compact primary button" onclick="move_sel.clickOnTerritory(' + relativePly + ')">';
+        descr += toLongString(pplInfo, false);
+        descr += '</div>';
+      } else {
+        //descr += isCurrent ? '<b>' : '';
+        descr += toLongString(pplInfo, false);
+        //descr += isCurrent ? '</b>' : '';
+      }
+
       if (ppl < 2 && relativePly == (nb_players - 1) && move_sel.hasDeclined() ) {
         // Has just declined, add a dot
         descr += '<span class="ui ' + buttonInfos[_typeFromBtnName('declineBtn')][4] + ' text">●</span>';
@@ -792,7 +964,7 @@ function _genPlayersInfo(p) {
       descr += '</span>';
 
       // Specific details for power/people
-      const details = toDetailString(pplInfo[1], pplInfo[2], pplInfo[3], pplInfo[4]);
+      const details = toDetailString(pplInfo);
       if (details.length > 0) {
         descr += ' <span class="ui grey text"> ' + details + "</span>";
       }
@@ -804,7 +976,8 @@ function _genPlayersInfo(p) {
         descr += '. ' + pplInfo[5] + ' <i class="user icon"></i> total';
         descr += '</span>';
       }
-        descr += '</div>';
+
+      descr += '</div>';
     }
   }
   return descr;
@@ -837,7 +1010,7 @@ function refreshBoard() {
   // update deck
   for (let i = 0; i < 6; i++) {
     deckInfo = game.getDeckInfo(i); // number, power, ppl, points
-    let descr = toLongString(deckInfo[0], deckInfo[1], deckInfo[2]);
+    let descr = toLongString(deckInfo);
     if (deckInfo[3] > 0) {
       descr += " + " + deckInfo[3] + '<i class="coins icon"></i>';
     }

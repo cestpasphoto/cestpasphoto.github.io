@@ -152,3 +152,4 @@ def gather_current_ppl_but_one():
 
 def ongoingRedeploy():
 	return (g.board.round_status[player, 4] == PHASE_REDEPLOY).item()
+
