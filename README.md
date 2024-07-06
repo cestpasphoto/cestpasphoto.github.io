@@ -8,10 +8,13 @@ All AI are running on client side, need 10\~20s to load it first time.
 - <https://cestpasphoto.github.io/santorini.html>
 - <https://cestpasphoto.github.io/santorini_with_gods.html>
 
-**Santorini**
+**Splendor**
 - <https://cestpasphoto.github.io/splendor.html>
 - <https://cestpasphoto.github.io/splendor_3pl.html>
 - <https://cestpasphoto.github.io/splendor_4pl.html>
+
+**Smallworld**
+- <https://cestpasphoto.github.io/smallworld.html>
 
 **Wordle**
 - <https://cestpasphoto.github.io/pyodide_wordle.html>
@@ -31,7 +34,7 @@ Details: these games use no god power, other AI always starting first, both with
 
 The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general) and [this ReadMe](https://github.com/cestpasphoto/alpha-zero-general/blob/master/santorini/README.md).
 
-The UI also propose "undervolted" settings: instead of exploring 800 future positions, it explores 200 or 50 or 10 of them to reduce strength. If AI was trained with these lower numbers, it could have been stronger but that wasn't the purpose.
+The UI also propose "undervolted" settings: instead of exploring 800 future positions, it explores 200 or 50 or 10 of them to reduce strength.
 
 ### Speed
 
@@ -39,20 +42,39 @@ About 5 to 10sec per turn when using AI native level. See other details in (#com
 You can find higher performance application on this [repo](https://github.com/cestpasphoto/alpha-zero-general), requiring you to install python and many other modules.
 
 
-## Online Splendor AI
+## Online Smallworld AI
 
-Using same AI as Santorini, described above. Supporting 2, 3 and 4 players.
+Using same AI as Santorini, described above. Supporting 2 players only. Each token movement is considered as one move.
 
 ### Strength
 
-Compared to the only AI I found: \>90% winrate against [Lapidary AI](https://github.com/inclement/lapidary-ai) - 10 wins in 10 games, with a median 14 points difference (median game is 16-2).
-
-Details: needed to reproduce Lapidary "behavior" (only to win gold even if one has 10 gems, new card from deck appears on the right instead of replacing old card slot). My AI doesn't allow simultaneously giving back and taking gems so I needed to do some hack. Lapidary is aware of card in deck, whereas mine wasn't (I always replaced random card by the one chose by Lapidary). My AI was running in "native" mode, meaning 400 rollouts per move. My AI doesn't know which cards will be drawn. 
-
+No objective tests done. Note that randomness can have a lot of impact on this game but benchmarks should be done carefully.
 The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
 
-The UI also propose "undervolted" settings: instead of exploring 400 future positions, it explores 200 or 50 or 10 of them to reduce strength. If AI was trained with these lower numbers, it could have been stronger but that wasn't the purpose.
+The UI also propose "undervolted" settings: instead of exploring 1600 future positions, it explores 400 or 100 or 25 or 10 of them to reduce strength.
 
+
+## Online Santorini AI
+
+This AI is based on AlphaZero training. I have reused an existing training engine and significantly modified it, I fully implemented everything else from game logic, ML network design, training tuning, port to browser and JS/HTML interface.
+
+### Strength
+
+Compared to best AI I found:
+* \>95% winrate against [Ai Ai](http://mrraow.com/index.php/aiai-home/aiai/) - 20 wins in 20 games
+  * Even running a degraded version of mine leads to >90% winrate - 10 wins in 10 games
+* 98+% win rate against [BoardSpace AI](https://www.boardspace.net/english/index.shtml), using BestBot
+
+Details: these games use no god power, other AI always starting first, both with random initial positions. Mine was running at 800 rollouts per move (50 for degraded version), Ai Ai was set with a timelimit of 15+15sec/move (about 900k iterations on my computer). 
+
+The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general) and [this ReadMe](https://github.com/cestpasphoto/alpha-zero-general/blob/master/santorini/README.md).
+
+The UI also propose "undervolted" settings: instead of exploring 800 future positions, it explores 200 or 50 or 10 of them to reduce strength.
+
+### Speed
+
+About 5 to 10sec per turn when using AI native level. See other details in (#common-technical-details).
+You can find higher performance application on this [repo](https://github.com/cestpasphoto/alpha-zero-general), requiring you to install python and many other modules.
 
 ## Online wordle solver
 
