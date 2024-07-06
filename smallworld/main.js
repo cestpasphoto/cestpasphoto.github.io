@@ -554,8 +554,6 @@ class Smallworld extends AbstractGame {
     let usedColors = Array.from({ length: 2 }, () => Array.from({ length: 3 }, () => false));
     let newPplList = [];
 
-    //console.log('START:', this.displayColors, this.nextColors);
-
     // Check if any new ppl, or any removed ppl
     for (let p = 0; p < nb_players; p++) {
       for (let ppl = 0; ppl < 3; ppl++) {
@@ -574,8 +572,6 @@ class Smallworld extends AbstractGame {
         }
       }
     }
-    
-    //console.log('INTERMEDIATE: ', usedColors, newPplList);
 
     // Find color for each new people
     for (let i = 0; i < newPplList.length; ++i) {
@@ -589,8 +585,6 @@ class Smallworld extends AbstractGame {
       this.displayColors[pplIDabs] = [p, colorCandidate];
       this.nextColors[p] = (this.nextColors[p] + 1) % 3;
       usedColors[p][colorCandidate] = true;
-      console.log('New color: ', p, pplIDabs, '=', colorCandidate, '=', pplColors[p][colorCandidate]);
-      //console.log('  ', this.displayColors, this.nextColors);
     }
   }
 
@@ -779,7 +773,7 @@ function _dispPeople(x, y, mainColor, bigChar, littleChar, charColor) {
   if (!!x) {
     result += 'width="6" height="6" x="' + (x-6/2) + '" y="' + (y-6/2) + '">';
   } else {
-    result += 'width="3rem" height="3rem" viewBox="0 0 6 6" style="vertical-align: bottom;">';
+    result += 'width="3em" height="3em" viewBox="0 0 6 6" style="vertical-align: bottom;">';
   }
 
   result += '<rect width="6" height="6" x="0" y="0" fill="' + mainColor + '" />';

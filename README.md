@@ -17,7 +17,7 @@ All AI are running on client side, need 10\~20s to load it first time.
 - <https://cestpasphoto.github.io/smallworld.html>
 
 **Wordle**
-- <https://cestpasphoto.github.io/pyodide_wordle.html>
+- <https://cestpasphoto.github.io/wordle.html>
 
 ## Online Santorini AI
 
