@@ -61,12 +61,12 @@ const ppl_short_str = [' ', 'a'     ,'d'    ,'e'  ,'g'    ,'i'    ,'h'       ,'u
 const pwr_str = [' ','alchemist','berserk','bivouacking','commando','diplomat','dragonmaster','flying','forest','fortified','heroic','hill','merchant','mounted','pillaging','seafaring','spirit','stout','swamp','underworld','wealthy'];
 
 const terrains_col = [
-  ['#99e69c'  ,  'green' ],  // FORESTT
-  ['#f6e5ac'  ,  'brown' ],  // FARMLAND
-  ['#d1f6ac'  ,  'olive' ],  // HILLT
-  ['#f6c5ac'  ,  'purple'],  // SWAMPT
-  ['#e6e6e6'  ,  'black' ],  // MOUNTAIN
-  ['#acedf6'  ,  'blue'  ],  // WATER
+  ['#99e69c'  ,  '#2db931' ],  // FORESTT
+  ['#f6e5ac'  ,  '#e9c03a' ],  // FARMLAND
+  ['#d1f6ac'  ,  '#9eec51' ],  // HILLT
+  ['#f6c5ac'  ,  '#e9743a' ],  // SWAMPT
+  ['#e6e6e6'  ,  '#a6a6a6' ],  // MOUNTAIN
+  ['#acedf6'  ,  '#3ad5e9' ],  // WATER
 ];
 
 const terrains_symb = [
@@ -182,31 +182,31 @@ const elementsCoord = [
 
 function formatArea(areaName) {
   if (areaName == 'forest') {
-    return '<span class="ui text" style="color: ' + terrains_col[0][1] + '">forest</span>';
+    return '<span style="color: ' + terrains_col[0][1] + '"><b>forest</b></span>';
   }
   if (areaName == 'farmland') {
-    return '<span class="ui text" style="color: ' + terrains_col[1][1] + '">farmland</span>';
+    return '<span style="color: ' + terrains_col[1][1] + '"><b>farmland</b></span>';
   }
   if (areaName == 'hill') {
-    return '<span class="ui text" style="color: ' + terrains_col[2][1] + '">hill</span>';
+    return '<span style="color: ' + terrains_col[2][1] + '"><b>hill</b></span>';
   }
   if (areaName == 'swamp') {
-    return '<span class="ui text" style="color: ' + terrains_col[3][1] + '">swamp</span>';
+    return '<span style="color: ' + terrains_col[3][1] + '"><b>swamp</b></span>';
   }
   if (areaName == 'mountain') {
-    return '<span class="ui text" style="color: ' + terrains_col[4][1] + '">mountain</span>';
+    return '<span style="color: ' + terrains_col[4][1] + '"><b>mountain</b></span>';
   }
   if (areaName == 'water') {
-    return '<span class="ui text" style="color: ' + terrains_col[5][1] + '">water</span>';
+    return '<span style="color: ' + terrains_col[5][1] + '"><b>water</b></span>';
   }
   if (areaName == 'cavern') {
-    return '<span class="ui text">' + terrains_symb[0] + '</span>';
+    return '<span>' + terrains_symb[0] + '</span>';
   }
   if (areaName == 'magic') {
-    return '<span class="ui text">' + terrains_symb[1] + '</span>';
+    return '<span>' + terrains_symb[1] + '</span>';
   }
   if (areaName == 'mine') {
-    return '<span class="ui text">' + terrains_symb[2] + '</span>';
+    return '<span>' + terrains_symb[2] + '</span>';
   }
 }
 
