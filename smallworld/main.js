@@ -40,11 +40,12 @@ const buttonInfos = [
   ["noDeployBtn", 92, 92,       '#0E6EB8',   'blue',      true ],
   ["abandonBtn" , 0, 22,        '#DB2828',   'red',       false],
   ["declineBtn" , 129, 129,     '#0E6EB8',   'blue',      true ],
+  ["startBtn"   , 132, 132,     '#0E6EB8',   'blue',      false],
   // deployN 93-99 not proposed
 ];
 
 const actionsDescr = [
-  'Attack one of the highlighted areas (dash means dice needed, and lost-tribe is 古)', // "attackBtn"
+  'Attack one of the highlighted areas (dash means dice needed)', // "attackBtn"
   'Chose one area on which apply the ability of your people', // "usePplBtn"
   'Chose one area on which apply the power of your people',   // "usePwrBtn"
   'Confirm to gather your people before redeploy',            // "startDplBtn"  
@@ -54,6 +55,7 @@ const actionsDescr = [
   'Confirm no redeploy of your people',                       // "noDeployBtn"
   'Chose one area to abandon',                                // "abandonBtn"
   'Confirm to decline your people',                           // "declineBtn"
+  'Install lost tribe and start game',                        // "startBtn"
 ];
 
 const ppl_str       = [' ', 'amazon','dwarf','elf','ghoul','giant','halfling','human','orc','ratman','skeleton','sorcerer','triton','troll','wizard', 'lost_tribe'];
@@ -447,22 +449,30 @@ function _typeFromBtnName(btnName) {
 class Smallworld extends AbstractGame {
   constructor() {
     super()
-    // Add fake action to list of valid actions
-    this.validMoves = Array(sizeV[1]+1); this.validMoves.fill(false);
-    this.canAddFakeAction = true;
+    // Add 2 virtual actions to list of valid actions
+    this.validMoves = Array(sizeV[1]+2); this.validMoves.fill(false);
+    this.canAddVirtualStartDeploy = true;
+    this.gameIsStarted = false;
     this.displayColors = {}; // For each pplID, list player and colorID
     this.nextColors = [0, 0]; // For each player, list next colorID to use
   }
 
   post_init_game() {
-    this._addFakeAction();
+    this.canAddVirtualStartDeploy = true;
+    this.gameIsStarted = false;
+    this._addVirtualMoves();
   }
 
   pre_move(action, manualMove) {
   }
 
   move(action, isManualMove) {
-    if (action == 131 && isManualMove) {
+    this.gameIsStarted = true;
+
+    if (action == 132 && isManualMove) {
+      // Nothing to update
+      this.validMoves = this.validMoves.slice(0, 131);
+    } else if (action == 131 && isManualMove) {
       this.pre_move(action, isManualMove);
       // Actually move
       this.previousPlayer = this.nextPlayer;
@@ -492,23 +502,23 @@ class Smallworld extends AbstractGame {
     }
     move_sel.registerMove(action, success);
 
-    // Switch "canAddFakeAction" depending on current move
+    // Switch "canAddVirtualStartDeploy" depending on current move
     if (action == 131) {
-      this.canAddFakeAction = false; // using fakeAction, can't use it again for this turn
+      this.canAddVirtualStartDeploy = false; // using virtual move, can't use it again for this turn
     }
     if (Math.max(...this.validMoves.slice(23, 45)) == true) {
-      this.canAddFakeAction = true; // new turn, can use "canAddFakeAction" again
+      this.canAddVirtualStartDeploy = true; // new turn, can use "canAddVirtualStartDeploy" again
     }
 
-    // Add fake action
-    this._addFakeAction();
+    // Add virtual action
+    this._addVirtualMoves();
 
     // Update color definition if needed
     this._syncPplAndColors();
   }
 
   post_set_data() {
-    this._addFakeAction();
+    this._addVirtualMoves();
   }
 
   has_changed_on_last_move(item_vector) {
@@ -543,11 +553,13 @@ class Smallworld extends AbstractGame {
     return this.py.needDiceToAttack(area);
   }
 
-  _addFakeAction() {
-    // Add fake action = prepare to redeploy
-    const validFakeAction = this.canAddFakeAction && Math.max(...this.validMoves.slice(100, 123));
-    this.validMoves.push(validFakeAction);
-    console.assert(this.validMoves.length == 132, 'validMoves.length = ' + this.validMoves.length + ' ' + validFakeAction);
+  _addVirtualMoves() {
+    // Add virtual move = prepare to redeploy
+    const validVirtualMove = this.canAddVirtualStartDeploy && Math.max(...this.validMoves.slice(100, 123));
+    this.validMoves.push(validVirtualMove);
+    // Add another virtual move = install lost tribe
+    this.validMoves.push(!this.gameIsStarted);
+    console.assert(this.validMoves.length == 133, 'validMoves.length = ' + this.validMoves.length + ' ' + validVirtualMove + ' ' + self.gameIsStarted);
   }
 
   _syncPplAndColors() {
@@ -618,6 +630,11 @@ class MoveSelector extends AbstractMoveSelector {
     // check allowed types
     for (let i = 0; i < buttonInfos.length; i++) {
       this.allowedMoveTypes[i] = game.validMoves.slice(buttonInfos[i][1], buttonInfos[i][2]+1).some(Boolean);
+    }
+    if (this.allowedMoveTypes[_typeFromBtnName('startBtn')]) {
+      // Inhibit all other actions
+      this.allowedMoveTypes.fill(false);
+      this.allowedMoveTypes[_typeFromBtnName('startBtn')] = true;
     }
     if (this.allowedMoveTypes[_typeFromBtnName('startDplBtn')])
       this.allowedMoveTypes[_typeFromBtnName('deploy1Btn')] = false; // Inhibit "deploy1" when "startDeploy" is valid
@@ -698,6 +715,12 @@ class MoveSelector extends AbstractMoveSelector {
     this.show2ndButtons = buttonInfos[this.selectedMoveType][5];
     this._updateHTML();
     refreshBoard();
+
+    // For this button, no confirmation needed, no territory so trigger move already
+    if (buttonInfos[this.selectedMoveType][0] == 'startBtn') {
+      this.nextMove = 132;
+      userMove();
+    }
   }
 
   clickOnTerritory(area) {
@@ -706,7 +729,7 @@ class MoveSelector extends AbstractMoveSelector {
   }
 
   territoryIsClickable(area) {
-    if (['choseBtn', 'startDplBtn', 'noDeployBtn', 'declineBtn', 'endTurnBtn'].includes(buttonInfos[this.selectedMoveType][0])) {
+    if (['choseBtn', 'startDplBtn', 'noDeployBtn', 'declineBtn', 'endTurnBtn', 'startBtn'].includes(buttonInfos[this.selectedMoveType][0])) {
       return false;  
     }
     if (this.selectingDiplomacy()) {
@@ -904,7 +927,9 @@ function _genBoard() {
     const lastMoveOnArea = move_sel.getTypeOfMoveOnArea(i);
     let dotColor = (lastMoveOnArea == null) ? null : ((lastMoveOnArea < 0) ? 'gray' : buttonInfos[lastMoveOnArea][3]);
 
-    result += _boardDisplPeople(data, elementsCoord[i][0], elementsCoord[i][1], dotColor);
+    if (game.gameIsStarted) {
+      result += _boardDisplPeople(data, elementsCoord[i][0], elementsCoord[i][1], dotColor);
+    }
     result += _boardDisplDefense(data, elementsCoord[i][2], elementsCoord[i][3]);
     result += _boardDisplTerritory(data, elementsCoord[i][4], elementsCoord[i][5]);
 
