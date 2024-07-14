@@ -358,7 +358,7 @@ function toColors(data) {
   if (ppl == 0) {
     return ['none', '', '', 'none'];
   } else if (ppl == -15) {
-    return ['none', '' + nb, '', 'dimgray'];
+    return ['#f2f2f2', '' + nb, '', 'dimgray'];
   } else {
     let colorInfo = game.displayColors[Math.abs(ppl)];
     let color = pplColors[colorInfo[0]][colorInfo[1]];
