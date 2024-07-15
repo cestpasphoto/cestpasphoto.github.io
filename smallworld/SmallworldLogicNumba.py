@@ -1347,9 +1347,9 @@ class Board():
 			else:
 				# https://stackoverflow.com/questions/3062746/special-simple-random-number-generator
 				# m=avail_people_id.size, c=0, a=2*3*5*7*9*11*13*17+1
-				rnd_value = (4594591 * (random_seed+self.invisible_deck[6])) % avail_people_id.size
+				rnd_value = (4594591 * (random_seed+self.invisible_deck[6]).astype(np.int64)) % avail_people_id.size
 				chosen_ppl = avail_people_id[rnd_value]
-				rnd_value = (4594591 * (random_seed+self.invisible_deck[6])) % avail_power_id.size
+				rnd_value = (4594591 * (random_seed+self.invisible_deck[6]).astype(np.int64)) % avail_power_id.size
 				chosen_power = avail_power_id[rnd_value]
 			self.invisible_deck[6] += 1
 			nb_of_ppl = initial_nb_people[chosen_ppl] + initial_nb_power[chosen_power]
@@ -1390,9 +1390,9 @@ class Board():
 					else:
 						# https://stackoverflow.com/questions/3062746/special-simple-random-number-generator
 						# m=avail_people_id.size, c=0, a=2*3*5*7*9*11*13*17+1
-						rnd_value = (4594591 * (random_seed+self.invisible_deck[6])) % avail_people_id.size
+						rnd_value = (4594591 * (random_seed+self.invisible_deck[6]).astype(np.int64)) % avail_people_id.size
 						chosen_ppl = avail_people_id[rnd_value]
-						rnd_value = (4594591 * (random_seed+self.invisible_deck[6])) % avail_power_id.size
+						rnd_value = (4594591 * (random_seed+self.invisible_deck[6]).astype(np.int64)) % avail_power_id.size
 						chosen_power = avail_power_id[rnd_value]
 					self.invisible_deck[6] += 1
 					nb_of_ppl = initial_nb_people[chosen_ppl] + initial_nb_power[chosen_power]						
