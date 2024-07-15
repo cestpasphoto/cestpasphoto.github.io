@@ -337,15 +337,15 @@ function toDetailString(data) {
     }
   } else if (power == 3) { // BIVOUACKING
     if (pwrDetails > 0) {
-      result += pwrDetails + ' ⛨ remaining. ';
+      result += (pwrDetails % 2**6) + ' ⛨ remaining. ';
     }
   } else if (power == 9) { // FORTIFIED
     if (pwrDetails > 0) {
-      result += pwrDetails + ' ⛨ remaining. ';
+      result += (pwrDetails % 2**6) + ' ⛨ remaining. ';
     }
   } else if (power == 10) { // HEROIC
     if (pwrDetails > 0) {
-      result += pwrDetails + ' ⛨ remaining. ';
+      result += (pwrDetails % 2**6) + ' ⛨ remaining. ';
     }
   }
 
