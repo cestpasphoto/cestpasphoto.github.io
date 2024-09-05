@@ -51,6 +51,14 @@
                   "D";
           }
       }
+
+      /* Prevent Brave from modifying colors in dark mode */
+      @media (prefers-color-scheme: dark) and (-webkit-max-device-pixel-ratio: 1) {
+        svg path[stroke="black"] {
+          stroke: black !important;
+          filter: none !important;
+        }
+      }
   </style>
 </head>
 </head>

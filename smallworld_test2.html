@@ -51,6 +51,11 @@
                   "D";
           }
       }
+
+      /* Prevent Brave from modifying colors in dark mode */
+      svg path[stroke="black"] {
+        stroke: black !important;
+      }
   </style>
 </head>
 </head>
