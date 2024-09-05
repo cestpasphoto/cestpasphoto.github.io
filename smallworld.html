@@ -41,6 +41,14 @@
                   "D";
           }
       }
+
+      /* Prevent Brave from modifying colors in dark mode */
+      @media (prefers-color-scheme: dark) {
+        svg path[stroke="black"] {
+          stroke: black !important;
+          filter: none !important;
+        }
+      }
   </style>
 </head>
 </head>
