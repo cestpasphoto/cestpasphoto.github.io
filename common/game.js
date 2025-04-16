@@ -109,7 +109,7 @@ class AbstractGame {
 
   // ----- UTILS METHODS -----
 
-  change_difficulty(numMCTSSims) {
+  changeDifficulty(numMCTSSims) {
     this.numMCTSSims = Number(numMCTSSims);
     this.py.changeDifficulty(this.numMCTSSims);
   }
