@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Test CountAPI</title>
+</head>
+<body>
+  <h1>Cette page a été visitée <span id="visits">…</span> fois.</h1>
+
+  <!-- Insertion du pixel JSONP à la fin du body pour ne pas bloquer le chargement -->
+  <script async
+          src="https://api.countapi.xyz/hit/pouetpouetpouet/testpage?callback=updateVisits">
+  </script>
+
+  <script>
+    /**
+     * Cette fonction sera appelée automatiquement
+     * par le script JSONP de CountAPI avec un objet { value: <nombre> }
+     */
+    function updateVisits(response) {
+      const span = document.getElementById('visits');
+      if (response && typeof response.value === 'number') {
+        span.textContent = response.value;
+      } else {
+        span.textContent = 'erreur';
+      }
+    }
+  </script>
+</body>
+</html>
