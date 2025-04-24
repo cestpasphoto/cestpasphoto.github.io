@@ -162,7 +162,14 @@
   const p1details   = document.getElementById('p1details');
   const editMsg     = document.getElementById('editMsg');
 
+  window.onload = () =>
+    fetch('https://api.counterapi.dev/v1/cestpasphoto.github.io/santoriniWO/up')
+      .catch(() => {});
+
   main(usePyodide=true);
+</script>
+<script>
+
 </script>
 </body>
 </html>

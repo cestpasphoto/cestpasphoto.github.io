@@ -427,6 +427,9 @@ myscript.online_simulation_browser_best(dico_solutions, dico_n)
 
   output.value = "Initializing Pyodide, numpy, python code and loading dictionnary...\n";
   button_guess.setAttribute('class', "fluid ui primary massive loading button");
+  window.onload = () =>
+    fetch('https://api.counterapi.dev/v1/cestpasphoto.github.io/wordle/up')
+      .catch(() => {});
   let pyodideReadyPromise = main();
 </script>
 </body>

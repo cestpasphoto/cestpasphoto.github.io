@@ -182,6 +182,10 @@
   const editBtn     = document.getElementById('editBtn');
   const moveSgmt    = document.getElementById('moveSgmt');
 
+  window.onload = () =>
+    fetch('https://api.counterapi.dev/v1/cestpasphoto.github.io/smallworld2/up')
+      .catch(() => {});
+
   main(usePyodide=true);
 </script>
 </body>
