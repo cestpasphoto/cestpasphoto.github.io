@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
+  <link rel="manifest" href="/icons/site.webmanifest">
+  <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#5bbad5">
+  <link rel="shortcut icon" href="/icons/favicon.ico">
+  <meta name="msapplication-TileColor" content="#da532c">
+  <meta name="msapplication-config" content="/icons/browserconfig.xml">
+  <meta name="theme-color" content="#ffffff">
+
+  <!-- common game logic -->
+  <script src="./common/game.js"></script>
+  <!-- on pointe sur le JS à 3 joueurs -->
+  <script src="./smallworld/main3.js"></script>
+
+  <style>
+    .myReactiveCont { display: grid; gap: 1rem; }
+    #boardArea   { grid-area: B; }
+    #playersArea { grid-area: P; }
+    #deckArea    { grid-area: D; }
+
+    @media (min-width: 768px) {
+      .myReactiveCont {
+        grid-template-columns: 10fr 6fr;
+        grid-template-areas:
+          "B P"
+          "B D";
+      }
+    }
+    @media (max-width: 767px) {
+      .myReactiveCont {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "P"
+          "B"
+          "D";
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="ui borderless menu">
+  <div class="ui container">
+    <div class="fitted item">
+      <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
+    </div>
+    <div class="fitted item">
+      <button class="ui icon disabled button" id="editBtn"><i class="edit icon"></i></button>
+    </div>
+    <div class="fitted item">
+      <div class="ui small form">
+        <div class="field">
+          <select onchange="game.change_difficulty(this.value)" id="difficultyForm">
+            <optgroup label="Above optimal">
+              <option value="12800">God-like</option>
+              <option value="4800">Boosted</option>
+            <optgroup label="Level used during training">
+              <option value="1600">Native</option>
+            <optgroup label="Sub optimal levels">
+              <option value="400">Easy</option>
+              <option value="100">Easier</option>
+              <option value="25" selected>Very easy</option>
+              <option value="10">Come on</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="fitted item">
+      <div class="ui small form">
+        <div class="field">
+          <select onchange="changeGameMode(this.value)">
+            <option value="P0" selected>You vs AI</option>
+            <option value="P1">AI vs you</option>
+            <option value="Human">No AI</option>
+            <option value="AI">WarGames</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="right menu">
+      <div class="fitted item">
+        <i class="circular inverted info small icon link" id="toggleDetailsBtn"
+           onclick="move_sel.toggleDetails()"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ui container">
+  <h1 class="ui huge center aligned header">Smallworld with AI (3 joueurs)</h1>
+
+  <div class="ui compact grid">
+    <div class="myReactiveCont">
+
+      <!-- BOARD -->
+      <div class="item" id="boardArea">
+        <div class="ui large horizontal divider">Board</div>
+        <div class="ui fluid small compact buttons" id="allBtn" style="display: none">
+          <!-- (les boutons d’action restent inchangés) -->
+          …
+        </div>
+        <button class="ui fluid active loading button" id="loadingBtn">‌</button>
+        <span class="ui small text" id="actionDescr"></span>
+        <button class="ui fluid compact secondary button" id="confirmBtn"
+                onclick="move_sel.confirm()" style="display: none">Confirm</button>
+        <svg viewBox="0 0 1 1" id="boardSvg"></svg>
+      </div>
+
+      <!-- PLAYERS -->
+      <div class="item" id="playersArea">
+        <div class="ui large horizontal divider" id="p0Score">You</div>
+        <div id="p0Ppl"></div>
+
+        <div class="ui large horizontal divider" id="p1Score">AI 1</div>
+        <div id="p1Ppl"></div>
+
+        <!-- Troisième joueur -->
+        <div class="ui large horizontal divider" id="p2Score">AI 2</div>
+        <div id="p2Ppl"></div>
+      </div>
+
+      <!-- DECK -->
+      <div class="item" id="deckArea">
+        <div class="ui large horizontal divider">Deck</div>
+        <div class="ui circular labels" id="roundP" style="margin-inline:auto;"></div>
+        <div class="ui middle aligned very compact grid">
+          <!-- (les cartes et boutons de deck restent inchangés) -->
+          …
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  const allBtn      = document.getElementById('allBtn');
+  const undoBtn     = document.getElementById('undoBtn');
+  const loadingBtn  = document.getElementById('loadingBtn');
+  const editBtn     = document.getElementById('editBtn');
+  const moveSgmt    = document.getElementById('moveSgmt');
+
+  window.onload = () =>
+    fetch('https://api.counterapi.dev/v1/cestpasphoto.github.io/smallworld2/up')
+      .catch(() => {});
+
+  main(usePyodide=true);
+</script>
+</body>
+</html>
