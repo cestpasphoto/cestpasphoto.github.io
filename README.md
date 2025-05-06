@@ -15,6 +15,8 @@ All AI are running on client side, need 10\~20s to load it first time.
 
 **Smallworld**
 - <https://cestpasphoto.github.io/smallworld.html>
+- <https://cestpasphoto.github.io/smallworld_3pl.html>
+- <https://cestpasphoto.github.io/smallworld_4pl.html>
 
 **Wordle**
 - <https://cestpasphoto.github.io/wordle.html>
@@ -44,7 +46,7 @@ You can find higher performance application on this [repo](https://github.com/ce
 
 ## Online Smallworld AI
 
-Using same AI as Santorini, described above. Supporting 2 players only. Each token movement is considered as one move.
+Using same AI as Santorini, described above. Supports 2, 3 and 4 players. Each token movement is considered as one move.
 
 ### Strength
 

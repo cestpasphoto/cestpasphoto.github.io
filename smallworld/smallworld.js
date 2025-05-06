@@ -4,8 +4,7 @@
 /* =====  CONST  ===== */
 /* =================== */
 
-
-
+// in constants_Xpl.js file
 
 /* =================== */
 /* =====  UTILS  ===== */
@@ -135,10 +134,10 @@ const pwrDescr = [
 
 const pplColors = [
   ['#8caef2', '#477eeb', '#bacff7'],
-  ['#b580ff', '#83f', '#d2b3ff'],
-  ['darkorange', 'orangered', 'lightsalmon'], // TO UPDATE
-  ['red', 'blue', 'green'], // TO UPDATE
-  //['darkorange', 'orangered', 'lightsalmon'],
+  ['#b580ff', '#83f'   , '#d2b3ff'],
+  //['#e9f986', '#dcf53d', '#f2fbb6'],
+  ['darkorange', 'orangered', 'lightsalmon'],
+  ['#f186f9', '#e93df5', '#f7b6fb'],
 ];
 const declineBackground = '#f7f7f7';
 
