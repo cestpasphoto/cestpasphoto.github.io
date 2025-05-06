@@ -19,9 +19,10 @@ const list_of_files = [
   ['smallworld/SmallworldMaps_4pl.py'  , 'SmallworldMaps_4pl.py'],
 ];
 
-const defaultModelFileName = 'smallworld/model.onnx';
-const sizeCB = [1, 40, 8];
-const sizeV = [1, 131];
+const defaultModelFileName = 'smallworld/model_3pl.onnx';
+const sizeCB = [1, 52, 8];
+const sizeV = [1, 166];
+const nbAreas = 30;
 const nb_players = 3;
 
 /* =================== */
@@ -30,18 +31,18 @@ const nb_players = 3;
 
 const buttonInfos = [
   // button     range of moveID  HTMLcolor FomanticColor  confirmation needed
-  ["attackBtn"  , 23, 45,       '#016936',   'green',     false],
-  ["usePplBtn"  , 46, 68,       '#0E6EB8',   'blue',      false],
-  ["usePwrBtn"  , 69, 91,       '#0E6EB8',   'blue',      false],
-  ["startDplBtn", 131, 131,     '#FF1493',   'pink',      true ],
-  ["deploy1Btn" , 100, 122,     '#FF1493',   'pink',      false],
-  ["choseBtn"   , 123, 128,     '#0E6EB8',   'blue',      false],
-  ["endTurnBtn" , 130, 130,     '#0E6EB8',   'blue',      true ],
-  ["noDeployBtn", 92, 92,       '#0E6EB8',   'blue',      true ],
-  ["abandonBtn" , 0, 22,        '#DB2828',   'red',       false],
-  ["declineBtn" , 129, 129,     '#0E6EB8',   'blue',      true ],
-  ["startBtn"   , 132, 132,     '#0E6EB8',   'blue',      false],
-  // deployN 93-99 not proposed
+  ["attackBtn"  ,   nbAreas      , 2*nbAreas-1    , '#016936',   'green',     false],
+  ["usePplBtn"  , 2*nbAreas      , 3*nbAreas-1    , '#0E6EB8',   'blue',      false],
+  ["usePwrBtn"  , 3*nbAreas      , 4*nbAreas-1    , '#0E6EB8',   'blue',      false],
+  ["startDplBtn", 5*nbAreas+8+6+2, 5*nbAreas+8+6+2, '#FF1493',   'pink',      true ],
+  ["deploy1Btn" , 4*nbAreas+8    , 5*nbAreas+8-1  , '#FF1493',   'pink',      false],
+  ["choseBtn"   , 5*nbAreas+8    , 5*nbAreas+8+6-1, '#0E6EB8',   'blue',      false],
+  ["endTurnBtn" , 5*nbAreas+8+6+1, 5*nbAreas+8+6+1, '#0E6EB8',   'blue',      true ],
+  ["noDeployBtn", 4*nbAreas      , 4*nbAreas      , '#0E6EB8',   'blue',      true ],
+  ["abandonBtn" ,               0,   nbAreas-1    , '#DB2828',   'red',       false],
+  ["declineBtn" , 5*nbAreas+8+6  , 5*nbAreas+8+6  , '#0E6EB8',   'blue',      true ],
+  ["startBtn"   , 5*nbAreas+8+6+3, 5*nbAreas+8+6+3, '#0E6EB8',   'blue',      false],
+  // deployN 121-127 not proposed
 ];
 
 const actionsDescr = [
@@ -79,134 +80,138 @@ const terrains_symb = [
 
 
 const mapPoints = [
-  [0, 1],   // 0
-  [0, 4],   // 1
-  [0, 6],   // 2
-  [1, 7],   // 3
-  [1, 9],   // 4
-  [1,10],   // 5
-  [3, 0],   // 6
-  [3, 2],   // 7
-  [3, 4],   // 8
-  [3, 6],   // 9
-  [3, 7],   // 10
-  [3, 8],   // 11
-  [4, 2],   // 12
-  [4, 4],   // 13
-  [4, 8],   // 14
-  [6, 0],   // 15
-  [6, 2],   // 16
-  [6, 4],   // 17
-  [6, 6],   // 18
-  [6, 8],   // 19
-  [7, 1],   // 20
-  [7, 2],   // 21
-  [7, 3],   // 22
-  [7, 5],   // 23
-  [7, 7],   // 24
-  [8, 0],   // 25
-  [8, 1],   // 26
-  [8, 2],   // 27
-  [8, 3],   // 28
-  [8, 4],   // 29
-  [8, 5],   // 30
-  [8, 6],   // 31
-  [8, 8],   // 32
-  [9, 1],   // 33
-  [9, 2],   // 34
-  [9, 3],   // 35
-  [9, 6],   // 36
-  [9, 7],   // 37
-  [9, 8],   // 38
-  [10,1],   // 39
-  [10,3],   // 40
-  [10,4],   // 41
-  [10,5],   // 42
-  [10,6],   // 43
-  [10,8],   // 44
-  [11,4],   // 45
-  [11,5],   // 46
-  [11,6],   // 47
-  [11,7],   // 48
-  [12,2],   // 49
-  [12,4],   // 50
-  [12,5],   // 51
-  [12,7],   // 52
-  [12,8],   // 53
-  [12,9],   // 54
-  [13,4],   // 55
-  [13,6],   // 56
-  [13,7],   // 57
-  [13,8],   // 58
-  [13,10],  // 59
+  [0, 0],   // A
+  [10, 0],  // B
+  [10, 10], // C
+  [10, 40], // D
+  [40, 20], // F
+  [40, 0],  // G
+  [60, 0],  // H
+  [60, 20], // I
+  [50, 20], // J
+  [70, 20], // K
+  [80, 20], // L
+  [90, 0],  // M
+  [90, 20], // N
+  [110, 10],// O
+  [110, 0], // P
+  [120, 20],// Q
+  [140, 0], // R
+  [140, 10],// S
+  [0, 40],  // T
+  [30, 30], // U
+  [30, 40], // V
+  [50, 40], // W
+  [60, 40], // Z
+  [70, 40], // A_1
+  [80, 40], // B_1
+  [90, 40], // C_1
+  [100, 30],// D_1
+  [120, 30],// E_1
+  [120, 40],// F_1
+  [140, 30],// G_1
+  [50, 50], // H_1
+  [100, 50],// I_1
+  [110, 50],// J_1
+  [120, 50],// K_1
+  [130, 60],// L_1
+  [140, 60],// M_1
+  [100, 60],// N_1
+  [80, 60], // O_1
+  [60, 60], // P_1
+  [40, 60], // Q_1
+  [30, 60], // R_1
+  [0, 60],  // S_1
+  [80, 70], // T_1
+  [100, 80],// U_1
+  [130, 80],// V_1
+  [110, 80],// W_1
+  [80, 80], // Z_1
+  [60, 80], // A_2
+  [50, 80], // B_2
+  [40, 80], // C_2
+  [30, 80], // D_2
+  [0, 90],  // E_2
+  [0, 100], // F_2
+  [30, 100],// G_2
+  [50, 100],// H_2
+  [70, 90], // I_2
+  [70, 100],// J_2
+  [100, 90],// K_2
+  [100, 100],// L_2
+  [120, 100],// M_2
+  [140, 100],// N_2
+  [30, 20]  // O_2
 ];
 
 const mapAreas = [
-  [0,1,2,4,3],         // region 0
-  [2,1,5,6,7,3],       // region 1
-  [1,0,6,8,9,7],       // region 2
-  [6,0,10,11,12,13],   // region 3
-  [7,9,14,8],          // region 4
-  [7,14,15,16],        // region 5
-  [15,17,12,10],       // region 6
-  [15,18,17,12,19,16], // region 7
-  [10,11,20,21,13],    // region 8
-  [12,17,22,23,16],    // region 9
-  [18,24,25,19,17,12], // region 10
-  [22,23,26,27,16,17], // region 11
-  [19,25,24,28,29,30], // region 12
-  [28,31,32,29,25],    // region 13
-  [21,20,33,34,22],    // region 14
-  [33,34,35,36,23],    // region 15
-  [28,29,34,36,35,33], // region 16
-  [26,38,39,30,27],    // region 17
-  [34,36,46,47,37],    // region 18
-  [32,41,42,43,35,33], // region 19
-  [30,39,40,41,32,31], // region 20
-  [35,36,46,52,51,43], // region 21
-  [42,45,49,50,51,43], // region 22
-  [40,48,45,42,41],    // region 23
-  [38,39,40,48,53,44], // region 24
-  [46,52,58,47],       // region 25
-  [45,49,54,53,48],    // region 26
-  [44,53,54,56,55],    // region 27
-  [50,51,52,58,57],    // region 28
-  [49,50,57,56,54],    // region 29
+  [0,1,2,3,18],         // poly1
+  [18,41,40,20,19,3],   // poly14
+  [39,40,41,51,50,49],  // poly15
+  [51,52,53,50],        // poly19
+  [1,2,61,4,5],         // poly2
+  [2,61,19,3],          // poly7 
+  [61,19,20,21,8,4],    // poly28
+  [20,40,39,30,22,21],  // poly29
+  [50,49,48,54,53],     // poly20
+  [5,6,7,8,4],          // poly3
+  [30,38,47,48,49,39],  // poly16
+  [8,7,9,23,22,21],      // poly30
+  [22,30,38,42,37,24,23], // poly17
+  [38,42,46,55,47],     // poly18
+  [48,54,56,55,47],     // poly21
+  [6,11,10,9,7],        // poly4
+  [9,10,12,25,24,23],   // poly8
+  [55,46,57,58,56],     // poly23
+  [11,10,12,13,14],     // poly5
+  [24,37,36,31,26,25],  // poly12
+  [37,42,46,57,43,36],  // poly22
+  [12,25,26,27,15,13],  // poly9
+  [26,31,32,33,28,27],  // poly11
+  [31,36,43,45,32],     // poly24
+  [43,57,58,59,44,45],  // poly27
+  [14,13,15,17,16],     // poly6
+  [32,33,34,44,45],     // poly25
+  [34,44,59,60,35],     // poly26
+  [15,27,28,29,17],     // poly10
+  [28,29,35,34,33],     // poly13
 ];
 
 const elementsCoord = [
   // mainX, mainY, defenseX, defenseY, territoryX, territoryY
-  [0.1, 5.4, 0.5, 5.4, 0.4, 5.4],  // region 0
-  [0.7,10.6, 0.7,10.6, 0.7,10.6],  // region 1
-  [0.5, 1.8, 1.5, 1.8, 2.5, 1.8],  // region 2
-  [2.3, 2.9, 2.0, 2.9, 3.5, 2.9],  // region 3
-  [3.1, 6.0, 3.3, 6.0, 3.3, 6.0],  // region 4
-  [3.5, 4.2, 4.5, 4.2, 4.1, 4.2],  // region 5
-  [4.8, 3.3, 4.5, 3.3, 5.5, 3.3],  // region 6
-  [5.3, 4.7, 5.0, 4.7, 5.5, 4.7],  // region 7
-  [3.9, 5.5, 3.9, 5.5, 4.3, 5.5],  // region 8
-  [5.2, 2.5, 5.5, 2.5, 5.2, 2.5],  // region 9
-  [6.3, 4.0, 6.3, 4.0, 6.3, 4.0],  // region 10
-  [6.5, 2.9, 7.0, 2.9, 7.5, 2.9],  // region 11
-  [7.2, 4.8, 7.0, 4.8, 7.2, 4.8],  // region 12
-  [8.0, 4.2, 8.0, 4.2, 8.0, 4.2],  // region 13
-  [4.0, 6.0, 4.5, 6.0, 5.0, 6.0],  // region 14
-  [5.0, 6.0, 5.5, 6.0, 6.0, 6.0],  // region 15
-  [8.5, 2.5, 8.5, 2.5, 8.5, 2.5],  // region 16
-  [9.4, 4.7, 9.4, 4.7, 9.4, 4.7],  // region 17
-  [9.5, 6.0,10.0, 6.0,10.5, 6.0],  // region 18
-  [8.5, 4.9, 9.0, 4.9, 9.5, 4.9],  // region 19
-  [8.5, 4.5, 9.0, 4.5, 9.5, 4.5],  // region 20
-  [9.5, 5.1,10.1, 5.1,10.1, 5.1],  // region 21
-  [11.2, 4.4,11.0, 4.4,11.5, 4.4],  // region 22
-  [11.3, 6.0,11.3, 6.0,10.9, 6.0],  // region 23
-  [9.5, 6.1,10.5, 6.1,10.1, 6.1],  // region 24
-  [11.5, 6.0,11.3, 6.0,11.3, 6.0],  // region 25
-  [11.1, 5.2,11.5, 5.2,11.9, 5.2],  // region 26
-  [11.9, 6.6,11.5, 6.6,12.5, 6.6],  // region 27
-  [12.1, 6.3,12.5, 6.3,12.4, 6.3],  // region 28
-  [12.1, 6.5,12.5, 6.5,12.9, 6.5],  // region 29
+  [5, 5, 5, 10, 5, 15],     // poly1
+  [8, 48, 15, 52, 19, 45],     // poly14
+  [10, 70, 20, 70, 30, 70],     // poly15
+  [7, 94, 13, 92, 19, 90],     // poly19
+  [20, 7, 27, 7, 32, 12],     // poly2
+  [16, 20, 16, 26, 22, 23],     // poly7
+  [36, 26, 36, 32, 42, 26],     // poly28
+  [36, 46, 36, 52, 42, 46],     // poly29
+  [36, 86, 36, 92, 42, 86],     // poly20
+  [46, 6, 46, 12, 52, 6],     // poly3
+  [47, 63, 47, 71, 53, 67],     // poly16
+  [56, 26, 56, 32, 62, 26],     // poly30
+  [62, 50, 70, 48, 70, 56],     // poly17
+  [66, 70, 66, 76, 70, 81],     // poly18
+  [56, 86, 56, 92, 62, 91],     // poly21
+  [67, 7, 71, 13, 75, 7],     // poly4
+  [76, 26, 76, 32, 82, 26],     // poly8
+  [76, 93, 81, 88, 82, 94],     // poly23
+  [91, 12, 94, 6, 100, 6],     // poly5
+  [86, 46, 86, 52, 92, 46],     // poly12
+  [87, 67, 87, 74, 93, 78],     // poly22
+  [96, 24, 102, 21, 108, 18],     // poly9
+  [106, 36, 106, 42, 112, 36],     // poly11
+  [105, 55, 105, 60, 105, 65],     // poly24
+  [107, 87, 111, 93, 115, 87],     // poly27
+  [116, 6, 120, 11, 124, 6],     // poly6
+  [117, 57, 117, 64, 117, 71],     // poly25
+  [129, 94, 132, 88, 134, 93],     // poly26
+  [126, 24, 126, 30, 132, 21],     // poly10
+  [127, 46, 132, 51, 133, 42],     // poly13
 ];
+
+
 
 function formatArea(areaName) {
   if (areaName == 'forest') {
@@ -477,6 +482,7 @@ class Smallworld extends AbstractGame {
     super()
     // Add 2 virtual actions to list of valid actions
     this.validMoves = Array(sizeV[1]+2); this.validMoves.fill(false);
+    console.log(this.validMoves.length)
     this.canAddVirtualStartDeploy = true;
     this.gameIsStarted = false;
     this.displayColors = {}; // For each pplID, list player and colorID
@@ -495,16 +501,16 @@ class Smallworld extends AbstractGame {
   move(action, isManualMove) {
     this.gameIsStarted = true;
 
-    if (action == 132 && isManualMove) {
+    if (action == sizeV[1]+1 && isManualMove) {
       // Nothing to update
-      this.validMoves = this.validMoves.slice(0, 131);
-    } else if (action == 131 && isManualMove) {
+      this.validMoves = this.validMoves.slice(0, sizeV[1]);
+    } else if (action == sizeV[1] && isManualMove) {
       this.pre_move(action, isManualMove);
       // Actually move
       this.previousPlayer = this.nextPlayer;
       this.py.gather_current_ppl_but_one();
       //These values shouldn't change: this.nextPlayer, this.gameEnded, this.validMoves
-      this.validMoves = this.validMoves.slice(0, 131);
+      this.validMoves = this.validMoves.slice(0, sizeV[1]);
       this.post_move(action, isManualMove);
     } else {
       super.move(action, isManualMove);
@@ -529,10 +535,10 @@ class Smallworld extends AbstractGame {
     move_sel.registerMove(action, success);
 
     // Switch "canAddVirtualStartDeploy" depending on current move
-    if (action == 131) {
+    if (action == sizeV[1]) {
       this.canAddVirtualStartDeploy = false; // using virtual move, can't use it again for this turn
     }
-    if (Math.max(...this.validMoves.slice(23, 45)) == true) {
+    if (Math.max(...this.validMoves.slice(nbAreas, 2*nbAreas-1)) == true) {
       this.canAddVirtualStartDeploy = true; // new turn, can use "canAddVirtualStartDeploy" again
     }
 
@@ -580,12 +586,13 @@ class Smallworld extends AbstractGame {
   }
 
   _addVirtualMoves() {
+    console.log(this.validMoves.length)
     // Add virtual move = prepare to redeploy
-    const validVirtualMove = this.canAddVirtualStartDeploy && Math.max(...this.validMoves.slice(100, 123));
+    const validVirtualMove = this.canAddVirtualStartDeploy && Math.max(...this.validMoves.slice(4*nbAreas+8, 5*nbAreas+8));
     this.validMoves.push(validVirtualMove);
     // Add another virtual move = install lost tribe
     this.validMoves.push(!this.gameIsStarted);
-    console.assert(this.validMoves.length == 133, 'validMoves.length = ' + this.validMoves.length + ' ' + validVirtualMove + ' ' + self.gameIsStarted);
+    console.assert(this.validMoves.length == sizeV[1]+2, 'validMoves.length = ' + this.validMoves.length + ' ' + validVirtualMove + ' ' + this.gameIsStarted);
   }
 
   _syncPplAndColors() {
@@ -744,7 +751,7 @@ class MoveSelector extends AbstractMoveSelector {
 
     // For this button, no confirmation needed, no territory so trigger move already
     if (buttonInfos[this.selectedMoveType][0] == 'startBtn') {
-      this.nextMove = 132;
+      this.nextMove = sizeV[1]+1;
       userMove();
     }
   }
@@ -767,19 +774,19 @@ class MoveSelector extends AbstractMoveSelector {
 
   clickOnDeck(index) {
     console.assert(buttonInfos[this.selectedMoveType][0] == 'choseBtn', 'deck was clicked but was move_sel wasnot in mode choose');
-    this.nextMove = 123 + index;
+    this.nextMove = (5*nbAreas+8) + index;
     userMove();
   }
 
   confirm() {
     if (buttonInfos[this.selectedMoveType][0] == 'noDeployBtn') {
-      this.nextMove = 92;
+      this.nextMove = 4*nbAreas;
     } else if (buttonInfos[this.selectedMoveType][0] == 'declineBtn') {
-      this.nextMove = 129;
+      this.nextMove = sizeV[1]-2;
     } else if (buttonInfos[this.selectedMoveType][0] == 'endTurnBtn') {
-      this.nextMove = 130;
+      this.nextMove = sizeV[1]-1;
     } else if (buttonInfos[this.selectedMoveType][0] == 'startDplBtn') {
-      this.nextMove = 131;
+      this.nextMove = sizeV[1];
     } else {
       return;
     } 
@@ -1044,7 +1051,7 @@ function refreshBoard() {
 
   // update board contents
   document.getElementById("boardSvg").innerHTML = _genBoard();
-  document.getElementById("boardSvg").setAttribute("viewBox", "0 0 100 70");
+  document.getElementById("boardSvg").setAttribute("viewBox", "0 0 140 100");
 
   // update peoples and scores
   for (let p = 0; p < nb_players; p++) {
