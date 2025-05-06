@@ -929,7 +929,7 @@ function refreshBoard() {
   // "Round " + game.getRound() + "/10";
   let roundDescr = '';
   const round = game.getRound();
-  for (var i = 1; i <= 9; ++i) {
+  for (var i = 1; i <= nbTurns; ++i) {
     if (i == round) {
       roundDescr += '<div class="ui black';
     } else if (i > round) {
