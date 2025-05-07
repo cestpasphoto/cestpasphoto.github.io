@@ -1,6 +1,6 @@
 // Variables to declare in game code
-// var game = new Splendor();
-// var move_sel = new MoveSelector();
+// let game = new Splendor();
+// let move_sel = new MoveSelector();
 // const sizeCB = [1, 25, 3];
 // const sizeV = [1, onnxOutputSize];
 // const list_of_files;
@@ -10,7 +10,7 @@
 /* =====  ONNX   ===== */
 /* =================== */
 
-var onnxSession;
+let onnxSession;
 
 // Function called by python code
 async function predict(canonicalBoard, valids) {
@@ -92,7 +92,7 @@ class AbstractGame {
       return;
     }
     await this.ready_to_guess();
-    var best_action = await this.py.guessBestAction();
+    const best_action = await this.py.guessBestAction();
     this.move(best_action, false);
   }
 
@@ -183,6 +183,8 @@ class AbstractMoveSelector {
 /* ===== ACTIONS ===== */
 /* =================== */
 
+let ai_play_promise = Promise.resolve();
+
 async function ai_play_one_move() {
   refreshButtons(loading=true);
   let aiPlayer = game.nextPlayer;
@@ -193,8 +195,8 @@ async function ai_play_one_move() {
   refreshButtons(loading=false);
 }
 
-async function ai_play_if_needed() {
-  did_ai_played = false;
+async function ai_play_if_needed_async() {
+  let did_ai_played = false;
   while (game.gameEnded.every(x => !x) && !game.is_human_player('next')) {
     await ai_play_one_move();
     
@@ -211,8 +213,14 @@ async function ai_play_if_needed() {
   refreshButtons();
 }
 
+ai_play_if_needed = function(...args) {
+  ai_play_promise = ai_play_if_needed_async.apply(this, args);
+  return ai_play_promise;
+};
+
 async function changeGameMode(mode) {
   game.gameMode = mode;
+  await ai_play_promise;
   move_sel.resetAndStart();
   await ai_play_if_needed();
 }
@@ -257,7 +265,7 @@ async function init_code() {
   await pyodide.loadPackage("numpy");
 
   // Convert list_of_files into a proper string
-  var list_of_files_string = `[`;
+  let list_of_files_string = `[`;
   for (const f of list_of_files) {
     list_of_files_string += `[`;
     list_of_files_string += "'" + f[0] + "'";
@@ -293,4 +301,4 @@ async function main(usePyodide=true) {
   changeMoveText();
 }
 
-var pyodide = null;
+let pyodide = null;
