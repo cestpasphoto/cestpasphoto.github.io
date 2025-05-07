@@ -240,8 +240,6 @@ function toColors(data) {
   } else if (ppl == -15) {
     return ['#f2f2f2', '' + nb, '', 'dimgray'];
   } else {
-    console.log(game.displayColors);
-    console.log(ppl);
     let colorInfo = game.displayColors[Math.abs(ppl)];
     let color = pplColors[colorInfo[0]][colorInfo[1]];
     if (ppl < 0) {
@@ -456,11 +454,9 @@ class Smallworld extends AbstractGame {
         if (pplIDabs != 0) {
           if (pplIDabs in this.displayColors) {
             let color = this.displayColors[pplIDabs][1];
-            //console.log('DEBUG IN: ', pplIDabs, color);
             usedColors[p][color] = true;
           } else {
             // New people, will define color later
-            //console.log('DEBUG NOTIN: ', p, pplIDabs);
             newPplList.push([p, pplIDabs]);
           }
         }
