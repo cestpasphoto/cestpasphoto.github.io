@@ -26,6 +26,7 @@ def init_game(numMCTSSims):
 	board = g.getInitBoard()
 	mcts = MCTS(g, None, mcts_args)
 	player = 0
+	history = []
 	valids = g.getValidMoves(board, player)
 	end = [0,0]
 
