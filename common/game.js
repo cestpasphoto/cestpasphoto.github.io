@@ -34,6 +34,8 @@ async function loadONNX(model) {
 /* =====  LOGIC  ===== */
 /* =================== */
 
+let aiRunId = 0; // Increment to invalidate any in-flight AI run
+
 class AbstractGame {
   constructor() {
     if (this.constructor == AbstractGame) {
@@ -52,6 +54,8 @@ class AbstractGame {
   }
 
   init_game() {
+    aiRunId++; // cancel any in-flight AI work by invalidation
+
     this.nextPlayer = 0;
     this.previousPlayer = null;
     this.gameEnded = [0, 0];
@@ -91,8 +95,10 @@ class AbstractGame {
       console.log('Not guessing, game is finished');
       return;
     }
+    const runId = aiRunId;          // Capture the generation at function start
     await this.ready_to_guess();
     const best_action = await this.py.guessBestAction();
+    if (runId !== aiRunId) return;  // Guard: if a new game started, abort quietly
     this.move(best_action, false);
   }
 
