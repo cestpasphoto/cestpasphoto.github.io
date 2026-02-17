@@ -55,7 +55,7 @@ def init_game(numMCTSSims):
     mcts = MCTS(g, None, mcts_args)
     player = 0
     history = []
-    valids = g.getValidMoves(board, 1) # 1 is always canonical current player
+    valids = g.getValidMoves(board, player)
     game_result = [0] * 2
     
     _reset_interaction()
@@ -69,14 +69,13 @@ def getNextState(action):
     history.insert(0, [player, np.copy(board)])
     
     # Apply move. 
-    # Logic: Game.getNextState usually flips the board perspective.
-    board, player = g.getNextState(board, 1, action)
+    board, player = g.getNextState(board, player, action)
     
     # Check end game
-    game_result = g.getGameEnded(board, 1).tolist()
+    game_result = g.getGameEnded(board, player).tolist()
     
     # Update valid moves for the new state
-    valids = g.getValidMoves(board, 1)
+    valids = g.getValidMoves(board, player)
     
     _reset_interaction()
     return get_render_state()
@@ -93,7 +92,7 @@ def undo():
         prev = history.pop(0)
         player = prev[0]
         board = prev[1]
-        valids = g.getValidMoves(board, 1)
+        valids = g.getValidMoves(board, player)
         game_result = [0] * 2
         _reset_interaction()
     
@@ -121,7 +120,6 @@ def handle_click(y, x):
 
     # --- Step 0: Select Worker ---
     if interaction_step == 0:
-        # Canonical: Current player workers are always positive (1 or 2)
         worker_val = board[y, x, 0]
         if worker_val > 0: 
             if _has_valid_moves(y, x):
@@ -143,11 +141,11 @@ def handle_click(y, x):
 
     # --- Step 2: Select Build Target ---
     elif interaction_step == 2:
-        if (y, x) == selected_worker_pos:
-            # Backtrack to move selection
-            interaction_step = 1
-            selected_move_pos = None
-        elif _is_valid_build_target(y, x):
+        # if (y, x) == selected_worker_pos:
+        #     # Backtrack to move selection
+        #     interaction_step = 1
+        #     selected_move_pos = None
+        if _is_valid_build_target(y, x):
             # === ACTION COMMIT ===
             action = _construct_action_from_selection(y, x)
             return getNextState(action)
@@ -176,7 +174,6 @@ def _apply_edit(y, x):
         board[y, x, 1] = (current_lvl + 1) % 5
     elif edit_mode == 2: # Edit Worker
         # Cycle: 0 -> 1 -> -1 -> 0 (Simple toggle for UI)
-        # Note: This is a bit hacky on a canonical board, but valid for visual setup
         current_w = board[y, x, 0]
         if current_w == 0: board[y, x, 0] = 1
         elif current_w == 1: board[y, x, 0] = 2
@@ -206,7 +203,7 @@ def _get_coords_from_dir(r, c, d):
 def _encode_action(worker_idx, power, move_dir, build_dir):
     # Action = NB_GODS * 9 * 9 * worker + 9 * 9 * power + 9 * move + build
     # NB_GODS = 1, Power = 0 (in No God mode)
-    action = (NB_GODS * 81 * worker_idx) + (81 * power) + (9 * move_dir) + build_dir
+    action = (NB_GODS * 81 * (worker_idx-1)) + (81 * power) + (9 * move_dir) + build_dir
     return action
 
 def _decode_action(action):
@@ -214,7 +211,7 @@ def _decode_action(action):
     # power, action_ = divmod(action_, 9*9)
     # move, build = divmod(action_, 9)
     
-    worker_idx = action // (NB_GODS * 81)
+    worker_idx = action // (NB_GODS * 81) + 1
     rem = action % (NB_GODS * 81)
     
     power = rem // 81
@@ -245,7 +242,7 @@ def _is_valid_move_target(y, x):
     
     # Calculate required direction
     req_dir = _get_direction(wy, wx, y, x)
-    if req_dir == 0: return False
+    if req_dir == -1: return False
 
     for act, is_valid in enumerate(valids):
         if is_valid:
@@ -295,7 +292,7 @@ def get_render_state():
 
     # 1. Status Text
     if _end_game():
-        winners = [i for i, x in enumerate(game_result) if x == game_result.max()]
+        winners = [i for i, x in enumerate(game_result) if x == max(game_result)]
         if len(winners) == 1:
             status = f"Game Over! Player {winners[0]} wins!"
         else:
@@ -313,9 +310,6 @@ def get_render_state():
     cells = []
     for r in range(5):
         for c in range(5):
-            # Read from State (5x5x3)
-            # Layer 0: Workers (1, 2, -1, -2)
-            # Layer 1: Levels (0-4)
             w_val = int(board[r, c, 0])
             lvl   = int(board[r, c, 1])
             
@@ -328,19 +322,8 @@ def get_render_state():
             }
             
             # --- Text Content ---
-            if w_val != 0:
-                # Map 1,2 -> P0 | -1,-2 -> P1 (Visual mapping)
-                # Since board is canonical (Current=Pos), we need to check 'player' var 
-                # to decide how to render "Me" vs "Opponent" visually if we want absolute IDs.
-                # BUT, simpler: Positive = Current Turn Player.
-                
-                # Visual Logic:
-                # If player=0 and w_val>0 => P0
-                # If player=0 and w_val<0 => P1
-                # If player=1 and w_val>0 => P1 (Since board is canonical to P1)
-                # If player=1 and w_val<0 => P0
-                
-                real_p_id = player if w_val > 0 else (1 - player)
+            if w_val != 0:                
+                real_p_id = 0 if w_val > 0 else 1
                 cell['text'] = f"P{real_p_id}"
                 if lvl > 0: cell['text'] += f"\n{lvl}"
             elif lvl > 0:
@@ -368,10 +351,10 @@ def get_render_state():
                 
                 # Step 2: Build Targets
                 elif interaction_step == 2:
-                    if (r, c) == selected_worker_pos:
-                        cell['isSelected'] = True
-                        cell['colorClass'] = 'teal'
-                    elif (r, c) == selected_move_pos:
+                    #if (r, c) == selected_worker_pos:
+                    #    cell['isSelected'] = True
+                    #    cell['colorClass'] = 'teal'
+                    if (r, c) == selected_move_pos:
                         cell['isSelected'] = True
                         cell['colorClass'] = 'teal'
                     elif _is_valid_build_target(r, c):

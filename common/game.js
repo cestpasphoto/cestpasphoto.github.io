@@ -107,12 +107,10 @@ for filename_in, filename_out in files:
 
         // 3. Load ONNX
         Alpine.store('game').loadingMessage = "Loading Neural Network...";
-        console.log("Loading Neural Network...");
         await loadONNX();
 
         // 4. Initialize Game in Python
         Alpine.store('game').loadingMessage = "Starting Game...";
-        console.log("Starting Game...");
         
         // We import the specific proxy file which acts as our Controller
         await pyodide.runPythonAsync(`import proxy`);
@@ -230,10 +228,10 @@ async function execute_ai_move() {
         // This keeps the proxy.py clean (view logic only) and puts logic execution here
         let ai_script = `
 import numpy as np
-# Run MCTS
-probs = proxy.mcts.getActionProb(proxy.board, temp=0)
+canonicalBoard = proxy.g.getCanonicalForm(proxy.board, proxy.player)
+probs, _, _ = await proxy.mcts.getActionProb(canonicalBoard, temp=0)
 action = np.argmax(probs)
-# Execute
+print(f"best action = {action}")
 proxy.getNextState(action)
 `;
         let json = await pyodide.runPythonAsync(ai_script);
