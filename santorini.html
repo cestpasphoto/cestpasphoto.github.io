@@ -68,7 +68,7 @@
           <button class="ui icon button" 
                   :class="{'yellow': $store.game.editMode === 1, 'orange': $store.game.editMode === 2}" 
                   @click="$store.game.toggleEdit()"
-                  :disabled="$store.game.isLoading">
+                  :disabled="$store.game.isLoading || $store.game.isThinking">
             <i class="edit icon"></i>
             <span x-show="$store.game.editMode === 1">Levels</span>
             <span x-show="$store.game.editMode === 2">Workers</span>
@@ -78,7 +78,7 @@
         <div class="item">
           <button class="ui icon button" 
                   @click="$store.game.undo()" 
-                  :disabled="!$store.game.canUndo || $store.game.isLoading">
+                  :disabled="!$store.game.canUndo || $store.game.isLoading || $store.game.isThinking">
             <i class="undo icon"></i>
           </button>
         </div>
@@ -86,7 +86,7 @@
         <div class="item">
           <button class="ui icon button" 
                   @click="$store.game.reset()" 
-                  :disabled="$store.game.isLoading">
+                  :disabled="$store.game.isLoading || $store.game.isThinking">
             <i class="sync icon"></i>
           </button>
         </div>

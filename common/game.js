@@ -10,6 +10,7 @@ let onnxSession = null;
 document.addEventListener('alpine:init', () => {
     Alpine.store('game', {
         isLoading: true,
+        isThinking: false,
         loadingMessage: "Initializing Application...",
         cells: [],
         statusMessage: "",
@@ -222,6 +223,10 @@ async function check_ai_turn() {
 
 async function execute_ai_move() {
     Alpine.store('game').statusMessage = "AI is thinking...";
+    Alpine.store('game').isThinking = true;
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     
     try {
         // We use a small Python script to run MCTS and get the best action
@@ -240,5 +245,7 @@ proxy.getNextState(action)
     } catch (e) {
         console.error("AI Error:", e);
         Alpine.store('game').statusMessage = "AI Crashed";
+    } finally {
+        Alpine.store('game').isThinking = false;
     }
 }
