@@ -25,6 +25,7 @@
     }
 
     .board-cell {
+      position: relative;
       aspect-ratio: 1 / 1;
       display: flex;
       align-items: center;
@@ -117,6 +118,7 @@
                 cell.isSelectable ? 'clickable' : ''
              ]"
              @click="cell.isSelectable ? $store.game.clickCell(cell.y, cell.x) : null">
+           <div x-show="cell.lastWorker || cell.lastBuild" class="ui tiny red corner empty circular label"></div>        
            <span x-text="cell.text"></span>
         </div>
       </template>

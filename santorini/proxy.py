@@ -24,12 +24,13 @@ mcts = None
 player = 0        # 0 or 1, purely for UI display "Player X turn"
 history = []      # For Undo
 valids = []       # Valid moves bitmask
-game_result = [0] * 2
+game_result = [0] * 2 # O if not finished, 1 if wins, -1 if loses, 0.01 if ties
 
 # Interaction State Machine
 interaction_step = 0        # 0: Select Worker, 1: Move, 2: Build
 selected_worker_pos = None  # (y, x)
 selected_move_pos = None    # (y, x)
+previous_coords = {}        # {'from': (y, x), 'to': (y, x), 'build': (y, x)}
 edit_mode = 0               # 0: Play, 1: Levels, 2: Workers
 
 # ==========================================
@@ -63,12 +64,13 @@ def init_game(numMCTSSims):
 
 def getNextState(action):
     """Executes an action and returns the new state."""
-    global g, board, mcts, player, history, valids, game_result
+    global g, board, mcts, player, history, valids, game_result, previous_coords
     
     # Save history (Deep copy of board is important)
     history.insert(0, [player, np.copy(board)])
+    previous_coords = _decode_coords_from_action(action)
     
-    # Apply move. 
+    # Apply move
     board, player = g.getNextState(board, player, action)
     
     # Check end game
@@ -77,7 +79,7 @@ def getNextState(action):
     # Update valid moves for the new state
     valids = g.getValidMoves(board, player)
     
-    _reset_interaction()
+    _reset_interaction(full_reset=False)
     return get_render_state()
 
 def undo():
@@ -160,9 +162,11 @@ def handle_click(y, x):
 def _end_game():
     return max(game_result) > 0
 
-def _reset_interaction():
-    global interaction_step, selected_worker_pos, selected_move_pos
+def _reset_interaction(full_reset=True):
+    global interaction_step, selected_worker_pos, selected_move_pos, previous_coords
     interaction_step = 0
+    if full_reset:
+        previous_coords = {}
     selected_worker_pos = None
     selected_move_pos = None
 
@@ -221,6 +225,22 @@ def _decode_action(action):
     build_dir = rem % 9
     
     return worker_idx, power, move_dir, build_dir
+
+def _decode_coords_from_action(action):
+    # Must be called BEFORE executing the action
+
+    aw, ap, am, ab = _decode_action(action)
+    # Look for initial worker position
+    worker_idx = aw if player == 0 else -aw 
+    wy, wx = np.argwhere(board[:,:,0] == worker_idx)[0]
+    wy, wx = int(wy), int(wx)
+    # Look for new worker position
+    newy, newx = _get_coords_from_dir(wy, wx, am)
+    # Look for build position
+    buildy, buildx = _get_coords_from_dir(newy, newx, ab)
+
+    return {'from': (wy, wx), 'to': (newy, newx), 'build': (buildy, buildx)}
+
 
 # --- Validation Logic ---
 
@@ -288,7 +308,7 @@ def _construct_action_from_selection(build_y, build_x):
 
 def get_render_state():
     global g, board, player, game_result, edit_mode
-    global interaction_step, selected_worker_pos, selected_move_pos
+    global interaction_step, selected_worker_pos, selected_move_pos, previous_coords
 
     # 1. Status Text
     if _end_game():
@@ -318,7 +338,9 @@ def get_render_state():
                 'text': '',
                 'colorClass': 'white', # default
                 'isSelectable': False,
-                'isSelected': False
+                'isSelected': False,
+                'lastWorker': False,
+                'lastBuild': False,
             }
             
             # --- Text Content ---
@@ -339,6 +361,10 @@ def get_render_state():
                     if w_val > 0 and _has_valid_moves(r, c):
                         cell['isSelectable'] = True
                         cell['colorClass'] = 'blue'
+                    if (r, c) == previous_coords.get('from'):
+                        cell['lastWorker'] = True
+                    if (r, c) == previous_coords.get('build'):
+                        cell['lastBuild'] = True
                 
                 # Step 1: Move Targets
                 elif interaction_step == 1:
@@ -369,6 +395,6 @@ def get_render_state():
         'currentPlayer': player,
         'gameEnded': _end_game(),
         'editMode': edit_mode,
-        'canUndo': (len(history) > 0 or interaction_step > 0)
+        'canUndo': (len(history) > 0 or interaction_step > 0),
     })
     

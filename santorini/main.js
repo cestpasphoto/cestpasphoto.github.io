@@ -33,18 +33,19 @@ const numMCTSSims = 50;
 const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
 const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
 
-window.addEventListener('load', () => {
-    // Fire and forget fetch for analytics
-    const urls = [ 
-        `${counterAPI_base}/overall`, 
-        `${counterAPI_base}/overall_${counterAPI_suffix}`,
-        `${counterAPI_base}/santorini_${counterAPI_suffix}`
-    ];
+console.log('disabled analytics');
+// window.addEventListener('load', () => {
+//     // Fire and forget fetch for analytics
+//     const urls = [ 
+//         `${counterAPI_base}/overall`, 
+//         `${counterAPI_base}/overall_${counterAPI_suffix}`,
+//         `${counterAPI_base}/santorini_${counterAPI_suffix}`
+//     ];
     
-    urls.forEach(url => {
-        fetch(url, { mode: 'no-cors' }).catch(e => {
-            // Silently fail if analytics are blocked
-            console.debug("Analytics blocked or failed");
-        });
-    });
-});
+//     urls.forEach(url => {
+//         fetch(url, { mode: 'no-cors' }).catch(e => {
+//             // Silently fail if analytics are blocked
+//             console.debug("Analytics blocked or failed");
+//         });
+//     });
+// });
