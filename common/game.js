@@ -224,24 +224,11 @@ async function check_ai_turn() {
 async function execute_ai_move() {
     Alpine.store('game').statusMessage = "AI is thinking...";
     Alpine.store('game').isThinking = true;
-
     await new Promise(resolve => setTimeout(resolve, 50));
-
     
     try {
-        // We use a small Python script to run MCTS and get the best action
-        // This keeps the proxy.py clean (view logic only) and puts logic execution here
-        let ai_script = `
-import numpy as np
-canonicalBoard = proxy.g.getCanonicalForm(proxy.board, proxy.player)
-probs, _, _ = await proxy.mcts.getActionProb(canonicalBoard, temp=0)
-action = np.argmax(probs)
-print(f"best action = {action}")
-proxy.getNextState(action)
-`;
-        let json = await pyodide.runPythonAsync(ai_script);
+        let json = await pyodide.runPythonAsync('proxy.run_ai_step()');
         update_store(json);
-        
     } catch (e) {
         console.error("AI Error:", e);
         Alpine.store('game').statusMessage = "AI Crashed";
