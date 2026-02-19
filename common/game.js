@@ -12,6 +12,8 @@ document.addEventListener('alpine:init', () => {
         isLoading: true,
         isThinking: false,
         loadingMessage: "Initializing Application...",
+        arePlayersHuman: [true, false],
+        // The following variables come python        
         cells: [],
         statusMessage: "",
         currentPlayer: 0,
@@ -19,12 +21,12 @@ document.addEventListener('alpine:init', () => {
         editMode: 0,
         canUndo: false,
         
-        // Actions liées aux fonctions globales
         start() { init_infrastructure() },
         clickCell(y, x) { handle_click(y, x) },
-        undo() { handle_undo() },
+        undo() { handle_undo(this.arePlayersHuman) },
         toggleEdit() { handle_edit_toggle() },
         reset() { handle_reset() },
+        trigger_ai_check() { check_ai_turn(); },
     });
 });
 
@@ -153,12 +155,12 @@ function update_store(jsonString) {
     check_ai_turn();
 }
 
+function is_nextplayer_human() {
+    return Alpine.store('game').arePlayersHuman[Alpine.store('game').currentPlayer];
+}
+
 async function handle_click(y, x) {
-    if (Alpine.store('game').isLoading || Alpine.store('game').gameEnded) return;
-    
-    // Human interaction
-    // We assume human is always Player 0 for now, or seat logic handled elsewhere.
-    // Ideally, we check if it's human turn, but proxy handles validation.
+    if (Alpine.store('game').isLoading || Alpine.store('game').gameEnded || !is_nextplayer_human()) return;
     
     try {
         let json = await pyodide.runPythonAsync(`proxy.handle_click(${y}, ${x})`);
@@ -168,10 +170,10 @@ async function handle_click(y, x) {
     }
 }
 
-async function handle_undo() {
-    if (Alpine.store('game').isLoading) return;
+async function handle_undo(arePlayersHuman) {
+    if (Alpine.store('game').isLoading || !is_nextplayer_human()) return;
     try {
-        let json = await pyodide.runPythonAsync(`proxy.undo()`);
+        let json = await pyodide.runPythonAsync(`proxy.undo(${JSON.stringify(arePlayersHuman)})`);
         update_store(json);
     } catch (e) {
         console.error("Undo Error:", e);
@@ -179,7 +181,7 @@ async function handle_undo() {
 }
 
 async function handle_reset() {
-    if (Alpine.store('game').isLoading) return;
+    if (Alpine.store('game').isLoading || !is_nextplayer_human()) return;
     try {
         // numMCTSSims assumed global
         const sims = (typeof numMCTSSims !== 'undefined') ? numMCTSSims : 50;
@@ -191,7 +193,7 @@ async function handle_reset() {
 }
 
 async function handle_edit_toggle() {
-    if (Alpine.store('game').isLoading) return;
+    if (Alpine.store('game').isLoading || !is_nextplayer_human()) return;
     
     // Cycle: Play (0) -> Level (1) -> Worker (2) -> Play (0)
     let current = Alpine.store('game').editMode;
@@ -212,16 +214,19 @@ async function handle_edit_toggle() {
 async function check_ai_turn() {
     // If game over or edit mode, no AI
     if (Alpine.store('game').gameEnded || Alpine.store('game').editMode !== 0) return;
-
-    // Logic: If currentPlayer is 1 (AI), trigger move.
-    // Note: You can change this condition if you want AI vs AI or Human vs Human
-    if (Alpine.store('game').currentPlayer === 1) {
-        // Small delay for UI update (so user sees the previous move)
-        setTimeout(() => execute_ai_move(), 50);
+    if (!is_nextplayer_human()) {
+        // We could give a small delay for UI update (so user sees the previous move)
+        // But we give a longer one so that user can jump off the "AI-AI" mode
+        setTimeout(() => execute_ai_move(), 1000);
     }
 }
 
 async function execute_ai_move() {
+    // Double check just in case
+    if (is_nextplayer_human()) {
+        return; 
+    }
+
     Alpine.store('game').statusMessage = "AI is thinking...";
     Alpine.store('game').isThinking = true;
     await new Promise(resolve => setTimeout(resolve, 50));

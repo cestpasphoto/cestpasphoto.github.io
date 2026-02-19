@@ -82,7 +82,7 @@ def getNextState(action):
     _reset_interaction(full_reset=False)
     return get_render_state()
 
-def undo():
+def undo(arePlayersHuman):
     """Reverts to the previous state."""
     global g, board, player, history, valids, game_result
     
@@ -91,7 +91,10 @@ def undo():
         return get_render_state()
 
     if len(history) > 0:
-        prev = history.pop(0)
+        # Rewind until a human is to play
+        prev = None, None
+        while prev[0] is None and not arePlayersHuman[prev[0]]:
+            prev = history.pop(0)
         player = prev[0]
         board = prev[1]
         valids = g.getValidMoves(board, player)

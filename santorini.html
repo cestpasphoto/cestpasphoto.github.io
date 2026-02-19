@@ -62,6 +62,27 @@
       <div class="item">
         <div class="ui header">Santorini</div>
       </div>
+
+      <div class="item">
+        <div class="ui form">
+          <div class="inline fields" style="margin-bottom: 0;">
+            <div class="field">
+              <label>P0:</label>
+              <select x-model.boolean="$store.game.arePlayersHuman[0]" @change="$store.game.trigger_ai_check()" :disabled="$store.game.isThinking" class="ui compact">
+                <option :value="true" :selected="$store.game.arePlayersHuman[0] === true">Human</option>
+                <option :value="false" :selected="$store.game.arePlayersHuman[0] === false">IA</option>
+              </select>
+            </div>
+            <div class="field" style="margin-left: 10px;">
+              <label>P1:</label>
+              <select x-model.boolean="$store.game.arePlayersHuman[1]" @change="$store.game.trigger_ai_check()" :disabled="$store.game.isThinking" class="ui compact">
+                <option :value="true" :selected="$store.game.arePlayersHuman[1] === true">Human</option>
+                <option :value="false" :selected="$store.game.arePlayersHuman[1] === false">IA</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
       
       <div class="right menu">
         <div class="item">
