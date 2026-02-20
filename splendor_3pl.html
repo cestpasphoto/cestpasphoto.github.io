@@ -3,417 +3,149 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <title>Splendor AI</title>
+  
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.js"></script>
+  
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+  
+  <script src="./splendor/constants_3pl.js"></script> <script src="./common/game.js"></script> <script src="./splendor/splendor.js"></script> <style>
+    /* Couleurs de base avec !important pour écraser Fomantic UI */
+    .c-white { background-color: ghostwhite !important; color: black !important; border: 1px solid #ccc !important; }
+    .c-blue { background-color: dodgerblue !important; color: white !important; }
+    .c-green { background-color: lightgreen !important; color: black !important; }
+    .c-red { background-color: tomato !important; color: white !important; }
+    .c-black { background-color: dimgray !important; color: white !important; }
+    .c-yellow { background-color: gold !important; color: black !important; } /* Or / Joker */
+    
+    .gem-token { width: 50px; height: 50px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; margin: 5px; border: 2px solid transparent;}
+    .gem-token.selected { border-color: #000; box-shadow: 0 0 10px rgba(0,0,0,0.5); transform: scale(1.1); }
+    .gem-token.disabled { opacity: 0.3; cursor: not-allowed; }
+    
+    .splendor-card { min-height: 120px; cursor: pointer; border: 2px solid transparent; }
+    .splendor-card:hover { border-color: #2185d0; }
+  </style>
 </head>
-<script src="./common/game.js"></script>
-<script src="./splendor/constants_3pl.js"></script>
-<script src="./splendor/splendor.js"></script>
-<style>
-  /* Computer / Desktop / iPad Landscape */
-  @media only screen and (min-width: 992px) {
-    [class*="mobile only"]:not(.computer), [class*="tablet only"]:not(.computer), [class*="computer hidden"] {
-      display: none !important;
-    }
-    [class*="svgS"] { width: 3.5rem; max-width: 100%; }
-    [class*="svgM"] { width: 4.0rem; max-width: 100%; }
-    [class*="svgL"] { width: 7.0rem; max-width: 100%; }
-  }
 
-  /* Tablet / iPad Portrait */
-  @media only screen and (min-width: 768px) and (max-width: 991px) {
-    [class*="mobile only"]:not(.tablet), [class*="tablet hidden"], [class*="computer only"]:not(.tablet) {
-      display: none !important;
-    }
-    [class*="svgS"] { width: 2.6rem; max-width: 100%; }
-    [class*="svgM"] { width: 3.5rem; max-width: 100%; }
-    [class*="svgL"] { width: 5.0rem; max-width: 100%; }
-  }
+<body class="ui container" style="padding-top: 20px;">
 
-  /* Mobile */
-  @media only screen and                        (max-width: 767px) {
-    [class*="mobile hidden"], [class*="tablet only"]:not(.mobile), [class*="computer only"]:not(.mobile) {
-      display: none !important;
-    }
-    [class*="svgS"] { width: 2.2rem; max-width: 100%; }
-    [class*="svgM"] { width: 2.8rem; max-width: 100%; }
-    [class*="svgL"] { width: 4.5rem; max-width: 100%; }
-  }
-</style>
-<body>
+  <div x-data x-init="$store.game.start()">
 
-<div class="ui borderless menu">
-  <div class="ui container">    
-    <div class="fitted item">
-      <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
-    </div> 
-    <div class="fitted item"> 
-      <button class="ui icon button" onclick="startEdit()" id="editBtn"><i class="edit icon"></i></button>
-    </div>
-    <div class="fitted item"> 
-      <div class="ui small form">
-        <div class="field">
-          <select onchange="game.change_difficulty(this.value)" id="difficultyForm">
-            <optgroup label="Above optimal">
-            <option value="6400"       >God-like</option>
-            <option value="1600"       >Boosted</option>
-            <optgroup label="Level used during training">
-            <option value="400"        >Native</option>
-            <optgroup label="Sub optimal levels">
-            <option value="100"        >Medium</option>
-            <option value="25" selected>Easy</option>
-            <option value="12"         >Easier</option>
-            <option value="3"          >Come on</option>
-          </select>
+    <div class="ui borderless menu">
+      <div class="item"><div class="ui header">Splendor</div></div>
+      
+      <div class="item">
+        <div class="ui form"><div class="inline fields" style="margin-bottom: 0;">
+          <template x-for="(isHuman, idx) in $store.game.arePlayersHuman" :key="idx">
+            <div class="field" style="margin-right: 15px;">
+              <label x-text="'P' + idx + ':'"></label>
+              <select x-model.boolean="$store.game.arePlayersHuman[idx]" @change="$store.game.trigger_ai_check()" class="ui dropdown compact">
+                <option :value="true" :selected="$store.game.arePlayersHuman[idx] === true">Humain</option>
+                <option :value="false" :selected="$store.game.arePlayersHuman[idx] === false">IA</option>
+              </select>
+            </div>
+          </template>
+        </div></div>
+      </div>
+
+      <div class="right menu">
+        <div class="item">
+          <button class="ui icon button" @click="$store.game.undo()" :disabled="!$store.game.canUndo || $store.game.isLoading || $store.game.isThinking">
+            <i class="undo icon"></i>
+          </button>
         </div>
-      </div>
-    </div>
-    <div class="fitted item"> 
-      <div class="ui small form">
-        <div class="field">
-          <select onchange="changeGameMode(this.value)">
-            <option value="P0" selected>You vs AI</option>
-            <option value="P1"         >AI vs you</option>
-            <option value="Human"      >No AI</option>
-            <option value="AI"         >WarGames</option>
-          </select>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="ui main text container">
-
-  <h1 class="ui huge center aligned header">Splendor with AI</h1> 
-  <div class="ui hidden divider"></div>
-
-  <div class="ui very compact equal width center aligned grid">
-    <div class="column" id="noble0"></div>
-    <div class="column" id="noble1"></div>
-    <div class="column" id="noble2"></div>
-    <div class="column" id="noble3"></div>
-  </div>
-  <div class="ui very compact equal width center aligned grid">
-    <div class="ui row">
-      <div class="column" id="lv2_deck"></div>
-      <div class="column" id="lv2_0"></div>
-      <div class="column" id="lv2_1"></div>
-      <div class="column" id="lv2_2"></div>
-      <div class="column" id="lv2_3"></div>
-    </div>
-    <div class="ui row">
-      <div class="column" id="lv1_deck"></div>
-      <div class="column" id="lv1_0"></div>
-      <div class="column" id="lv1_1"></div>
-      <div class="column" id="lv1_2"></div>
-      <div class="column" id="lv1_3"></div>
-    </div>
-    <div class="ui row">
-      <div class="column" id="lv0_deck"></div>
-      <div class="column" id="lv0_0"></div>
-      <div class="column" id="lv0_1"></div>
-      <div class="column" id="lv0_2"></div>
-      <div class="column" id="lv0_3"></div>
-    </div>
-  </div>
-
-  <div class="ui very compact equal width center aligned grid">
-    <div class="column" id="bank_c0"></div>
-    <div class="column" id="bank_c1"></div>
-    <div class="column" id="bank_c2"></div>
-    <div class="column" id="bank_c3"></div>
-    <div class="column" id="bank_c4"></div>
-    <div class="column" id="bank_c5"></div>
-  </div>
-
-  <div class="ui hidden divider mobile hidden"></div>
-  <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
-    <button class="ui gray basic button" id="btn_confirm" onclick="confirmSelect()">Click a card or gem to select action</button>
-    <button class="ui gray basic icon button" id="btn_undo" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
-  </div>
-  <button class="ui fluid large active loading button" id="loadingBtn">‌</button>
-
-  <div class="ui hidden divider computer only"></div>
-  <div class="ui horizontal divider" id="p0_details">
-    Your gems and cards below
-  </div>
-  <div class="ui very compact equal width center aligned grid">
-    <div class="column">
-      <div id="p0_g0"></div>
-      <div id="p0_c0"></div>
-    </div>
-    <div class="column">
-      <div id="p0_g1"></div>
-      <div id="p0_c1"></div>
-    </div>
-    <div class="column">
-      <div id="p0_g2"></div>
-      <div id="p0_c2"></div>
-    </div>
-    <div class="column">
-      <div id="p0_g3"></div>
-      <div id="p0_c3"></div>
-    </div>
-    <div class="column">
-      <div id="p0_g4"></div>
-      <div id="p0_c4"></div>
-    </div>
-    <div class="column">
-      <div id="p0_g5"></div>
-      <div id="p0_r2"></div>
-    </div>
-    <div class="column">
-      <div id="p0_r0"></div>
-      <div id="p0_r1"></div>
-    </div>
-  </div>
-
-  <div class="ui hidden divider computer only"></div>
-  <div class="ui horizontal divider" id="p1_details">
-    AI below
-  </div>
-  <div class="ui very compact equal width center aligned grid">
-    <div class="column">
-      <div id="p1_g0"></div>
-      <div id="p1_c0"></div>
-    </div>
-    <div class="column">
-      <div id="p1_g1"></div>
-      <div id="p1_c1"></div>
-    </div>
-    <div class="column">
-      <div id="p1_g2"></div>
-      <div id="p1_c2"></div>
-    </div>
-    <div class="column">
-      <div id="p1_g3"></div>
-      <div id="p1_c3"></div>
-    </div>
-    <div class="column">
-      <div id="p1_g4"></div>
-      <div id="p1_c4"></div>
-    </div>
-    <div class="column">
-      <div id="p1_g5"></div>
-      <div id="p1_r2"></div>
-    </div>
-    <div class="column">
-      <div id="p1_r0"></div>
-      <div id="p1_r1"></div>
-    </div>
-  </div>
-
-  <div class="ui hidden divider computer only"></div>
-  <div class="ui horizontal divider" id="p2_details">
-    AI bis below
-  </div>
-  <div class="ui very compact equal width center aligned grid">
-    <div class="column">
-      <div id="p2_g0"></div>
-      <div id="p2_c0"></div>
-    </div>
-    <div class="column">
-      <div id="p2_g1"></div>
-      <div id="p2_c1"></div>
-    </div>
-    <div class="column">
-      <div id="p2_g2"></div>
-      <div id="p2_c2"></div>
-    </div>
-    <div class="column">
-      <div id="p2_g3"></div>
-      <div id="p2_c3"></div>
-    </div>
-    <div class="column">
-      <div id="p2_g4"></div>
-      <div id="p2_c4"></div>
-    </div>
-    <div class="column">
-      <div id="p2_g5"></div>
-      <div id="p2_r2"></div>
-    </div>
-    <div class="column">
-      <div id="p2_r0"></div>
-      <div id="p2_r1"></div>
-    </div>
-  </div>
-
-</div>
-
-
-
-
-<div class="ui modal">
-  <i class="close inside icon"></i>
-  <div class="header" id="mod_head"></div>
-  <div class="content">
-    <div id="card_editor">
-
-      <div class="ui center aligned grid">
-        <div class="two wide column"><div id="editor_info0"></div></div>
-        <div class="two wide column"><div id="editor_info1"></div></div>
-        <div class="two wide column"><div id="editor_info2"></div></div>
-        <div class="two wide column"><div id="editor_info3"></div></div>
-      </div>
-
-      <div class="ui hidden divider"></div>
-      <div class="ui large wrapped wrapping buttons">
-        <button class="ui gray basic button" id="mod_but_col0" onclick="cardEditor.buttonClick(this.id)">White</button>
-        <button class="ui blue basic button" id="mod_but_col1" onclick="cardEditor.buttonClick(this.id)">Blue</button>
-        <button class="ui green basic button" id="mod_but_col2" onclick="cardEditor.buttonClick(this.id)">Green</button>
-        <button class="ui red basic button" id="mod_but_col3" onclick="cardEditor.buttonClick(this.id)">Red</button>
-        <button class="ui black basic button" id="mod_but_col4" onclick="cardEditor.buttonClick(this.id)">Black</button>
-      </div>
-
-      <div class="ui hidden divider"></div>
-      <div class="ui large wrapped wrapping buttons">
-        <button class="ui basic button" id="mod_but_pts0" onclick="cardEditor.buttonClick(this.id)">0</button>
-        <button class="ui basic button" id="mod_but_pts1" onclick="cardEditor.buttonClick(this.id)">1</button>
-        <button class="ui basic button" id="mod_but_pts2" onclick="cardEditor.buttonClick(this.id)">2</button>
-        <button class="ui basic button" id="mod_but_pts3" onclick="cardEditor.buttonClick(this.id)">3</button>
-        <button class="ui basic button" id="mod_but_pts4" onclick="cardEditor.buttonClick(this.id)">4</button>
-        <button class="ui basic button" id="mod_but_pts5" onclick="cardEditor.buttonClick(this.id)">5</button>
-      </div>
-
-      <div class="ui hidden divider"></div>
-      <div class="ui text container">
-        <div class="ui four column compact centered grid">
-          <div class="column" id="sel_c0"></div>
-          <div class="column" id="sel_c1"></div>
-          <div class="column" id="sel_c2"></div>
-          <div class="column" id="sel_c3"></div>
-
-          <div class="column" id="sel_c4"></div>
-          <div class="column" id="sel_c5"></div>
-          <div class="column" id="sel_c6"></div>
-          <div class="column" id="sel_c7"></div>
+        <div class="item">
+          <button class="ui icon button" @click="$store.game.reset()" :disabled="$store.game.isLoading || $store.game.isThinking">
+            <i class="sync icon"></i>
+          </button>
         </div>
       </div>
     </div>
 
-    <div id="noble_editor" style="display: none">
-      <div class="ui equal width compact center aligned grid" id="noble_slots">
-        <div class="column"><div id="bank_noble0" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
-        <div class="column"><div id="bank_noble1" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
-        <div class="column"><div id="bank_noble2" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
-        <div class="column"><div id="bank_noble3" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
-      </div>
-
-      <div class="ui hidden divider"></div>
-      Change by any noble in the list:
-      <div class="ui five column compact centered grid">
-        <div class="column" id="avail_noble0" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble1" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble2" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble3" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble4" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-
-        <div class="column" id="avail_noble5" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble6" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble7" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble8" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble9" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-      </div>
-      <div class="ui fluid large wrapped wrapping buttons">
-        <button class="ui basic button" id="noble_assign_P-1" onclick="nobleEditor.clickToEdit(this.id)">Not won</button>
-        <button class="ui basic button" id="noble_assign_P0"  onclick="nobleEditor.clickToEdit(this.id)">Won by P0</button>
-        <button class="ui basic button" id="noble_assign_P1"  onclick="nobleEditor.clickToEdit(this.id)">Won by P1</button>
-        <button class="ui basic button" id="noble_assign_P2"  onclick="nobleEditor.clickToEdit(this.id)">Won by P2</button>
-      </div>
+    <div class="ui center aligned basic segment">
+      <div x-show="$store.game.isLoading" class="ui active inline loader"></div>
+      <div x-show="$store.game.isThinking" class="ui active centered inline loader text">L'IA réfléchit...</div>
+      <h2 x-show="!$store.game.isLoading && !$store.game.isThinking" class="ui header" x-text="$store.game.statusMessage"></h2>
     </div>
 
-    <div id="gem_editor" style="display: none">
-      <div class="ui fluid large buttons">
-        <button class="ui basic button" id="editor_P-1" onclick="gemEditor.buttonClick(this.id)">Bank</button>
-        <button class="ui basic button" id="editor_P0" onclick="gemEditor.buttonClick(this.id)">Player0</button>
-        <button class="ui basic button" id="editor_P1" onclick="gemEditor.buttonClick(this.id)">Player1</button>
-        <button class="ui basic button" id="editor_P2" onclick="gemEditor.buttonClick(this.id)">Player2</button>
+    <div x-show="$store.game.view && !$store.game.isLoading" class="ui grid">
+      
+      <div class="four wide column">
+        <h4 class="ui dividing header">Nobles</h4>
+        <div class="ui cards">
+          <template x-for="(noble, idx) in $store.game.view.nobles" :key="idx">
+            <div class="ui card" x-show="noble">
+              <div class="content"><div class="header" x-text="noble ? noble.points + ' pts' : ''"></div></div>
+            </div>
+          </template>
+        </div>
+
+        <h4 class="ui dividing header">Banque</h4>
+        <div>
+          <template x-for="gem in $store.game.view.bank" :key="gem.colorIdx">
+            <div class="gem-token" 
+                 :class="['c-' + gem.colorName, gem.isSelected ? 'selected' : '', !gem.isAvailable ? 'disabled' : '']"
+                 @click="gem.isAvailable ? $store.game.act('toggle_gem', gem.colorIdx) : null">
+              <span x-text="gem.qty"></span>
+            </div>
+          </template>
+        </div>
+        
+        <button class="ui fluid primary button" 
+                style="margin-top: 10px;"
+                x-show="$store.game.view.canConfirmGems"
+                @click="$store.game.act('confirm_gems')">
+          Prendre ces gemmes
+        </button>
       </div>
 
-      <div class="ui hidden divider"></div>
-      <div class="ui equal width compact center aligned grid">
-        <div class="column">
-          <button class="ui basic large button" id="editor_g0_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g0"></div>
-          <button class="ui basic large button" id="editor_g0_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_g1_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g1"></div>
-          <button class="ui basic large button" id="editor_g1_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_g2_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g2"></div>
-          <button class="ui basic large button" id="editor_g2_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_g3_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g3"></div>
-          <button class="ui basic large button" id="editor_g3_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_g4_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g4"></div>
-          <button class="ui basic large button" id="editor_g4_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_g5_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g5"></div>
-          <button class="ui basic large button" id="editor_g5_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
+      <div class="eight wide column">
+        <h4 class="ui dividing header">Cartes disponibles</h4>
+        <template x-for="(tier, tierIdx) in $store.game.view.tiers" :key="tierIdx">
+          <div class="ui four cards" style="margin-bottom: 15px;">
+            <template x-for="(card, cardIdx) in tier" :key="cardIdx">
+              <div class="ui card splendor-card" x-show="card" @click="card ? $store.game.act('buy_card', tierIdx, cardIdx) : null">
+                <div class="content" x-show="card">
+                  <div class="right floated meta" :class="'c-' + card?.color"><strong x-text="card?.points > 0 ? card.points : ''"></strong></div>
+                  <div class="header" x-text="card?.color"></div>
+                  <div class="description">
+                    <template x-for="(cost, cIdx) in card?.cost" :key="cIdx">
+                      <span class="ui circular label small" 
+                            x-show="cost > 0"
+                            :class="'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]"
+                            x-text="cost">
+                      </span>
+                    </template>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+
+      <div class="four wide column">
+        <h4 class="ui dividing header">Joueurs</h4>
+        <div class="ui segments">
+          <template x-for="p in $store.game.view.players" :key="p.id">
+            <div class="ui segment" :class="p.isCurrentTurn ? 'secondary inverted blue' : ''">
+              <h5 class="ui header">
+                Joueur <span x-text="p.id"></span> 
+                <div class="sub header"><span x-text="p.score"></span> Points</div>
+              </h5>
+              <div>
+                <template x-for="(qty, cIdx) in p.gems" :key="'g'+cIdx">
+                  <span class="ui circular label empty mini" x-show="qty > 0" x-text="qty"></span>
+                </template>
+              </div>
+            </div>
+          </template>
         </div>
       </div>
 
-      <div class="ui hidden divider"></div>
-      <div class="ui equal width compact center aligned grid" id="editor_c_grid">
-        <div class="column">
-          <button class="ui basic large button" id="editor_c0_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_c0"></div>
-          <button class="ui basic large button" id="editor_c0_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_c1_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
-          <div id="editor_c1"></div>
-          <button class="ui basic large button" id="editor_c1_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_c2_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
-          <div id="editor_c2"></div>
-          <button class="ui basic large button" id="editor_c2_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_c3_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
-          <div id="editor_c3"></div>
-          <button class="ui basic large button" id="editor_c3_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_c4_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
-          <div id="editor_c4"></div>
-          <button class="ui basic large button" id="editor_c4_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
-        </div>
-        <div class="column">
-        </div>
-      </div>
     </div>
   </div>
-  <div class="actions">
-    <div class="ui primary button" id="edit_next_section" onclick="currentEditor.btnNext();">Edit nobles</div>
-  </div>
-</div>
-
-
-
-<script>
-const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
-const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
-window.onload = () =>
-  [ `${counterAPI_base}/overall`, `${counterAPI_base}/overall_${counterAPI_suffix}`,`${counterAPI_base}/splendor_${counterAPI_suffix}`]
-  .forEach(u => fetch(u).catch(() => {}));
-main();
-</script>
 </body>
 </html>
