@@ -72,12 +72,24 @@
 
     <div x-show="$store.game.view && !$store.game.isLoading" class="ui grid">
       
-      <div class="four wide column">
+      <div class="three wide column">
         <h4 class="ui dividing header">Nobles</h4>
         <div class="ui cards">
           <template x-for="(noble, idx) in $store.game.view.nobles" :key="idx">
             <div class="ui card" x-show="noble">
-              <div class="content"><div class="header" x-text="noble ? noble.points + ' pts' : ''"></div></div>
+              <div class="content">
+                <div class="right floated meta"><strong x-text="noble?.points > 0 ? noble.points : ''"></strong></div>
+                <div class="header">Noble</div>
+                <div class="description" style="margin-top: 5px;">
+                  <template x-for="(cost, cIdx) in noble?.cost" :key="cIdx">
+                    <span class="ui circular label small" 
+                          x-show="cost > 0" 
+                          :class="'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]"
+                          x-text="cost">
+                    </span>
+                  </template>
+                </div>
+              </div>
             </div>
           </template>
         </div>
@@ -101,32 +113,43 @@
         </button>
       </div>
 
-      <div class="eight wide column">
-        <h4 class="ui dividing header">Cartes disponibles</h4>
+      <div class="ten wide column"> <h4 class="ui dividing header">Cartes disponibles</h4>
+        
         <template x-for="(tier, tierIdx) in $store.game.view.tiers" :key="tierIdx">
-          <div class="ui four cards" style="margin-bottom: 15px;">
+          <div class="ui five cards" style="margin-bottom: 15px;"> <div class="ui card splendor-card" style="background-color: #f9fafb; display: flex; align-items: center; justify-content: center;" 
+                 @click="$store.game.act('reserve_deck', tierIdx)">
+              <h3 class="ui disabled header" x-text="'Niv ' + (3 - tierIdx)"></h3>
+              <i class="large lock icon" style="color: #ccc;"></i>
+            </div>
+
             <template x-for="(card, cardIdx) in tier" :key="cardIdx">
-              <div class="ui card splendor-card" x-show="card" @click="card ? $store.game.act('buy_card', tierIdx, cardIdx) : null">
-                <div class="content" x-show="card">
-                  <div class="right floated meta" :class="'c-' + card?.color"><strong x-text="card?.points > 0 ? card.points : ''"></strong></div>
-                  <div class="header" x-text="card?.color"></div>
-                  <div class="description">
+              <div class="ui card splendor-card" x-show="card">
+                <div class="content">
+                  <div class="right floated meta"><strong x-text="card?.points > 0 ? card.points : ''"></strong></div>
+                  <div class="header" :class="'c-' + card?.color" x-text="card?.color" style="padding: 2px 5px; border-radius: 4px;"></div>
+                  <div class="description" style="margin-top: 10px;">
                     <template x-for="(cost, cIdx) in card?.cost" :key="cIdx">
                       <span class="ui circular label small" 
-                            x-show="cost > 0"
+                            x-show="cost > 0" 
                             :class="'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]"
-                            x-text="cost">
-                      </span>
+                            x-text="cost"></span>
                     </template>
+                  </div>
+                </div>
+                <div class="extra content" style="padding: 5px; text-align: center;">
+                  <div class="ui two buttons">
+                    <button class="ui basic green button" @click="$store.game.act('buy_card', tierIdx, cardIdx)" title="Acheter"><i class="shopping cart icon"></i></button>
+                    <button class="ui basic yellow button" @click="$store.game.act('reserve_card', tierIdx, cardIdx)" title="Réserver"><i class="lock icon"></i></button>
                   </div>
                 </div>
               </div>
             </template>
+
           </div>
         </template>
       </div>
 
-      <div class="four wide column">
+      <div class="three wide column">
         <h4 class="ui dividing header">Joueurs</h4>
         <div class="ui segments">
           <template x-for="p in $store.game.view.players" :key="p.id">
@@ -140,11 +163,38 @@
                   <span class="ui circular label small" x-show="qty > 0" x-text="qty" :class="'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]"></span>
                 </template>
               </div>
+
               <div>
                 <template x-for="(qty, cIdx) in p.cardsCount" :key="'c'+cIdx">
                   <span class="ui label small" x-show="qty > 0" x-text="qty" :class="'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]"></span>
                 </template>
               </div>
+
+              <div x-show="p.reserved.some(c => c !== null)" style="margin-top: 10px;">
+                <div class="ui divider"></div>
+                <div class="ui mini horizontal list">
+                  <div class="item"><strong>Réservées:</strong></div>
+                  
+                  <template x-for="(rcard, rIdx) in p.reserved" :key="rIdx">
+                    <div class="item" x-show="rcard">
+                      <div class="ui label" 
+                           style="cursor: pointer; border: 1px solid #ccc;"
+                           @click="p.isCurrentTurn ? $store.game.act('buy_reserved', rIdx) : null"
+                           :title="'Cliquer pour acheter (Points: ' + rcard?.points + ')'">
+                        
+                        <i class="lock icon"></i>
+                        <span :class="'c-' + rcard?.color" x-text="rcard?.color" style="padding: 2px; border-radius: 3px; margin-right: 5px;"></span>
+                        
+                        <template x-for="(cost, cIdx) in rcard?.cost" :key="'rc'+cIdx">
+                           <span x-show="cost > 0" :class="'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]" style="display:inline-block; width:12px; height:12px; border-radius:50%; text-align:center; font-size:10px; line-height:12px; color:transparent; margin-left:2px;" :title="cost"></span>
+                        </template>
+                      </div>
+                    </div>
+                  </template>
+                  
+                </div>
+              </div>
+
             </div>
           </template>
         </div>

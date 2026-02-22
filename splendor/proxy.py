@@ -69,9 +69,7 @@ def getNextState(action):
     history.insert(0, [player, np.copy(board)])
     
     # Execute move
-    print(f'{player} joue {action}')
     board, player = g.getNextState(board, player, action)
-    print(f'  --> maintenant c est a {player}')
 
     # Check end game
     # getGameEnded renvoie souvent un tableau de scores ou [0,0,0] si non fini
@@ -374,16 +372,6 @@ def _get_player_reserved(player_id, index):
     card_data_1 = g.board.players_reserved[6*player_id + 2*index]
     card_data_2 = g.board.players_reserved[6*player_id + 2*index + 1]
     return _convert_card_to_dict(card_data_1, card_data_2)
-
-def _get_noble(index):
-    noble_data = g.board.nobles[index]
-    if np.all(noble_data == 0):
-        return None
-    # TODO: Décoder les points et coûts du noble
-    return {
-        'points': 3,
-        'cost': [0, 0, 0, 0, 0] # Placeholder
-    }
 
 def _calculate_score(player_id):
     # Idéalement lu depuis un score direct dans le board, 
