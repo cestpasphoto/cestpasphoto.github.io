@@ -137,7 +137,12 @@
               </h5>
               <div>
                 <template x-for="(qty, cIdx) in p.gems" :key="'g'+cIdx">
-                  <span class="ui circular label empty mini" x-show="qty > 0" x-text="qty"></span>
+                  <span class="ui circular label small" x-show="qty > 0" x-text="qty" :class="'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]"></span>
+                </template>
+              </div>
+              <div>
+                <template x-for="(qty, cIdx) in p.cardsCount" :key="'c'+cIdx">
+                  <span class="ui label small" x-show="qty > 0" x-text="qty" :class="'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]"></span>
                 </template>
               </div>
             </div>

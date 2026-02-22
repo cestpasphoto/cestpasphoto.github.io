@@ -1,6 +1,6 @@
 from MCTS import MCTS
 from SplendorGame import SplendorGame as Game
-from SplendorLogic import move_to_str, np_all_cards_1, np_all_cards_2, np_all_cards_3, np_all_nobles
+from SplendorLogic import move_to_str, np_all_cards_1, np_all_cards_2, np_all_cards_3, np_all_nobles, list_different_gems_up_to_3, list_different_gems_up_to_2
 import numpy as np
 import json
 
@@ -55,7 +55,7 @@ def init_game(numMCTSSims):
     mcts = MCTS(g, None, mcts_args)
     player = 0
     history = []
-    valids = g.getValidMoves(board, 1) # 1 si canonique, ou 'player' selon logique SplendorGame
+    valids = g.getValidMoves(board, player)
     game_result = [0] * NB_PLAYERS
     
     _reset_interaction()
@@ -69,16 +69,17 @@ def getNextState(action):
     history.insert(0, [player, np.copy(board)])
     
     # Execute move
-    board, current_player_canonical = g.getNextState(board, 1, action)
-    player = (player + 1) % NB_PLAYERS
-    
+    print(f'{player} joue {action}')
+    board, player = g.getNextState(board, player, action)
+    print(f'  --> maintenant c est a {player}')
+
     # Check end game
     # getGameEnded renvoie souvent un tableau de scores ou [0,0,0] si non fini
-    res = g.getGameEnded(board, 1) 
+    res = g.getGameEnded(board, player) 
     if any(r != 0 for r in res):
         game_result = res
         
-    valids = g.getValidMoves(board, 1)
+    valids = g.getValidMoves(board, player)
     
     _reset_interaction()
     return get_render_state()
@@ -98,7 +99,7 @@ def undo(player_types=None):
             prev = history.pop(0)
             player = prev[0]
             board = prev[1]
-            valids = g.getValidMoves(board, 1)
+            valids = g.getValidMoves(board, player)
             game_result = [0] * NB_PLAYERS
             return True
         return False
@@ -152,6 +153,7 @@ def handle_action(action_type, *args):
             return getNextState(action_idx)
         else:
             # Action invalide, on reset la sélection
+            print(f'Action invalide {selected_gems=} {action_idx=} {valids[action_idx]=}')
             _reset_interaction()
 
     # --- ACHAT ET RÉSERVATION ---
@@ -166,23 +168,71 @@ def _reset_interaction():
     global selected_gems
     selected_gems = []
 
-# --- Helpers de traduction UI <-> Action Index ---
-# Ces fonctions doivent mapper l'intention UI vers l'ID d'action (0 à N)
-# utilisé par le moteur (SplendorLogic). À adapter selon l'encodage exact.
-
-def _find_gem_action_index(gems):
-    # Logique de recherche de l'ID d'action correspondant à la prise de ces gemmes
-    # Doit correspondre à la liste des actions générées par SplendorLogic.
-    # Placeholder: iterer sur les valids et vérifier le move_to_str(action)
-    for act_id, is_valid in enumerate(valids):
-        if is_valid:
-            desc = move_to_str(act_id) 
-            # ex: si desc == "Take gems white blue red", on matche avec selected_gems
-            # (À implémenter précisément selon ton format move_to_str)
-    return -1
 
 def _find_card_action_index(action_type, *args):
-    # Logique pour mapper 'buy_card', tier, index vers l'Action ID
+    """
+    Traduit une intention d'achat ou de réservation en Index d'Action (0-29).
+    args contient généralement (tier, index) ou juste (index).
+    """
+    if action_type == 'buy_card':
+        tier, index = int(args[0]), int(args[1])
+        # Indices 0 à 11
+        return (tier * 4) + index
+        
+    elif action_type == 'reserve_card':
+        tier, index = int(args[0]), int(args[1])
+        # Indices 12 à 23
+        return 12 + (tier * 4) + index
+        
+    elif action_type == 'reserve_deck':
+        tier = int(args[0])
+        # Indices 24 à 26
+        return 24 + tier
+        
+    elif action_type == 'buy_reserved':
+        index = int(args[0])
+        # Indices 27 à 29
+        return 27 + index
+        
+    return -1
+
+
+def _find_gem_action_index(gems, discard=False):
+    """
+    Traduit une liste d'entiers (ex: [0, 2, 4] pour White, Green, Black)
+    en Index d'Action de prise ou de défausse de jetons (30-79).
+    """
+    if not gems:
+        return -1
+        
+    # --- Cas 1 : 2 Gemmes Identiques ---
+    if len(gems) == 2 and gems[0] == gems[1]:
+        color = gems[0]
+        if discard:
+            return 75 + color # 75-79: Give back 2 identical
+        else:
+            return 55 + color # 55-59: Get 2 identical
+
+    # --- Cas 2 : Combinaison de gemmes différentes ---
+    # On construit un tableau signature de taille 7 (comme dans ta logique)
+    # pour le comparer avec tes listes pré-générées.
+    target_sig = [0] * 7
+    for color in gems:
+        target_sig[color] += 1
+        
+    target_arr = np.array(target_sig, dtype=np.int8)
+
+    if discard:
+        # Recherche dans les 15 combinaisons de défausse (up to 2)
+        for i, comb in enumerate(list_different_gems_up_to_2):
+            if np.array_equal(comb, target_arr):
+                return 60 + i # 60-74: Give back different gems
+    else:
+        # Recherche dans les 25 combinaisons de prise (up to 3)
+        for i, comb in enumerate(list_different_gems_up_to_3):
+            if np.array_equal(comb, target_arr):
+                return 30 + i # 30-54: Get different gems
+
     return -1
 
 
@@ -243,7 +293,7 @@ def get_render_state():
             'isCurrentTurn': (p == player),
             'gems': [int(g.board.players_gems[p][c]) for c in range(6)],
             'cardsCount': [int(g.board.players_cards[p][c]) for c in range(5)], # Uniquement les 5 couleurs
-            'score': _calculate_score(p),
+            'score': int(g.getScore(board, p)),
             'reserved': [_get_player_reserved(p, i) for i in range(3)]
         }
         players_data.append(p_data)
