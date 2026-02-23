@@ -132,7 +132,7 @@
     </div>
 
     <div class="board-grid" x-show="!$store.game.isLoading">
-      <template x-for="cell in $store.game.cells" :key="cell.y + '-' + cell.x">
+      <template x-for="cell in $store.game.view.cells" :key="cell.y + '-' + cell.x">
         <div class="board-cell"
              :class="[
                 'bg-' + cell.colorClass, 

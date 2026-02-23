@@ -82,7 +82,7 @@ def getNextState(action):
     _reset_interaction(full_reset=False)
     return get_render_state()
 
-def undo(arePlayersHuman):
+def undo(player_types=None):
     """Reverts to the previous state."""
     global g, board, player, history, valids, game_result
     
@@ -90,16 +90,23 @@ def undo(arePlayersHuman):
         _reset_interaction()
         return get_render_state()
 
-    if len(history) > 0:
-        # Rewind until a human is to play
-        prev = None, None
-        while prev[0] is None and not arePlayersHuman[prev[0]]:
+    def pop_one_state():
+        global board, player, valids, game_result
+        if len(history) > 0:
             prev = history.pop(0)
-        player = prev[0]
-        board = prev[1]
-        valids = g.getValidMoves(board, player)
-        game_result = [0] * 2
-        _reset_interaction()
+            player = prev[0]
+            board = prev[1]
+            valids = g.getValidMoves(board, player)
+            game_result = [0] * 2
+            return True
+        return False
+
+    if pop_one_state():
+        if player_types is not None:
+            while len(history) > 0 and player_types[player] == 1:
+                pop_one_state()
+
+    _reset_interaction()
     
     return get_render_state()
 
@@ -109,51 +116,52 @@ def set_edit_mode(mode):
     _reset_interaction()
     return get_render_state()
 
-def handle_click(y, x):
+def handle_action(action_name, *args):
     """Main interaction handler."""
     global interaction_step, selected_worker_pos, selected_move_pos, edit_mode
     global g, board, player, game_result
     
-    y, x = int(y), int(x)
+    if action_name == 'click_cell':
+        y, x = int(args[0]), int(args[1])
 
-    if edit_mode != 0:
-        _apply_edit(y, x)
-        return get_render_state()
+        if edit_mode != 0:
+            _apply_edit(y, x)
+            return get_render_state()
 
-    if _end_game():
-        return get_render_state()
+        if _end_game():
+            return get_render_state()
 
-    # --- Step 0: Select Worker ---
-    if interaction_step == 0:
-        worker_val = board[y, x, 0]
-        if worker_val > 0: 
-            if _has_valid_moves(y, x):
-                interaction_step = 1
+        # --- Step 0: Select Worker ---
+        if interaction_step == 0:
+            worker_val = board[y, x, 0]
+            if worker_val > 0: 
+                if _has_valid_moves(y, x):
+                    interaction_step = 1
+                    selected_worker_pos = (y, x)
+
+        # --- Step 1: Select Move Target ---
+        elif interaction_step == 1:
+            if (y, x) == selected_worker_pos:
+                _reset_interaction()
+            elif board[y, x, 0] > 0 and _has_valid_moves(y, x):
+                 # Changed mind: selected another own worker
                 selected_worker_pos = (y, x)
+            elif _is_valid_move_target(y, x):
+                interaction_step = 2
+                selected_move_pos = (y, x)
+            else:
+                _reset_interaction()
 
-    # --- Step 1: Select Move Target ---
-    elif interaction_step == 1:
-        if (y, x) == selected_worker_pos:
-            _reset_interaction()
-        elif board[y, x, 0] > 0 and _has_valid_moves(y, x):
-             # Changed mind: selected another own worker
-            selected_worker_pos = (y, x)
-        elif _is_valid_move_target(y, x):
-            interaction_step = 2
-            selected_move_pos = (y, x)
-        else:
-            _reset_interaction()
-
-    # --- Step 2: Select Build Target ---
-    elif interaction_step == 2:
-        # if (y, x) == selected_worker_pos:
-        #     # Backtrack to move selection
-        #     interaction_step = 1
-        #     selected_move_pos = None
-        if _is_valid_build_target(y, x):
-            # === ACTION COMMIT ===
-            action = _construct_action_from_selection(y, x)
-            return getNextState(action)
+        # --- Step 2: Select Build Target ---
+        elif interaction_step == 2:
+            # if (y, x) == selected_worker_pos:
+            #     # Backtrack to move selection
+            #     interaction_step = 1
+            #     selected_move_pos = None
+            if _is_valid_build_target(y, x):
+                # === ACTION COMMIT ===
+                action = _construct_action_from_selection(y, x)
+                return getNextState(action)
         
     return get_render_state()
 
@@ -343,7 +351,9 @@ def get_render_state():
             cells.append(cell)
 
     return json.dumps({
-        'cells': cells,
+        'viewData': {
+            'cells': cells,
+        },
         'statusMessage': status,
         'currentPlayer': player,
         'gameEnded': _end_game(),
