@@ -122,18 +122,42 @@ def set_edit_mode(mode):
 # ==========================================
 
 def handle_action(action_type, *args):
-    """
-    Reçoit les intentions de l'interface et les traduit en actions de jeu.
-    action_type : 'toggle_gem', 'buy_card', 'reserve_card', 'buy_reserved', 'confirm_gems'
-    """
-    global selected_gems, valids
+    global selected_gems, valids, board
     
+    # --- MODE EDITION ---
     if edit_mode != 0:
-        # TODO: Appeler les fonctions _apply_edit selon l'UX définie
+        if action_type == 'edit_bank_gem':
+            c = int(args[0])
+            g.board.bank[0][c] = (g.board.bank[0][c] + 1) % 8  # Cycle 0-7
+            
+        elif action_type == 'edit_player_gem':
+            p_id, c = int(args[0]), int(args[1])
+            g.board.players_gems[p_id][c] = (g.board.players_gems[p_id][c] + 1) % 11 # Cycle 0-10
+            
+        elif action_type == 'edit_player_card_count':
+            # Éditer les cartes gagnées (qui donnent le bonus de gemme permanent)
+            p_id, c = int(args[0]), int(args[1])
+            g.board.players_cards[p_id][c] = (g.board.players_cards[p_id][c] + 1) % 10
+            
+        elif action_type == 'edit_assign_card':
+            # Assigne une carte de la table à un joueur et la retire du deck
+            tier, card_idx, p_id, status = int(args[0]), int(args[1]), int(args[2]), args[3]
+            _assign_card_from_tier_to_player(tier, card_idx, p_id, status)
+            
+        elif action_type == 'edit_cycle_noble':
+            # Change le noble présent sur le plateau
+            index = int(args[0])
+            _cycle_noble(index)
+
+        # IMPORTANT: Après toute modification du plateau en édition, 
+        # on doit recalculer les coups valides pour ne pas corrompre le jeu.
+        valids = g.getValidMoves(board, player)
         return get_render_state()
-        
+
+    # --- MODE JEU NORMAL ---
     if _end_game():
         return get_render_state()
+        
 
     # --- SÉLECTION DE GEMMES ---
     if action_type == 'toggle_gem':
@@ -373,8 +397,56 @@ def _get_player_reserved(player_id, index):
     card_data_2 = g.board.players_reserved[6*player_id + 2*index + 1]
     return _convert_card_to_dict(card_data_1, card_data_2)
 
-def _calculate_score(player_id):
-    # Idéalement lu depuis un score direct dans le board, 
-    # sinon calculé à partir des cartes et nobles.
-    return 0 # Placeholder
+
+def _assign_card_from_tier_to_player(tier, card_idx, p_id, status):
+    """
+    Transfère une carte de la table vers un joueur (gagnée ou réservée),
+    puis la retire de la table et pioche la suivante.
+    """
+    card_1 = np.copy(g.board.cards_tiers[8*tier + 2*card_idx])
+    card_2 = np.copy(g.board.cards_tiers[8*tier + 2*card_idx + 1])
+    
+    # Sécurité : vérifier que la carte n'est pas déjà vide
+    if np.all(card_1 == 0) and np.all(card_2 == 0):
+        return
+
+    # --- 1. Donner la carte au joueur ---
+    if status == 'won':
+        # On extrait la couleur de la carte pour augmenter les bonus permanents du joueur
+        card_dict = _convert_card_to_dict(card_1, card_2)
+        if card_dict and card_dict['color']:
+            c_idx = COLORS.index(card_dict['color'])
+            g.board.players_cards[p_id][c_idx] += 1
+           
+    elif status == 'reserved':
+        # Chercher le premier slot de réservation vide (max 3)
+        for r_idx in range(3):
+            if np.all(g.board.players_reserved[6*p_id + 2*r_idx] == 0):
+                g.board.players_reserved[6*p_id + 2*r_idx] = card_1
+                g.board.players_reserved[6*p_id + 2*r_idx + 1] = card_2
+                break
+
+    g.board._fill_new_card(tier, card_idx, deterministic=False)
+
+def _cycle_noble(index):
+    """
+    Remplace le noble sélectionné par un autre noble de la liste complète.
+    Idéal pour une édition rapide en tapant dessus.
+    """
+    from SplendorLogic import np_all_nobles  # Assure-toi que c'est bien importé
+    
+    current_noble = g.board.nobles[index]
+    
+    # Si l'emplacement est vide, on prend le premier
+    if np.all(current_noble == 0):
+        g.board.nobles[index] = np_all_nobles[0]
+        return
+        
+    # Sinon, on cherche son ID actuel et on passe au suivant
+    for i, noble in enumerate(np_all_nobles):
+        if np.array_equal(noble, current_noble):
+            next_id = (i + 1) % len(np_all_nobles)
+            g.board.nobles[index] = np_all_nobles[next_id]
+            return
+
    

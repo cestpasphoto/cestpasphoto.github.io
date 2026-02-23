@@ -26,12 +26,25 @@
     
     .splendor-card { min-height: 120px; cursor: pointer; border: 2px solid transparent; }
     .splendor-card:hover { border-color: #2185d0; }
+    /* Feedback visuel au survol / mode édition */
+    .edit-mode-active { 
+        outline: 3px dashed #f2711c !important; 
+        cursor: pointer !important; 
+        opacity: 1 !important;
+    }
+    /* Le Tiroir (Drawer) pour mobile/desktop */
+    .bottom-drawer { 
+        position: fixed; bottom: 0; left: 0; right: 0; 
+        background: white; box-shadow: 0 -10px 25px rgba(0,0,0,0.3); 
+        z-index: 1000; padding: 20px 20px 30px 20px; 
+        border-top-left-radius: 20px; border-top-right-radius: 20px; 
+    }
   </style>
 </head>
 
 <body class="ui container" style="padding-top: 20px;">
 
-  <div x-data x-init="$store.game.start()">
+  <div x-data="{ drawerOpen: false, selectedTier: 0, selectedIdx: 0 }" x-init="$store.game.start()">
 
     <div class="ui borderless menu">
       <div class="item"><div class="ui header">Splendor</div></div>
@@ -51,6 +64,14 @@
       </div>
 
       <div class="right menu">
+        <div class="item">
+          <button class="ui icon button" 
+                  :class="$store.game.editMode !== 0 ? 'orange' : ''"
+                  @click="$store.game.toggleEdit()" 
+                  :disabled="$store.game.isLoading || $store.game.isThinking">
+            <i class="pencil icon"></i>
+          </button>
+        </div>
         <div class="item">
           <button class="ui icon button" @click="$store.game.undo()" :disabled="!$store.game.canUndo || $store.game.isLoading || $store.game.isThinking">
             <i class="undo icon"></i>
@@ -76,7 +97,9 @@
         <h4 class="ui dividing header">Nobles</h4>
         <div class="ui cards">
           <template x-for="(noble, idx) in $store.game.view.nobles" :key="idx">
-            <div class="ui card" x-show="noble">
+            <div class="ui card" x-show="noble"
+                 :class="$store.game.editMode !== 0 ? 'edit-mode-active' : ''"
+                 @click="$store.game.editMode !== 0 ? $store.game.act('edit_cycle_noble', idx) : null">
               <div class="content">
                 <div class="right floated meta"><strong x-text="noble?.points > 0 ? noble.points : ''"></strong></div>
                 <div class="header">Noble</div>
@@ -98,8 +121,13 @@
         <div>
           <template x-for="gem in $store.game.view.bank" :key="gem.colorIdx">
             <div class="gem-token" 
-                 :class="['c-' + gem.colorName, gem.isSelected ? 'selected' : '', !gem.isAvailable ? 'disabled' : '']"
-                 @click="gem.isAvailable ? $store.game.act('toggle_gem', gem.colorIdx) : null">
+                 :class="[
+                   'c-' + gem.colorName, 
+                   gem.isSelected ? 'selected' : '', 
+                   (!gem.isAvailable && $store.game.editMode === 0) ? 'disabled' : '',
+                   $store.game.editMode !== 0 ? 'edit-mode-active' : ''
+                 ]"
+                 @click="$store.game.editMode !== 0 ? $store.game.act('edit_bank_gem', gem.colorIdx) : (gem.isAvailable ? $store.game.act('toggle_gem', gem.colorIdx) : null)">
               <span x-text="gem.qty"></span>
             </div>
           </template>
@@ -123,8 +151,10 @@
             </div>
 
             <template x-for="(card, cardIdx) in tier" :key="cardIdx">
-              <div class="ui card splendor-card" x-show="card">
-                <div class="content">
+                  <div class="ui card splendor-card" x-show="card"
+                       :class="$store.game.editMode !== 0 ? 'edit-mode-active' : ''"
+                       @click="$store.game.editMode !== 0 ? (drawerOpen = true, selectedTier = tierIdx, selectedIdx = cardIdx) : null">
+                  <div class="content">
                   <div class="right floated meta"><strong x-text="card?.points > 0 ? card.points : ''"></strong></div>
                   <div class="header" :class="'c-' + card?.color" x-text="card?.color" style="padding: 2px 5px; border-radius: 4px;"></div>
                   <div class="description" style="margin-top: 10px;">
@@ -136,7 +166,7 @@
                     </template>
                   </div>
                 </div>
-                <div class="extra content" style="padding: 5px; text-align: center;">
+                <div class="extra content" x-show="$store.game.editMode === 0" style="padding: 5px; text-align: center;">
                   <div class="ui two buttons">
                     <button class="ui basic green button" @click="$store.game.act('buy_card', tierIdx, cardIdx)" title="Acheter"><i class="shopping cart icon"></i></button>
                     <button class="ui basic yellow button" @click="$store.game.act('reserve_card', tierIdx, cardIdx)" title="Réserver"><i class="lock icon"></i></button>
@@ -160,13 +190,25 @@
               </h5>
               <div>
                 <template x-for="(qty, cIdx) in p.gems" :key="'g'+cIdx">
-                  <span class="ui circular label small" x-show="qty > 0" x-text="qty" :class="'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]"></span>
+                  <span class="ui circular label small"
+                        x-show="qty > 0 || $store.game.editMode !== 0"
+                        x-text="qty"
+                        @click="$store.game.editMode !== 0 ? $store.game.act('edit_player_gem', p.id, cIdx) : null"
+                        :class="[$store.game.editMode !== 0 ? 'edit-mode-active' : '', 'c-' + ['white', 'blue', 'green', 'red', 'black', 'yellow'][cIdx]]"
+                  ></span>
                 </template>
               </div>
 
               <div>
                 <template x-for="(qty, cIdx) in p.cardsCount" :key="'c'+cIdx">
-                  <span class="ui label small" x-show="qty > 0" x-text="qty" :class="'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]"></span>
+                  <span class="ui label small"
+                        :class="[$store.game.editMode !== 0 ? 'edit-mode-active' : '', 'c-' + ['white', 'blue', 'green', 'red', 'black'][cIdx]]"
+                        x-show="qty > 0 || $store.game.editMode !== 0" 
+                        @click="$store.game.editMode !== 0 ? $store.game.act('edit_player_card_count', p.id, cIdx) : null">
+                  >
+                    <i class="gem icon"></i>
+                    <span x-text="qty"></span>
+                  </span>
                 </template>
               </div>
 
@@ -199,8 +241,44 @@
           </template>
         </div>
       </div>
-
     </div>
+
+    <div x-show="drawerOpen" class="bottom-drawer" style="display: none;" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="transform translate-y-full"
+         x-transition:enter-end="transform translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="transform translate-y-0"
+         x-transition:leave-end="transform translate-y-full">
+         
+      <div class="ui container">
+        <h3 class="ui header">
+          Assigner cette carte
+          <div class="sub header">La carte sera retirée de la table.</div>
+        </h3>
+        
+        <div class="ui unstackable grid"> <template x-for="player in $store.game.view.players" :key="player.id">
+            <div class="column" :class="$store.game.view.players.length === 2 ? 'eight wide' : 'five wide'">
+              <h5 class="ui center aligned header" x-text="'Joueur ' + player.id"></h5>
+              
+              <button class="ui fluid basic green button" style="margin-bottom: 8px; padding: 10px 5px;"
+                      @click="$store.game.act('edit_assign_card', selectedTier, selectedIdx, player.id, 'won'); drawerOpen = false">
+                Donner
+              </button>
+              
+              <button class="ui fluid basic yellow button" style="padding: 10px 5px;"
+                      @click="$store.game.act('edit_assign_card', selectedTier, selectedIdx, player.id, 'reserved'); drawerOpen = false">
+                Réserver
+              </button>
+            </div>
+          </template>
+        </div>
+        
+        <div class="ui divider"></div>
+        <button class="ui fluid button" @click="drawerOpen = false">Annuler</button>
+      </div>
+    </div>
+
   </div>
 </body>
 </html>
