@@ -2,8 +2,6 @@
 /* =====  CONFIG ===== */
 /* =================== */
 
-// Les variables pyConstantsFileName et pyMapsFileName devront 
-// être définies dans tes fichiers constants_Xpl.js
 const list_of_files = [
   ['smallworld/Game.py', 'Game.py'],
   ['smallworld/proxy.py', 'proxy.py'], // Le nouveau contrôleur
@@ -13,7 +11,7 @@ const list_of_files = [
   ['smallworld/SmallworldLogicNumba.py', 'SmallworldLogicNumba.py'],
   ['smallworld/SmallworldMaps.py', 'SmallworldMaps.py'],
   [pyConstantsFileName, 'SmallworldConstants.py'],
-  [pyMapsFileName, 'SmallworldMaps_3pl.py'], // Le nom local importe peu ici, Python l'importe via SmallworldMaps.py
+  [pyMapsFileName, 'SmallworldMaps.py'],
 ];
 
 // Number of MCTS Simulations per move
@@ -32,29 +30,48 @@ document.addEventListener('alpine:init', () => {
     
     // Traduction des ID de polygones en points SVG
     getPolyPoints(areaId) {
-      if (typeof mapPolys === 'undefined' || typeof mapPoints === 'undefined') return "";
-      const polyIndices = mapPolys[areaId];
+      if (typeof mapAreas === 'undefined' || typeof mapPoints === 'undefined') {
+        console.error("CRITICAL DEBUG: mapAreas ou mapPoints est introuvable !");
+        console.error("-> Vérifie dans l'onglet 'Réseau' (Network) de la console si 'constants_3pl.js' a bien été chargé ou s'il y a une erreur 404 (chemin incorrect).");
+        return "";
+      }
+      const polyIndices = mapAreas[areaId];
       if (!polyIndices) return "";
       return polyIndices.map(idx => `${mapPoints[idx][0]},${mapPoints[idx][1]}`).join(' ');
     },
 
+    // Couleurs de fond pour les terrains
+    // Ordre : Forest, Farmland, Hill, Swamp, Mountain, Water
+    getTerrainColor(terrainId) {
+      const colors = ['#a5d6a7', '#ffe082', '#ffcc80', '#c5e1a5', '#cfd8dc', '#81d4fa']; 
+      return colors[terrainId] || '#e8e8e8';
+    },
+
     // Centre du polygone pour afficher le texte
     getCenter(areaId) {
-      if (typeof mapCenters === 'undefined') return [0, 0];
-      return mapCenters[areaId] || [0, 0];
+      if (typeof mapCenters !== 'undefined' && mapCenters[areaId]) return mapCenters[areaId];
+      
+      // Fallback : on calcule le barycentre mathématique si mapCenters est absent
+      const polyIndices = typeof mapAreas !== 'undefined' ? mapAreas[areaId] : null;
+      if (!polyIndices || polyIndices.length === 0) return [0, 0];
+      
+      let x = 0, y = 0;
+      for (let idx of polyIndices) {
+        x += mapPoints[idx][0];
+        y += mapPoints[idx][1];
+      }
+      return [x / polyIndices.length, y / polyIndices.length];
     },
 
     // Utilitaires de traduction ID -> Texte
     getPeopleName(id) {
       if (id < 0) return "Inconnu";
-      // À ajuster selon l'ordre exact de ton fichier SmallworldConstants.py
-      const names = ["Amazones", "Nains", "Elfes", "Goules", "Ratmen", "Squelettes", "Sorciers", "Tritons", "Geants", "Halflings", "Humains", "Orcs", "Trolls"]; 
+      const names = ["-", "Amazones", "Nains", "Elfes", "Goules", "Ratmen", "Squelettes", "Sorciers", "Tritons", "Geants", "Halflings", "Humains", "Orcs", "Trolls"]; 
       return names[id] || `Peuple ${id}`;
     },
 
     getPowerName(id) {
       if (id < 0) return "Aucun";
-      // À ajuster selon l'ordre exact de NOPOWER=0, ALCHEMIST=1, BERSERK=2, etc.
       const names = [
         "Sans Pouvoir", "Alchimistes", "Berserk", "Bivouaquants", "Commandos", 
         "Diplomates", "Maîtres Dragons", "Volants", "Forestiers", "Fortifiés", 

@@ -36,8 +36,8 @@
             <div class="field" style="margin-right: 15px;">
               <label x-text="'P' + idx + ':'"></label>
               <select x-model="$store.game.arePlayersHuman[idx]" @change="$store.game.trigger_ai_check()" class="ui dropdown compact">
-                <option :value="true">Humain</option>
-                <option :value="false">IA</option>
+                <option :value="true" :selected="$store.game.arePlayersHuman[idx] === true">Humain</option>
+                <option :value="false" :selected="$store.game.arePlayersHuman[idx] === false">IA</option>
               </select>
             </div>
           </template>
@@ -65,79 +65,104 @@
     </div>
 
     <template x-if="$store.game.view && $store.game.view.territories && !$store.game.isLoading">
-      <div class="ui stackable grid"> 
-        <div class="ten wide column">
+      <div class="ui stackable grid">
         
-        <div style="position: relative; width: 100%; aspect-ratio: 1.4; background-color: #f0f8ff; border: 1px solid #ccc; border-radius: 8px; overflow: hidden;">
+        <div class="ten wide column">
           
-          <template x-for="terr in $store.game.view.territories" :key="terr.id">
+          <div class="ui negative message" x-show="getPolyPoints(0) === ''">
+            <div class="header">Données géométriques introuvables</div>
+            <p>Impossible de lire <code>mapAreas</code>. Regarde la console (F12) pour voir l'erreur.</p>
+          </div>
+
+          <div style="position: relative; width: 100%; aspect-ratio: 1.4; background-color: #f0f8ff; border: 1px solid #ccc; border-radius: 8px; overflow: hidden;">
             
-            <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;" 
-                 :viewBox="typeof mapDimensions !== 'undefined' ? mapDimensions : '0 0 140 100'">
+            <template x-for="terr in $store.game.view.territories" :key="terr.id">
               
-              <g style="pointer-events: auto;">
+              <svg xmlns="http://www.w3.org/2000/svg" 
+                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;" 
+                   x-init="$el.setAttribute('viewBox', typeof mapDimensions !== 'undefined' ? mapDimensions : '0 0 140 100')">
                 
-                <polygon class="svg-poly"
-                         :points="getPolyPoints(terr.id)"
-                         :fill="terr.owner >= 0 ? playerColors[terr.owner] : '#e8e8e8'"
-                         :stroke="terr.isSelected ? '#ff0000' : '#333'"
-                         :stroke-width="terr.isSelected ? 0.8 : 0.2"
-                         :stroke-dasharray="terr.canAttack ? '1, 0.5' : 'none'"
-                         @click="$store.game.act('select_area', terr.id)">
-                </polygon>
+                <g style="pointer-events: auto;">
+                  
+                  <polygon class="svg-poly"
+                           :points="getPolyPoints(terr.id)"
+                           :fill="getTerrainColor(terr.terrain)"
+                           :stroke="terr.isSelected ? '#ff0000' : (terr.owner >= 0 ? playerColors[terr.owner] : '#666')"
+                           :stroke-width="terr.isSelected ? 1.0 : (terr.owner >= 0 ? 0.8 : 0.2)"
+                           :stroke-dasharray="terr.canAttack ? '1, 0.5' : 'none'"
+                           @click="$store.game.act('select_area', terr.id)">
+                  </polygon>
 
-                <g :transform="'translate(' + getCenter(terr.id)[0] + ',' + getCenter(terr.id)[1] + ')'">
-                  <circle cx="0" cy="0" r="3" fill="white" fill-opacity="0.85" stroke="#333" stroke-width="0.3"/>
-                  
-                  <text class="token-text" x="0" y="0.8" font-size="2.5" text-anchor="middle" fill="black" 
-                        x-text="terr.nbPeople > 0 ? terr.nbPeople : ''"></text>
-                  
-                  <text class="token-text" x="2.5" y="-1.5" font-size="1.5" text-anchor="middle" fill="#d95c5c" 
-                        x-show="terr.addedDefense > 0" x-text="'+' + terr.addedDefense"></text>
-                  
-                  <circle cx="-2" cy="-2" r="0.8" fill="#555" x-show="terr.isCavern"/>
+                  <g x-show="typeof elementsCoord !== 'undefined' && elementsCoord[terr.id]">
+                    
+                    <g :transform="'translate(' + elementsCoord[terr.id]?.[0] + ',' + elementsCoord[terr.id]?.[1] + ')'">
+                      <circle cx="0" cy="0" r="3.5" :fill="terr.owner >= 0 ? playerColors[terr.owner] : 'white'" fill-opacity="0.95" stroke="#333" stroke-width="0.3"/>
+                      <text class="token-text" x="0" y="1" font-size="3" text-anchor="middle" fill="black" 
+                            x-text="terr.nbPeople > 0 ? terr.nbPeople : ''"></text>
+                    </g>
+
+                    <g x-show="terr.addedDefense > 0" :transform="'translate(' + elementsCoord[terr.id]?.[2] + ',' + elementsCoord[terr.id]?.[3] + ')'">
+                      <rect x="-2.5" y="-2" width="5" height="4" fill="#d95c5c" rx="0.5" stroke="#333" stroke-width="0.2"/>
+                      <text class="token-text" x="0" y="0.8" font-size="2.5" text-anchor="middle" fill="white" 
+                            x-text="'+' + terr.addedDefense"></text>
+                    </g>
+
+                    <g x-show="elementsCoord[terr.id]?.[4] !== -1 && (terr.isCavern || terr.isMine || terr.isMagic)" 
+                       :transform="'translate(' + elementsCoord[terr.id]?.[4] + ',' + elementsCoord[terr.id]?.[5] + ')'">
+                       
+                       <circle cx="0" cy="0" r="2.5" fill="#333" fill-opacity="0.8"/>
+                       <text class="token-text" x="0" y="0.8" font-size="2.2" text-anchor="middle" fill="white" 
+                             x-text="terr.isMagic ? '★' : (terr.isMine ? 'M' : (terr.isCavern ? 'C' : ''))">
+                       </text>
+                    </g>
+
+                  </g>
                 </g>
-                
-              </g>
-            </svg>
-          </template>
-        </div>
+              </svg>
+            </template>
+          </div>
 
-        <div class="ui segment center aligned" style="background-color: #fafafa;">
-          <h4 class="ui header" x-show="$store.game.view.territories.find(t => t.isSelected)">
-            Action sur région <span x-text="$store.game.view.territories.find(t => t.isSelected)?.id ?? ''"></span>
-          </h4>
-          
-          <div class="ui stackable buttons">
-            <button class="ui green button" :disabled="!$store.game.view.ui?.canAttack" @click="$store.game.act('attack')">
-              <i class="crosshairs icon"></i> Attaquer
-            </button>
-            <button class="ui blue button" :disabled="!$store.game.view.ui?.canUsePeople" @click="$store.game.act('use_people')">
-              Peuple Spécial
-            </button>
-            <button class="ui blue button" :disabled="!$store.game.view.ui?.canUsePower" @click="$store.game.act('use_power')">
-              Pouvoir Spécial
-            </button>
-            <button class="ui pink button" :disabled="!$store.game.view.ui?.canDeploy" @click="$store.game.act('deploy')">
-              <i class="map marker alternate icon"></i> Déployer ici
-            </button>
+          <div class="ui segment center aligned" style="background-color: #fafafa; margin-top: 15px;">
+            <h4 class="ui header" x-show="$store.game.view.territories.find(t => t.isSelected)">
+              Action sur région <span x-text="$store.game.view.territories.find(t => t.isSelected)?.id"></span>
+              
+              <div class="sub header" style="margin-top: 5px;">
+                Attaquable: <strong x-text="$store.game.view.territories.find(t => t.isSelected)?.canAttack ? 'Oui' : 'Non'"></strong> | 
+                Déployable: <strong x-text="$store.game.view.territories.find(t => t.isSelected)?.canDeploy ? 'Oui' : 'Non'"></strong>
+              </div>
+            </h4>
+            
+            <div class="ui stackable buttons">
+              <button class="ui green button" :disabled="!$store.game.view.territories.find(t => t.isSelected)?.canAttack" @click="$store.game.act('attack')">
+                <i class="crosshairs icon"></i> Attaquer
+              </button>
+              <button class="ui blue button" :disabled="!$store.game.view.territories.find(t => t.isSelected)?.canUsePeople" @click="$store.game.act('use_people')">
+                Peuple Spécial
+              </button>
+              <button class="ui blue button" :disabled="!$store.game.view.territories.find(t => t.isSelected)?.canUsePower" @click="$store.game.act('use_power')">
+                Pouvoir Spécial
+              </button>
+              <button class="ui pink button" :disabled="!$store.game.view.territories.find(t => t.isSelected)?.canDeploy" @click="$store.game.act('deploy')">
+                <i class="map marker alternate icon"></i> Déployer ici
+              </button>
+            </div>
+            
+            <div class="ui divider"></div>
+            
+            <div class="ui stackable buttons">
+              <button class="ui pink button" :disabled="!$store.game.view.ui?.canDeploy" @click="$store.game.act('start_deploy')">
+                <i class="flag icon"></i> Déploiement
+              </button>
+              <button class="ui black button" :disabled="!$store.game.view.ui?.canEndTurn" @click="$store.game.act('decline')">
+                <i class="bed icon"></i> Déclin
+              </button>
+              <button class="ui primary button" :disabled="!$store.game.view.ui?.canEndTurn" @click="$store.game.act('end_turn')">
+                <i class="step forward icon"></i> Fin du Tour
+              </button>
+            </div>
           </div>
-          
-          <div class="ui divider"></div>
-          
-          <div class="ui stackable buttons">
-            <button class="ui pink button" :disabled="!$store.game.view.ui?.canDeploy" @click="$store.game.act('start_deploy')">
-              <i class="flag icon"></i> Commencer Déploiement
-            </button>
-            <button class="ui black button" @click="$store.game.act('decline')">
-              <i class="bed icon"></i> Déclin
-            </button>
-            <button class="ui primary button" :disabled="!$store.game.view.ui?.canEndTurn" @click="$store.game.act('end_turn')">
-              <i class="step forward icon"></i> Fin du Tour
-            </button>
-          </div>
+
         </div>
-      </div>
 
         <div class="six wide column">
           
@@ -150,15 +175,17 @@
                     <h5 class="ui header" :style="'color: ' + (p.isCurrentTurn ? 'white' : playerColors[p.id])">
                       Joueur <span x-text="p.id"></span>
                     </h5>
-                    <div x-show="p.activePeople.nb > 0 || p.activePeople.type >= 0">
+                    
+                    <div x-show="p.activePeople.nb > 0">
                       <div class="ui small label">
                         Actif: <strong x-text="getPeopleName(p.activePeople.type)"></strong> 
                         - <span x-text="getPowerName(p.activePeople.power)"></span>
                         <div class="detail"><i class="user icon"></i> <span x-text="p.activePeople.nb"></span></div>
                       </div>
                     </div>
+                    
                     <template x-for="(d, idx) in p.declinedPeoples" :key="idx">
-                      <div class="ui small basic label" style="margin-top: 5px;" x-show="d.nb > 0 || d.type >= 0">
+                      <div class="ui small basic label" style="margin-top: 5px;" x-show="d.nb > 0">
                         Déclin: <span x-text="getPeopleName(d.type)"></span>
                         <div class="detail"><i class="user outline icon"></i> <span x-text="d.nb"></span></div>
                       </div>
