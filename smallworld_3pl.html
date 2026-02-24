@@ -3,195 +3,207 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smallworld AI</title>
+  
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
+  
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
-
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
-  <link rel="manifest" href="/icons/site.webmanifest">
-  <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#5bbad5">
-  <link rel="shortcut icon" href="/icons/favicon.ico">
-  <meta name="msapplication-TileColor" content="#da532c">
-  <meta name="msapplication-config" content="/icons/browserconfig.xml">
-  <meta name="theme-color" content="#ffffff">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
   
-  <script src="./smallworld/constants_3pl.js"></script>  
-  <script src="./common/game.js"></script>
-  <script src="./smallworld/smallworld.js"></script>
+  <script src="./smallworld/constants_3pl.js"></script> 
+  <script src="./common/game.js"></script> 
+  <script src="./smallworld/smallworld.js"></script> 
 
   <style>
-      .myReactiveCont {
-          display: grid;
-          gap: 1rem;
-      }
-
-      #boardArea   { grid-area: B; }
-      #playersArea { grid-area: P; }
-      #deckArea    { grid-area: D; }
-
-      /* Layout for tablets and computers */
-      @media (min-width: 768px) {
-          .myReactiveCont {
-              grid-template-columns: 10fr 6fr;
-              grid-template-areas:
-                  "B P"
-                  "B D";
-          }
-      }
-
-      /* Layout for mobile */
-      @media (max-width: 767px) {
-          .myReactiveCont {
-              grid-template-columns: 1fr;
-              grid-template-areas:
-                  "P"
-                  "B"
-                  "D";
-          }
-      }
+    .svg-map { width: 100%; height: auto; background-color: #f0f8ff; border: 1px solid #ccc; border-radius: 8px;}
+    .svg-poly { transition: fill 0.3s, stroke-width 0.2s; cursor: pointer; }
+    .svg-poly:hover { filter: brightness(0.9); }
+    .token-text { font-family: sans-serif; font-weight: bold; pointer-events: none; }
   </style>
 </head>
-</head>
-<body>
 
-<div class="ui borderless menu">
-  <div class="ui container">    
-    <div class="fitted item">
-      <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
-    </div> 
-    <div class="fitted item"> 
-      <button class="ui icon disabled button" id="editBtn"><i class="edit icon"></i></button>
-    </div> 
-    <div class="fitted item"> 
-      <div class="ui small form">
-        <div class="field">
-          <select onchange="game.change_difficulty(this.value)" id="difficultyForm">
-            <optgroup label="Above optimal">
-            <option value="12800"       >God-like</option>
-            <option value="4800"        >Boosted</option>
-            <optgroup label="Level used during training">
-            <option value="1600"        >Native</option>
-            <optgroup label="Sub optimal levels">
-            <option value="400"         >Easy</option>
-            <option value="100"         >Easier</option>
-            <option value="25"  selected>Very easy</option>
-            <option value="10"          >Come on</option>
-          </select>
+<body class="ui container" style="padding-top: 20px;">
+
+  <div x-data="smallworldUI()" x-init="$store.game.start()">
+
+    <div class="ui borderless menu">
+      <div class="item"><div class="ui header">Smallworld</div></div>
+      
+      <div class="item">
+        <div class="ui form"><div class="inline fields" style="margin-bottom: 0;">
+          <template x-for="(isHuman, idx) in $store.game.arePlayersHuman" :key="idx">
+            <div class="field" style="margin-right: 15px;">
+              <label x-text="'P' + idx + ':'"></label>
+              <select x-model="$store.game.arePlayersHuman[idx]" @change="$store.game.trigger_ai_check()" class="ui dropdown compact">
+                <option :value="true">Humain</option>
+                <option :value="false">IA</option>
+              </select>
+            </div>
+          </template>
+        </div></div>
+      </div>
+
+      <div class="right menu">
+        <div class="item">
+          <button class="ui icon button" @click="$store.game.undo()" :disabled="!$store.game.canUndo || $store.game.isLoading || $store.game.isThinking">
+            <i class="undo icon"></i>
+          </button>
+        </div>
+        <div class="item">
+          <button class="ui icon button" @click="$store.game.reset()" :disabled="$store.game.isLoading || $store.game.isThinking">
+            <i class="sync icon"></i>
+          </button>
         </div>
       </div>
     </div>
-    <div class="fitted item"> 
-      <div class="ui small form">
-        <div class="field">
-          <select onchange="changeGameMode(this.value)">
-            <option value="P0" selected>You vs AI</option>
-            <option value="P1"         >AI vs you</option>
-            <option value="Human"      >No AI</option>
-            <option value="AI"         >WarGames</option>
-          </select>
+
+    <div class="ui center aligned basic segment">
+      <div x-show="$store.game.isLoading" class="ui active inline loader"></div>
+      <div x-show="$store.game.isThinking" class="ui active centered inline loader text">L'IA réfléchit...</div>
+      <h2 x-show="!$store.game.isLoading && !$store.game.isThinking" class="ui header" x-text="$store.game.statusMessage"></h2>
+    </div>
+
+    <template x-if="$store.game.view && $store.game.view.territories && !$store.game.isLoading">
+      <div class="ui stackable grid"> 
+        <div class="ten wide column">
+        
+        <div style="position: relative; width: 100%; aspect-ratio: 1.4; background-color: #f0f8ff; border: 1px solid #ccc; border-radius: 8px; overflow: hidden;">
+          
+          <template x-for="terr in $store.game.view.territories" :key="terr.id">
+            
+            <svg style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;" 
+                 :viewBox="typeof mapDimensions !== 'undefined' ? mapDimensions : '0 0 140 100'">
+              
+              <g style="pointer-events: auto;">
+                
+                <polygon class="svg-poly"
+                         :points="getPolyPoints(terr.id)"
+                         :fill="terr.owner >= 0 ? playerColors[terr.owner] : '#e8e8e8'"
+                         :stroke="terr.isSelected ? '#ff0000' : '#333'"
+                         :stroke-width="terr.isSelected ? 0.8 : 0.2"
+                         :stroke-dasharray="terr.canAttack ? '1, 0.5' : 'none'"
+                         @click="$store.game.act('select_area', terr.id)">
+                </polygon>
+
+                <g :transform="'translate(' + getCenter(terr.id)[0] + ',' + getCenter(terr.id)[1] + ')'">
+                  <circle cx="0" cy="0" r="3" fill="white" fill-opacity="0.85" stroke="#333" stroke-width="0.3"/>
+                  
+                  <text class="token-text" x="0" y="0.8" font-size="2.5" text-anchor="middle" fill="black" 
+                        x-text="terr.nbPeople > 0 ? terr.nbPeople : ''"></text>
+                  
+                  <text class="token-text" x="2.5" y="-1.5" font-size="1.5" text-anchor="middle" fill="#d95c5c" 
+                        x-show="terr.addedDefense > 0" x-text="'+' + terr.addedDefense"></text>
+                  
+                  <circle cx="-2" cy="-2" r="0.8" fill="#555" x-show="terr.isCavern"/>
+                </g>
+                
+              </g>
+            </svg>
+          </template>
+        </div>
+
+        <div class="ui segment center aligned" style="background-color: #fafafa;">
+          <h4 class="ui header" x-show="$store.game.view.territories.find(t => t.isSelected)">
+            Action sur région <span x-text="$store.game.view.territories.find(t => t.isSelected)?.id ?? ''"></span>
+          </h4>
+          
+          <div class="ui stackable buttons">
+            <button class="ui green button" :disabled="!$store.game.view.ui?.canAttack" @click="$store.game.act('attack')">
+              <i class="crosshairs icon"></i> Attaquer
+            </button>
+            <button class="ui blue button" :disabled="!$store.game.view.ui?.canUsePeople" @click="$store.game.act('use_people')">
+              Peuple Spécial
+            </button>
+            <button class="ui blue button" :disabled="!$store.game.view.ui?.canUsePower" @click="$store.game.act('use_power')">
+              Pouvoir Spécial
+            </button>
+            <button class="ui pink button" :disabled="!$store.game.view.ui?.canDeploy" @click="$store.game.act('deploy')">
+              <i class="map marker alternate icon"></i> Déployer ici
+            </button>
+          </div>
+          
+          <div class="ui divider"></div>
+          
+          <div class="ui stackable buttons">
+            <button class="ui pink button" :disabled="!$store.game.view.ui?.canDeploy" @click="$store.game.act('start_deploy')">
+              <i class="flag icon"></i> Commencer Déploiement
+            </button>
+            <button class="ui black button" @click="$store.game.act('decline')">
+              <i class="bed icon"></i> Déclin
+            </button>
+            <button class="ui primary button" :disabled="!$store.game.view.ui?.canEndTurn" @click="$store.game.act('end_turn')">
+              <i class="step forward icon"></i> Fin du Tour
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-    <div class="right menu">
-      <div class="fitted item">
-        <i class="circular inverted info small icon link" id="toggleDetailsBtn" onclick="move_sel.toggleDetails()"></i>
+
+        <div class="six wide column">
+          
+          <h4 class="ui dividing header">Joueurs</h4>
+          <div class="ui segments">
+            <template x-for="p in $store.game.view.players" :key="p.id">
+              <div class="ui segment" :class="p.isCurrentTurn ? 'secondary inverted blue' : ''">
+                <div class="ui grid">
+                  <div class="twelve wide column">
+                    <h5 class="ui header" :style="'color: ' + (p.isCurrentTurn ? 'white' : playerColors[p.id])">
+                      Joueur <span x-text="p.id"></span>
+                    </h5>
+                    <div x-show="p.activePeople.nb > 0 || p.activePeople.type >= 0">
+                      <div class="ui small label">
+                        Actif: <strong x-text="getPeopleName(p.activePeople.type)"></strong> 
+                        - <span x-text="getPowerName(p.activePeople.power)"></span>
+                        <div class="detail"><i class="user icon"></i> <span x-text="p.activePeople.nb"></span></div>
+                      </div>
+                    </div>
+                    <template x-for="(d, idx) in p.declinedPeoples" :key="idx">
+                      <div class="ui small basic label" style="margin-top: 5px;" x-show="d.nb > 0 || d.type >= 0">
+                        Déclin: <span x-text="getPeopleName(d.type)"></span>
+                        <div class="detail"><i class="user outline icon"></i> <span x-text="d.nb"></span></div>
+                      </div>
+                    </template>
+                  </div>
+                  <div class="four wide column right aligned">
+                    <h3 class="ui header" :class="p.isCurrentTurn ? 'inverted' : ''">
+                      <span x-text="p.score"></span> <i class="yellow star icon"></i>
+                    </h3>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <h4 class="ui dividing header">Pioche disponible</h4>
+          <div class="ui middle aligned selection list">
+            <template x-for="deckItem in $store.game.view.deck" :key="deckItem.index">
+              <div class="item" 
+                   :class="!deckItem.canChoose ? 'disabled' : ''"
+                   @click="deckItem.canChoose ? $store.game.act('choose_deck', deckItem.index) : null"
+                   style="padding: 10px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 5px;">
+                
+                <div class="right floated content">
+                  <button class="ui compact button" :class="deckItem.canChoose ? 'blue' : 'grey'">
+                    <span x-text="deckItem.index"></span> <i class="coins icon yellow"></i>
+                  </button>
+                </div>
+                
+                <div class="content">
+                  <div class="header" x-text="getPeopleName(deckItem.peopleType)"></div>
+                  <div class="description">
+                    <span x-text="getPowerName(deckItem.power)"></span>
+                    <div class="ui horizontal mini label"><span x-text="deckItem.nbPeople"></span> troupes</div>
+                    <span x-show="deckItem.coins > 0" class="ui circular mini yellow label" x-text="deckItem.coins"></span>
+                  </div>
+                </div>
+
+              </div>
+            </template>
+          </div>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
-</div>
 
-
-<div class="ui container">
-
-  <h1 class="ui huge center aligned header">Smallworld with AI</h1> 
-
-  <div class="ui compact grid">
-    <div class="myReactiveCont">
-
-      <div class="item" id="boardArea">
-        <div class="ui large horizontal divider">Board</div>
-        <!-- Action buttons -->
-        <div class="ui fluid small compact buttons" id="allBtn" style="display: none">
-          <button class="ui button" id="choseBtn"    onclick="move_sel.clickOnButton(this.id)">Choose <i class="users icon"></i> + <i class="magic icon"></i></button>
-          <button class="ui button" id="abandonBtn"  onclick="move_sel.clickOnButton(this.id)">Abandon</button>
-          <button class="ui button" id="attackBtn"   onclick="move_sel.clickOnButton(this.id)">Attack</button>
-          <button class="ui button" id="usePplBtn"   onclick="move_sel.clickOnButton(this.id)">Use <i class="users icon"></i></button>
-          <button class="ui button" id="usePwrBtn"   onclick="move_sel.clickOnButton(this.id)">Use <i class="magic icon"></i></button>
-          <button class="ui button" id="deploy1Btn"  onclick="move_sel.clickOnButton(this.id)">Redeploy</button>
-          <button class="ui button" id="noDeployBtn" onclick="move_sel.clickOnButton(this.id)">No redeploy</button>    
-          <button class="ui button" id="declineBtn"  onclick="move_sel.clickOnButton(this.id)">Decline</button>    
-          <button class="ui button" id="endTurnBtn"  onclick="move_sel.clickOnButton(this.id)">End turn</button>  
-          <button class="ui button" id="startDplBtn" onclick="move_sel.clickOnButton(this.id)">Start depl</button>
-          <button class="ui button" id="startBtn"    onclick="move_sel.clickOnButton(this.id)">Install lost tribe</button>
-          <button class="ui icon button" id="undoBtn" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
-        </div>
-        <button class="ui fluid active loading button" id="loadingBtn">‌</button>
-
-        <span class="ui small text" id="actionDescr"></span>
-        <button class="ui fluid compact secondary button" id="confirmBtn" onclick="move_sel.confirm()" style="display: none">Confirm</button>    
-
-        <!-- Board -->
-        <svg viewBox="0 0 1 1" id="boardSvg"></svg>
-      </div>
-
-      <div class="item" id="playersArea">
-        <!-- Current players -->
-        <div class="ui large horizontal divider" id="p0Score">You</i></div>
-        <div id="p0Ppl"></div>
-
-        <div class="ui large horizontal divider" id="p1Score">AI 1</div>
-        <div id="p1Ppl"></div>
-
-        <div class="ui large horizontal divider" id="p2Score">AI 2</div>
-        <div id="p2Ppl"></div>
-      </div>
-
-      <div class="item" id="deckArea">
-        <div class="ui large horizontal divider">Deck</div>
-        <!-- Round -->
-        <div class="ui circular labels" id="roundP" style="max-width: fit-content; margin-inline: auto;"></div>
-        <!-- Deck -->  
-        <div class="ui middle aligned very compact grid">
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(0)" id="deck0Btn">0 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck0Descr">-</div>
-
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(1)" id="deck1Btn">1 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck1Descr">-</div>
-
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(2)" id="deck2Btn">2 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck2Descr">-</div>
-
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(3)" id="deck3Btn">3 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck3Descr">-</div>
-
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(4)" id="deck4Btn">4 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck4Descr">-</div>
-
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(5)" id="deck5Btn">5 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck5Descr">-</div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<script>
-  const allBtn      = document.getElementById('allBtn');
-  const undoBtn     = document.getElementById('undoBtn');
-  const loadingBtn  = document.getElementById('loadingBtn');
-  const editBtn     = document.getElementById('editBtn');
-  const moveSgmt    = document.getElementById('moveSgmt');
-
-  const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
-  const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
-  window.onload = () =>
-    [ `${counterAPI_base}/overall`, `${counterAPI_base}/overall_${counterAPI_suffix}`,`${counterAPI_base}/smallworld_${counterAPI_suffix}`]
-    .forEach(u => fetch(u).catch(() => {}));
-
-  main(usePyodide=true);
-</script>
 </body>
 </html>
