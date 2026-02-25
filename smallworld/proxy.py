@@ -27,6 +27,7 @@ player = 0         # Current player ID
 history = []       # History for Undo feature
 valids = []        # Valid moves bitmask
 game_result = [0] * NUMBER_PLAYERS
+action_log = []
 
 # --- UI State Machine ---
 selected_area = -1 # -1 means no area is currently selected
@@ -37,7 +38,7 @@ edit_mode = 0      # 0: Play, 1: Edit
 # ==========================================
 
 def init_game(numMCTSSims):
-    global g, board, mcts, player, history, valids, game_result
+    global g, board, mcts, player, history, valids, game_result, action_log
     global selected_area, edit_mode
 
     mcts_args = dotdict({
@@ -55,6 +56,7 @@ def init_game(numMCTSSims):
     mcts = MCTS(g, None, mcts_args)
     player = 0
     history = []
+    action_log = []
     
     valids = g.getValidMoves(board, player) 
     game_result = [0] * NUMBER_PLAYERS
@@ -65,14 +67,21 @@ def init_game(numMCTSSims):
     return get_render_state()
 
 def getNextState(action):
-    global g, board, mcts, player, history, valids, game_result, selected_area
+    global g, board, mcts, player, history, valids, game_result, selected_area, action_log
     
     # Save history
     history.insert(0, [player, np.copy(board)])
+    try:
+        m_str = move_to_str(action, player)
+    except:
+        m_str = f"Action {action}"
+    action_log.insert(0, f"J{player}: {m_str}")
+    if len(action_log) > 6:
+        action_log.pop()
     
     # Execute move
     board, player = g.getNextState(board, player, action)
-    
+
     # Check end game
     res = g.getGameEnded(board, player) 
     if any(r != 0 for r in res):
@@ -85,7 +94,7 @@ def getNextState(action):
     return get_render_state()
 
 def undo(player_types=None):
-    global g, board, player, history, valids, game_result, selected_area
+    global g, board, player, history, valids, game_result, selected_area, action_log
     
     # 1. Local UI Undo
     if selected_area != -1:
@@ -101,6 +110,7 @@ def undo(player_types=None):
             board = prev[1]
             valids = g.getValidMoves(board, player)
             game_result = [0] * NUMBER_PLAYERS
+            if len(action_log) > 0: action_log.pop(0)
             return True
         return False
 
@@ -310,7 +320,8 @@ def get_render_state():
             'territories': territories_data,
             'players': players_data,
             'deck': deck_data,
-            'ui': ui_actions
+            'ui': ui_actions,
+            'actionLog': action_log,
         }
     }
     

@@ -60,7 +60,12 @@
 
     <div class="ui center aligned basic segment">
       <div x-show="$store.game.isLoading" class="ui active inline loader"></div>
-      <div x-show="$store.game.isThinking" class="ui active centered inline loader text">L'IA réfléchit...</div>
+        <div x-show="$store.game.isThinking" class="ui active centered inline loader text">
+        L'IA réfléchit...
+        <button class="ui mini red basic button" style="margin-left: 15px;" @click="$store.game.arePlayersHuman[$store.game.view.currentPlayer] = true">
+          <i class="stop icon"></i> Stopper l'IA
+        </button>
+      </div>
       <h2 x-show="!$store.game.isLoading && !$store.game.isThinking" class="ui header" x-text="$store.game.statusMessage"></h2>
     </div>
 
@@ -166,6 +171,23 @@
 
         <div class="six wide column">
           
+          <h4 class="ui dividing header">Dernières actions</h4>
+          <div class="ui segment" style="max-height: 160px; overflow-y: auto; background-color: #fafafa; padding: 10px;">
+            <div class="ui relaxed list" x-show="$store.game.view.actionLog && $store.game.view.actionLog.length > 0">
+              <template x-for="(log, idx) in $store.game.view.actionLog" :key="idx">
+                <div class="item">
+                  <i class="angle right icon"></i>
+                  <div class="content">
+                    <div class="description" x-text="log" :style="idx === 0 ? 'font-weight: bold; color: black;' : 'color: grey;'"></div>
+                  </div>
+                </div>
+              </template>
+            </div>
+            <div x-show="!$store.game.view.actionLog || $store.game.view.actionLog.length === 0" class="ui disabled text" style="text-align: center;">
+              Aucune action pour le moment.
+            </div>
+          </div>
+
           <h4 class="ui dividing header">Joueurs</h4>
           <div class="ui segments">
             <template x-for="p in $store.game.view.players" :key="p.id">

@@ -84,6 +84,22 @@ document.addEventListener('alpine:init', () => {
 });
 
 /* =================== */
+/* ===== AI TWEAK ==== */
+/* =================== */
+
+// Écrase la fonction globale de game.js spécifiquement pour Smallworld
+// Permet d'enchaîner les nombreux coups d'un tour sans la pause de 800ms
+window.check_ai_turn = async function() {
+    const store = Alpine.store('game');
+    if (store.gameEnded || store.editMode !== 0) return;
+    
+    if (!is_nextplayer_human()) {
+        // Pause très courte de 50ms au lieu de 800ms
+        setTimeout(() => execute_ai_move(), 50); 
+    }
+}
+
+/* =================== */
 /* ===== ANALYTICS === */
 /* =================== */
 
