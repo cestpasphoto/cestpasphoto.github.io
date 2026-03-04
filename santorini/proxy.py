@@ -138,21 +138,20 @@ def handle_action(action_name, *args):
 
         # --- Step 0: Select Worker ---
         if interaction_step == 0:
-            worker_val = board[y, x, 0]
-            if worker_val > 0: 
-                if _has_valid_moves(y, x):
-                    interaction_step = 1
-                    selected_worker_pos = (y, x)
+            # FIX: Use _get_worker_id instead of rigid > 0 check to allow Player 1 negative values
+            if _get_worker_id(y, x) != -1 and _has_valid_moves(y, x):
+                interaction_step = 1
+                selected_worker_pos = (y, x)
 
         # --- Step 1: Select Move Target ---
         elif interaction_step == 1:
-            # On vérifie D'ABORD si cliquer ici est un mouvement valide (permet le NO_MOVE pour certains dieux)
+            # Check FIRST if the move is valid (allows NO_MOVE on the worker itself for complex gods)
             if _is_valid_move_target(y, x):
                 interaction_step = 2
                 selected_move_pos = (y, x)
             elif (y, x) == selected_worker_pos:
                 _reset_interaction()
-            elif board[y, x, 0] > 0 and _has_valid_moves(y, x):
+            elif _get_worker_id(y, x) != -1 and _has_valid_moves(y, x):
                 # Changed mind: selected another own worker
                 selected_worker_pos = (y, x)
             else:
@@ -169,11 +168,7 @@ def handle_action(action_name, *args):
     
     elif actionName == "togglePower":
         use_power = args[0]
-        # On réinitialise l'étape à la sélection du mouvement (ou du worker) 
-        # pour forcer le joueur à re-sélectionner sa cible avec/sans pouvoir
-        if interaction_step > 0:
-            interaction_step = 1
-            selected_move_pos = None
+        # No need to reset interaction anymore, UI allows all valid targets visually
 
     return get_render_state()
 
@@ -187,7 +182,6 @@ async def run_ai_step():
 # ==========================================
 # ===== LOGIC HELPERS ======================
 # ==========================================
-
 
 def _end_game():
     return max(game_result) > 0
@@ -211,10 +205,7 @@ def _apply_edit(y, x):
         elif val < 0: board[y, x, 0] = 0
         else: board[y, x, 0] = 1
 
-# --- NOUVEAUX HELPERS DYNAMIQUES POUR LES DIEUX ---
-
 def _get_worker_id(y, x):
-    """Identifie si le worker cliqué est le worker 0 ou 1 du joueur courant."""
     val = board[y, x, 0]
     if player == 0:
         if val == 1: return 0
@@ -225,15 +216,21 @@ def _get_worker_id(y, x):
     return -1
 
 def _coords_to_direction(from_y, from_x, to_y, to_x):
-    """Convertit deux coordonnées en direction de 0 à 8 (4 = sur place)."""
     diff_y = to_y - from_y
     diff_x = to_x - from_x
     if abs(diff_y) > 1 or abs(diff_x) > 1:
-        return -1 # Coordonnées trop éloignées
+        return -1
     return (diff_y + 1) * 3 + (diff_x + 1)
 
+def _direction_to_coords(from_y, from_x, direction):
+    if direction == 4:
+        return from_y, from_x
+    diff_y = (direction // 3) - 1
+    diff_x = (direction % 3) - 1
+    return from_y + diff_y, from_x + diff_x
+
 def _get_valid_actions_for_worker(y, x):
-    """Récupère toutes les paires (move_dir, build_dir) valides pour un worker donné, selon l'état du bouton 'Power'."""
+    """Returns all valid (m_dir, b_dir, p) tuples for a worker, ignoring use_power toggle for visual highlighting."""
     w_id = _get_worker_id(y, x)
     if w_id == -1: return []
     
@@ -241,71 +238,57 @@ def _get_valid_actions_for_worker(y, x):
     for action, is_valid in enumerate(valids):
         if is_valid:
             w, p, m_dir, b_dir = constants._decode_action(action)
-            # On ne garde que les actions du worker sélectionné ET qui correspondent à l'état du pouvoir
-            if w == w_id and bool(p) == use_power:
-                valid_actions.append((m_dir, b_dir))
+            if w == w_id:
+                valid_actions.append((m_dir, b_dir, bool(p)))
     return valid_actions
 
-def _has_any_valid_move(power_active):
-    """Vérifie s'il existe au moins une action valide dans l'absolu avec/sans pouvoir (pour activer les boutons UI)."""
-    for action, is_valid in enumerate(valids):
-        if is_valid:
-            w, p, m_dir, b_dir = constants._decode_action(action)
-            if bool(p) == power_active:
-                return True
-    return False
-
 def _has_valid_moves(y, x):
-    """Vérifie si le worker cliqué a des coups jouables."""
     return len(_get_valid_actions_for_worker(y, x)) > 0
 
 def _is_valid_move_target(y, x):
-    """Vérifie si la case ciblée correspond à une direction de mouvement valide."""
     m_dir = _coords_to_direction(selected_worker_pos[0], selected_worker_pos[1], y, x)
     if m_dir == -1: return False
     
-    valid_actions = _get_valid_actions_for_worker(selected_worker_pos[0], selected_worker_pos[1])
-    # S'il existe au moins une action valide qui commence par ce mouvement, c'est bon
-    for v_m_dir, v_b_dir in valid_actions:
+    for v_m_dir, v_b_dir, v_p in _get_valid_actions_for_worker(selected_worker_pos[0], selected_worker_pos[1]):
         if v_m_dir == m_dir:
             return True
     return False
 
 def _is_valid_build_target(y, x):
-    """Vérifie si la case ciblée correspond à une direction de construction valide, sachant le mouvement précédent."""
     m_dir = _coords_to_direction(selected_worker_pos[0], selected_worker_pos[1], selected_move_pos[0], selected_move_pos[1])
     b_dir = _coords_to_direction(selected_move_pos[0], selected_move_pos[1], y, x)
     if m_dir == -1 or b_dir == -1: return False
     
-    valid_actions = _get_valid_actions_for_worker(selected_worker_pos[0], selected_worker_pos[1])
-    # Il faut que le couple exact (mouvement choisi, construction ciblée) soit valide
-    for v_m_dir, v_b_dir in valid_actions:
+    for v_m_dir, v_b_dir, v_p in _get_valid_actions_for_worker(selected_worker_pos[0], selected_worker_pos[1]):
         if v_m_dir == m_dir and v_b_dir == b_dir:
             return True
     return False
 
 def _construct_action_from_selection(build_y, build_x):
-    """Encode le choix final du joueur en un entier 'action' compréhensible par le moteur Python/C++."""
+    """Intelligently matches the user's clicks to the exact required engine action integer."""
     w_id = _get_worker_id(selected_worker_pos[0], selected_worker_pos[1])
     m_dir = _coords_to_direction(selected_worker_pos[0], selected_worker_pos[1], selected_move_pos[0], selected_move_pos[1])
     b_dir = _coords_to_direction(selected_move_pos[0], selected_move_pos[1], build_y, build_x)
-    return constants._encode_action(w_id, int(use_power), m_dir, b_dir)
-
-def _direction_to_coords(from_y, from_x, direction):
-    """Convertit une direction (0-8) en coordonnées (y, x) d'arrivée."""
-    if direction == 4: # Mouvement sur place (NO_MOVE / NO_BUILD)
-        return from_y, from_x
-    diff_y = (direction // 3) - 1
-    diff_x = (direction % 3) - 1
-    return from_y + diff_y, from_x + diff_x
+    
+    chosen_action = -1
+    fallback_action = -1
+    
+    for action, is_valid in enumerate(valids):
+        if is_valid:
+            w, p, v_m, v_b = constants._decode_action(action)
+            if w == w_id and v_m == m_dir and v_b == b_dir:
+                fallback_action = action
+                # If use_power toggle matches the action's power state, it's our primary choice
+                if bool(p) == use_power:
+                    chosen_action = action
+                    break
+                    
+    # Return the exact matched action, or the fallback if the user forgot to toggle the button for an active god
+    return chosen_action if chosen_action != -1 else fallback_action
 
 def _decode_coords_from_action(action):
-    """
-    Prend un entier 'action' généré par le moteur et renvoie les coordonnées sous forme de dictionnaire.
-    """
     w_id, p, m_dir, b_dir = constants._decode_action(action)
     
-    # 1. Retrouver les coordonnées de départ du worker
     worker_y, worker_x = -1, -1
     target_val = (w_id + 1) if player == 0 else -(w_id + 1)
     
@@ -317,13 +300,9 @@ def _decode_coords_from_action(action):
         if worker_y != -1:
             break
             
-    # 2. Calculer la destination du mouvement
     move_y, move_x = _direction_to_coords(worker_y, worker_x, m_dir)
-    
-    # 3. Calculer la cible de construction
     build_y, build_x = _direction_to_coords(move_y, move_x, b_dir)
     
-    # On renvoie le dictionnaire exact attendu par _make_cell
     return {
         'from': (worker_y, worker_x),
         'to': (move_y, move_x),
@@ -331,6 +310,33 @@ def _decode_coords_from_action(action):
         'power': bool(p)
     }
 
+def _can_use_power_context(power_active):
+    """Contextually checks if the power (or non-power) option is mathematically available."""
+    if interaction_step == 0:
+        for action, is_valid in enumerate(valids):
+            if is_valid:
+                w, p, _, _ = constants._decode_action(action)
+                if bool(p) == power_active: return True
+        return False
+        
+    elif interaction_step == 1:
+        w_id = _get_worker_id(selected_worker_pos[0], selected_worker_pos[1])
+        for action, is_valid in enumerate(valids):
+            if is_valid:
+                w, p, _, _ = constants._decode_action(action)
+                if w == w_id and bool(p) == power_active: return True
+        return False
+        
+    elif interaction_step == 2:
+        w_id = _get_worker_id(selected_worker_pos[0], selected_worker_pos[1])
+        m_dir = _coords_to_direction(selected_worker_pos[0], selected_worker_pos[1], selected_move_pos[0], selected_move_pos[1])
+        for action, is_valid in enumerate(valids):
+            if is_valid:
+                w, p, v_m_dir, _ = constants._decode_action(action)
+                if w == w_id and v_m_dir == m_dir and bool(p) == power_active: return True
+        return False
+    return False
+    
 # ==========================================
 # ===== VIEW GENERATION ====================
 # ==========================================
@@ -359,8 +365,8 @@ def get_render_state():
     cells = [ [_make_cell(r, c, board, interaction_step) for c in range(5)] for r in range(5) ]
 
     # 3. Récupération des dieux assignés par la logique (0 si pas de dieux)
-    p0_god = int(g.board.gods_power.ravel()[0]) if constants.NB_GODS > 1 else 0
-    p1_god = int(g.board.gods_power.ravel()[1]) if constants.NB_GODS > 1 else 0
+    p0_god = int((g.board.gods_power.flat[constants.NB_GODS*0: constants.NB_GODS*1] >= 64).argmax()) if constants.NB_GODS > 1 else 0
+    p1_god = int((g.board.gods_power.flat[constants.NB_GODS*1: constants.NB_GODS*2] >= 64).argmax()) if constants.NB_GODS > 1 else 0
 
     return json.dumps({
         'viewData': {
@@ -371,12 +377,13 @@ def get_render_state():
         'gameEnded': _end_game(),
         'editMode': edit_mode,
         'canUndo': (len(history) > 0 or interaction_step > 0),
-        'p0_god': p0_god,
-        'p1_god': p1_god,
-        'isPowerActive': use_power,
-        # Les boutons s'activent si le joueur a au moins un coup valide avec/sans pouvoir
-        'canSelectPower': _has_any_valid_move(power_active=True),
-        'canSelectNoPower': _has_any_valid_move(power_active=False),
+        'extra': {
+            'p0_god': p0_god,
+            'p1_god': p1_god,
+            'isPowerActive': use_power,
+            'canSelectPower': _can_use_power_context(True),
+            'canSelectNoPower': _can_use_power_context(False),
+        },
     })
 
 def _make_cell(r, c, board, interaction_step):
@@ -399,7 +406,8 @@ def _make_cell(r, c, board, interaction_step):
     elif not _end_game():
         # Step 0: Own Workers
         if interaction_step == 0:
-            if w_val > 0 and _has_valid_moves(r, c):
+            # FIX: Allow Player 1 to select their workers
+            if _get_worker_id(r, c) != -1 and _has_valid_moves(r, c):
                 cell['isSelectable'] = True
             if (r, c) == previous_coords.get('from'):
                 cell['lastWorker'] = True
@@ -408,16 +416,19 @@ def _make_cell(r, c, board, interaction_step):
         
         # Step 1: Move Targets
         elif interaction_step == 1:
+            # FIX: Make cell selectable IF it's a valid move (even on itself for NO_MOVE)
+            if _is_valid_move_target(r, c):
+                cell['isSelectable'] = True
+            # Visual highlight remains independent
             if (r, c) == selected_worker_pos:
                 cell['isSelected'] = True
-            elif _is_valid_move_target(r, c):
-                cell['isSelectable'] = True
-        
+                
         # Step 2: Build Targets
         elif interaction_step == 2:
+            # FIX: Make cell selectable IF it's a valid build (even on itself for NO_BUILD)
+            if _is_valid_build_target(r, c):
+                cell['isSelectable'] = True
             if (r, c) == selected_move_pos:
                 cell['isSelected'] = True
-            elif _is_valid_build_target(r, c):
-                cell['isSelectable'] = True
 
     return cell

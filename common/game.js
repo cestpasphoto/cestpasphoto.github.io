@@ -23,7 +23,8 @@ document.addEventListener('alpine:init', () => {
         numMCTSSims: numMCTSSims,
         
         // --- Données Spécifiques au Jeu ---
-        view: {}, // Remplace 'cells'. Python y injectera ce qu'il veut.
+        view: {}, // Replaced 'cells'. Python injects what it wants here.
+        extra: {}, // Generic container for any game-specific metadata (gods, powers, etc.)
 
         // --- Actions ---
         start() { init_infrastructure() },
@@ -32,8 +33,12 @@ document.addEventListener('alpine:init', () => {
         async act(actionName, ...args) {
             if (this.isLoading || this.isThinking || this.gameEnded) return;
             
-            // Sérialisation propre des arguments pour Python
-            let argsStr = args.map(a => JSON.stringify(a)).join(', ');
+            // Clean serialization of arguments for Python
+            // Boolean values must be converted to Python's capitalized 'True'/'False'
+            let argsStr = args.map(a => {
+                if (typeof a === 'boolean') return a ? 'True' : 'False';
+                return JSON.stringify(a);
+            }).join(', ');
             
             try {
                 let json = await pyodide.runPythonAsync(`proxy.handle_action("${actionName}", ${argsStr})`);
@@ -163,6 +168,7 @@ function update_store(jsonString) {
     
     // Le conteneur spécifique au jeu
     store.view = newState.viewData;
+    store.extra = newState.extra;
 
     check_ai_turn();
 }
