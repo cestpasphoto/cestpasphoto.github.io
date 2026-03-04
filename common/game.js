@@ -12,7 +12,7 @@ document.addEventListener('alpine:init', () => {
         isLoading: true,
         isThinking: false,
         loadingMessage: "Initializing Application...",
-        arePlayersHuman: [true, false, false], // Peut être surchargé par le x-init du HTML
+        arePlayersHuman: Array.from({ length: numPlayers }, (_, i) => i === 0),
         
         // --- Données Standard ---
         statusMessage: "",
@@ -20,6 +20,7 @@ document.addEventListener('alpine:init', () => {
         gameEnded: false,
         editMode: 0,
         canUndo: false,
+        numMCTSSims: numMCTSSims,
         
         // --- Données Spécifiques au Jeu ---
         view: {}, // Remplace 'cells'. Python y injectera ce qu'il veut.
@@ -46,6 +47,20 @@ document.addEventListener('alpine:init', () => {
         toggleEdit() { handle_edit_toggle() },
         reset() { handle_reset() },
         trigger_ai_check() { check_ai_turn(); },
+        changeDifficulty() { pyodide.runPythonAsync(`proxy.changeDifficulty(${this.numMCTSSims})`); },
+        setGameMode(value) {
+            const modes = {
+                'P0':    Array.from({ length: numPlayers }, (_, i) => i === 0),
+                'P1':    Array.from({ length: numPlayers }, (_, i) => i === 1),
+                'Human': new Array(numPlayers).fill(true),
+                'AI':    new Array(numPlayers).fill(false),
+            };
+            
+            if (modes[value]) {
+                this.arePlayersHuman = modes[value];
+                check_ai_turn();
+            }
+        },
     });
 });
 
@@ -157,10 +172,11 @@ function is_nextplayer_human() {
     return store.arePlayersHuman[store.currentPlayer];
 }
 
-async function handle_undo(playerTypes) {
+async function handle_undo(arePlayersHuman) {
     if (Alpine.store('game').isLoading || Alpine.store('game').isThinking) return;
     try {
-        let json = await pyodide.runPythonAsync(`proxy.undo(${JSON.stringify(playerTypes)})`);
+        let pyArgs = JSON.stringify(arePlayersHuman).replace(/true/g, 'True').replace(/false/g, 'False');
+        let json = await pyodide.runPythonAsync(`proxy.undo(${pyArgs})`);
         update_store(json);
     } catch (e) {
         console.error("Undo Error:", e);

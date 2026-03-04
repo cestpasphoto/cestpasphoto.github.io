@@ -3,154 +3,168 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Santorini AI</title>
-  
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
-  
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
   
   <script src="./santorini/constants_nogod.js"></script>
-  <script src="./common/game.js"></script> <script src="./santorini/main.js"></script> <style>
-    /* Custom Grid Layout for the Board */
-    .board-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 5px;
-      margin-top: 20px;
-      max-width: 500px; /* Limit board size */
-      margin-left: auto;
-      margin-right: auto;
+  <script src="./common/game.js"></script>
+  <script src="./santorini/main.js"></script>
+  <style>
+    .ui.table tbody tr td.selectable {
+      background-color: #f3f8ff;
     }
 
-    .board-cell {
-      position: relative;
-      aspect-ratio: 1 / 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      text-align: center;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      cursor: default;
-      transition: background-color 0.2s;
-      white-space: pre-wrap; /* Allow newlines in text (P0 \n 2) */
+    .ui.table tbody tr td.selectable:hover {
+      background-color: #e8f1ff;
     }
-
-    .board-cell.clickable {
-      cursor: pointer;
-    }
-    
-    /* Semantic UI Color Mappings override or utility */
-    .bg-white { background-color: #ffffff; }
-    .bg-blue { background-color: #2185d0; color: white; }
-    .bg-teal { background-color: #00b5ad; color: white; }
-    .bg-green { background-color: #21ba45; color: white; }
-    .bg-red { background-color: #db2828; color: white; }
-    .bg-yellow { background-color: #fbbd08; color: white; }
-    .bg-orange { background-color: #f2711c; color: white; }
   </style>
 </head>
+<body><div x-data x-init="$store.game.start()">
 
-<body class="ui container" style="padding-top: 20px;">
 
-  <div x-data x-init="$store.game.start()">
-  
-    <div class="ui borderless menu">
-      <div class="item">
-        <div class="ui header">Santorini</div>
-      </div>
-
-      <div class="item">
-        <div class="ui form">
-          <div class="inline fields" style="margin-bottom: 0;">
-            <div class="field">
-              <label>P0:</label>
-              <select x-model.boolean="$store.game.arePlayersHuman[0]" @change="$store.game.trigger_ai_check()" :disabled="$store.game.isThinking" class="ui compact">
-                <option :value="true" :selected="$store.game.arePlayersHuman[0] === true">Human</option>
-                <option :value="false" :selected="$store.game.arePlayersHuman[0] === false">IA</option>
-              </select>
-            </div>
-            <div class="field" style="margin-left: 10px;">
-              <label>P1:</label>
-              <select x-model.boolean="$store.game.arePlayersHuman[1]" @change="$store.game.trigger_ai_check()" :disabled="$store.game.isThinking" class="ui compact">
-                <option :value="true" :selected="$store.game.arePlayersHuman[1] === true">Human</option>
-                <option :value="false" :selected="$store.game.arePlayersHuman[1] === false">IA</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="right menu">
-        <div class="item">
-          <button class="ui icon button" 
-                  :class="{'yellow': $store.game.editMode === 1, 'orange': $store.game.editMode === 2}" 
-                  @click="$store.game.toggleEdit()"
-                  :disabled="$store.game.isLoading || $store.game.isThinking">
-            <i class="edit icon"></i>
-            <span x-show="$store.game.editMode === 1">Levels</span>
-            <span x-show="$store.game.editMode === 2">Workers</span>
-          </button>
-        </div>
-
-        <div class="item">
-          <button class="ui icon button" 
-                  @click="$store.game.undo()" 
-                  :disabled="!$store.game.canUndo || $store.game.isLoading || $store.game.isThinking">
-            <i class="undo icon"></i>
-          </button>
-        </div>
-
-        <div class="item">
-          <button class="ui icon button" 
-                  @click="$store.game.reset()" 
-                  :disabled="$store.game.isLoading || $store.game.isThinking">
-            <i class="sync icon"></i>
-          </button>
+<div class="ui borderless menu">
+  <div class="ui container">    
+    <div class="fitted item">
+      <button class="ui icon button" @click="$store.game.reset()"><i class="file outline icon"></i></button>
+    </div> 
+    <div class="fitted item"> 
+      <button class="ui icon button" @click="$store.game.toggleEdit()"><i class="edit icon"></i></button>
+    </div> 
+    <div class="fitted item"> 
+      <div class="ui small form">
+        <div class="field">
+          <select 
+            x-model.number="$store.game.numMCTSSims" 
+            @change="$store.game.changeDifficulty()" 
+            class="ui dropdown">
+            <optgroup label="Above optimal">
+            <option value="12800"       >God-like</option>
+            <option value="3200"       >Boosted</option>
+            </optgroup>
+            <optgroup label="Level used during training">
+            <option value="800"        >Native</option>
+            </optgroup>
+            <optgroup label="Sub optimal levels">
+            <option value="200"        >Medium</option>
+            <option value="50" selected>Easy</option>
+            <option value="12"         >Easier</option>
+            <option value="3"          >Come on</option>
+            </optgroup>
+          </select>
         </div>
       </div>
     </div>
-
-    <div class="ui center aligned basic segment">
-      <div x-show="$store.game.isLoading" class="ui icon message">
-        <i class="notched circle loading icon"></i>
-        <div class="content">
-          <div class="header">Just one second</div>
-          <p x-text="$store.game.loadingMessage"></p>
+    <div class="fitted item"> 
+      <div class="ui small form">
+        <div class="field">
+          <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
+              <option value="P0" selected>You vs AI</option>
+              <option value="P1">AI vs you</option>
+              <option value="Human">No AI</option>
+              <option value="AI">WarGames</option>
+          </select>
         </div>
       </div>
-
-      <div x-show="!$store.game.isLoading">
-        <h2 class="ui header" 
-            :class="{'green': $store.game.gameEnded, 'blue': !$store.game.gameEnded}" 
-            x-text="$store.game.statusMessage">
-        </h2>
-      </div>
     </div>
+  </div>
+</div>
 
-    <div class="board-grid" x-show="!$store.game.isLoading">
-      <template x-for="cell in $store.game.view.cells" :key="cell.y + '-' + cell.x">
-        <div class="board-cell"
-             :class="[
-                'bg-' + cell.colorClass, 
-                cell.isSelectable ? 'clickable' : ''
-             ]"
-             @click="cell.isSelectable ? $store.game.clickCell(cell.y, cell.x) : null">
-           <div x-show="cell.lastWorker || cell.lastBuild" class="ui tiny red corner empty circular label"></div>        
-           <span x-text="cell.text"></span>
-        </div>
-      </template>
+
+<div class="ui main container">
+
+  <h1 class="ui huge center aligned header">Santorini game with AI</h1> 
+  <div class="ui hidden divider"></div>
+
+
+<!-- Players name and power -->
+
+
+  <div class="ui horizontal basic segments">
+    <div class="ui center aligned vertically fitted segment">
+      <span class="ui large green text" id="p0title">You</span>
+      <p id="p0details">Click highlighted cells to select where to move/build</p>
     </div>
-
-    <div class="ui center aligned basic segment text-muted" style="margin-top: 20px; color: grey;">
-      <p x-show="$store.game.editMode === 0">Select a worker to move, then select a destination, then build.</p>
-      <p x-show="$store.game.editMode !== 0">Edit Mode Active: Tap cells to modify board state.</p>
+    <div class="ui center aligned vertically fitted segment">
+      <span class="ui large red text" id="p1title">AI</span>
+      <p id="p1details">Will run after you</p>
     </div>
-
   </div>
 
-</body>
+
+<!-- Table -->
+
+
+  <table class="ui fixed unstackable celled huge compact table"><tbody>
+    <template x-for="(row, r) in $store.game.view.cells" :key="'row-'+r">
+      <tr class="center aligned">
+        <template x-for="(cell, c) in row" :key="'col-'+c">
+          <td :class="{ 'selectable': cell?.isSelectable }"
+              @click="cell?.isSelectable ? $store.game.act('click_cell', r, c) : null">
+
+            <div class="ui middle aligned tiny image">
+
+              <svg width="240" height="240" viewBox="0 0 240 240" x-data="{ colors: {'-1': 'black', '0': '#21BA45', '1': '#DB2828' } }" xml:space="preserve">
+                <polygon x-show="cell?.level >= 1" :fill="colors[cell?.player]" points="0,240 0,200 240,200 240,240"></polygon>
+                <polygon x-show="cell?.level >= 2" :fill="colors[cell?.player]" points="30,200 30,160 210,160 210,200"></polygon>
+                <polygon x-show="cell?.level >= 3" :fill="colors[cell?.player]" points="60,160 60,120 180,120 180,160"></polygon>
+                <path x-show="cell?.level >= 4" style="fill:blue;" d="M 70 0 A 50 50, 0, 0 1, 170 0" transform="translate(0 120)"/>
+
+                <g x-show="cell?.worker === 1" :fill="colors[cell?.player]" :transform="`translate(70 ${240 - (cell?.level || 0) * 40 - 100})`">
+                  <path d="M66.403,29.362C68.181,18.711,60.798,10,50,10l0,0c-10.794,0-18.177,8.711-16.403,19.362l2.686,16.133 c1.068,6.393,7.24,11.621,13.718,11.621l0,0c6.481,0,12.649-5.229,13.714-11.621L66.403,29.362z"/>
+                  <path d="M64.007,58.001c-3.76,3.535-8.736,5.781-14.007,5.781s-10.247-2.246-14.007-5.781l-19.668,6.557 C12.845,65.716,10,69.668,10,73.333V90h80V73.333c0-3.665-2.845-7.617-6.325-8.775L64.007,58.001z"/>
+                </g>
+
+                <g x-show="cell?.worker === 2" :fill="colors[cell?.player]" :transform="`translate(70 ${240 - (cell?.level || 0) * 40 - 100})`">
+                  <path d="M83.675,64.558l-19.668-6.557c-3.76,3.535-8.736,5.781-14.007,5.781s-10.247-2.246-14.007-5.781l-19.668,6.557 C12.845,65.716,10,69.668,10,73.333V90h80V73.333C90,69.668,87.155,65.716,83.675,64.558z"/>
+                  <path d="M76.328,50c-6.442-6.439-9.661-14.886-9.661-23.333h-0.029C66.862,17.282,59.87,10,50,10 c-9.863,0-16.855,7.282-16.638,16.667h-0.029c0,8.447-3.219,16.895-9.661,23.333l4.714,4.717c3.189-3.189,5.726-6.846,7.637-10.791 l0.26,1.569c1.068,6.394,7.24,11.622,13.718,11.622c6.481,0,12.649-5.228,13.714-11.622l0.264-1.572 c1.911,3.945,4.447,7.605,7.637,10.794L76.328,50z"/>
+                </g>
+              </svg>
+
+              <div x-show="cell?.lastWorker || cell?.lastBuild" class="ui tiny red corner empty circular label"></div>
+
+            </div>
+          </td>
+        </template>
+      </tr>
+    </template>
+  </tbody></table>
+
+
+<!-- Button -->
+
+
+  <div x-show="!$store.game.isLoading" class="ui fluid large compact buttons" :disabled="$store.game.isThinking">
+    <button class="ui icon button" @click="$store.game.undo()" :disabled="!$store.game.canUndo" :class="{ 'loading': $store.game.isThinking }"><i class="undo icon"></i></button>
+    <button class="ui basic teal button" @click="$store.game.togglePower(false)" :disabled="$store.game.canSelectNoPower">Without power</button>
+    <button class="ui basic blue button" @click="$store.game.togglePower(true)" :disabled="$store.game.canSelectPower">With power</button>
+  </div>
+  <button x-show="$store.game.isLoading" class="ui fluid large active loading button" id="loadingBtn">‌</button>
+  <div x-show="$store.game.editMode" class="ui info message" >
+    <div class="header">Info for editing</div>
+    <p>Tap on cells to change their heights, then tap again on edit button and tap on cells to toggle worker. Tap on god power to change them and finally tap edit button to validate</p>
+  </div>
+
+</div>
+
+
+<script>
+  const allBtn      = document.getElementById('allBtn');
+  const undoBtn     = document.getElementById('undoBtn');
+  const loadingBtn  = document.getElementById('loadingBtn');
+  const usePowerBtn = document.getElementById('usePowerBtn');
+  const noPowerBtn  = document.getElementById('noPowerBtn');
+  const editBtn     = document.getElementById('editBtn');
+  const moveSgmt    = document.getElementById('moveSgmt');
+  const p0title     = document.getElementById('p0title');
+  const p0details   = document.getElementById('p0details');
+  const p1title     = document.getElementById('p1title');
+  const p1details   = document.getElementById('p1details');
+  const editMsg     = document.getElementById('editMsg');
+
+  // main(usePyodide=true);
+</script>
+
+</div></body>
 </html>

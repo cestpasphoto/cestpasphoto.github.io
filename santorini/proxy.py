@@ -82,7 +82,12 @@ def getNextState(action):
     _reset_interaction(full_reset=False)
     return get_render_state()
 
-def undo(player_types=None):
+def changeDifficulty(numMCTSSims):
+    global g, board, mcts, player, history
+    mcts.args.numMCTSSims = numMCTSSims
+    print('Difficulty changed to', mcts.args.numMCTSSims);
+
+def undo(arePlayersHuman=None):
     """Reverts to the previous state."""
     global g, board, player, history, valids, game_result
     
@@ -102,8 +107,8 @@ def undo(player_types=None):
         return False
 
     if pop_one_state():
-        if player_types is not None:
-            while len(history) > 0 and player_types[player] == 1:
+        if arePlayersHuman is not None:
+            while len(history) > 0 and not arePlayersHuman[player]:
                 pop_one_state()
 
     _reset_interaction()
@@ -344,11 +349,7 @@ def get_render_state():
         else: status = p_name
 
     # 2. Grid Construction
-    cells = []
-    for r in range(5):
-        for c in range(5):
-            cell = _make_cell(r, c, board, interaction_step)
-            cells.append(cell)
+    cells = [ [_make_cell(r, c, board, interaction_step) for c in range(5)] for r in range(5) ]
 
     return json.dumps({
         'viewData': {
@@ -359,6 +360,8 @@ def get_render_state():
         'gameEnded': _end_game(),
         'editMode': edit_mode,
         'canUndo': (len(history) > 0 or interaction_step > 0),
+        'canSelectPower': False,
+        'canSelectNoPower': False,
     })
 
 def _make_cell(r, c, board, interaction_step):
@@ -366,32 +369,23 @@ def _make_cell(r, c, board, interaction_step):
     lvl   = int(board[r, c, 1])
     cell = {
         'y': r, 'x': c,
-        'text': '',
-        'colorClass': 'white', # default
+        'level': lvl,
+        'player': -1 if w_val == 0 else 0 if w_val > 0 else 1, # -1 is empty
+        'worker': abs(w_val), # 1 or 2
         'isSelectable': False,
         'isSelected': False,
         'lastWorker': False,
         'lastBuild': False,
     }
-    
-    # --- Text Content ---
-    if w_val != 0:                
-        real_p_id = 0 if w_val > 0 else 1
-        cell['text'] = f"P{real_p_id}-{abs(w_val)}"
-        if lvl > 0: cell['text'] += f"\n{lvl}"
-    elif lvl > 0:
-        cell['text'] = str(lvl)
 
     # --- Highlighting Logic ---
     if edit_mode != 0:
         cell['isSelectable'] = True
-        cell['colorClass'] = 'yellow' if edit_mode == 1 else 'orange'
     elif not _end_game():
         # Step 0: Own Workers
         if interaction_step == 0:
             if w_val > 0 and _has_valid_moves(r, c):
                 cell['isSelectable'] = True
-                cell['colorClass'] = 'blue'
             if (r, c) == previous_coords.get('from'):
                 cell['lastWorker'] = True
             if (r, c) == previous_coords.get('build'):
@@ -401,21 +395,14 @@ def _make_cell(r, c, board, interaction_step):
         elif interaction_step == 1:
             if (r, c) == selected_worker_pos:
                 cell['isSelected'] = True
-                cell['colorClass'] = 'teal'
             elif _is_valid_move_target(r, c):
                 cell['isSelectable'] = True
-                cell['colorClass'] = 'green'
         
         # Step 2: Build Targets
         elif interaction_step == 2:
-            #if (r, c) == selected_worker_pos:
-            #    cell['isSelected'] = True
-            #    cell['colorClass'] = 'teal'
             if (r, c) == selected_move_pos:
                 cell['isSelected'] = True
-                cell['colorClass'] = 'teal'
             elif _is_valid_build_target(r, c):
                 cell['isSelectable'] = True
-                cell['colorClass'] = 'red'
 
     return cell
