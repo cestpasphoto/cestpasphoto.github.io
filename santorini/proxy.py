@@ -29,6 +29,7 @@ game_result = [0] * 2 # O if not finished, 1 if wins, -1 if loses, 0.01 if ties
 interaction_step = 0        # 0: Select Worker, 1: Move, 2: Build
 selected_worker_pos = None  # (y, x)
 selected_move_pos = None    # (y, x)
+selected_build_pos = None   # (y, x)
 previous_coords = {}        # {'from': (y, x), 'to': (y, x), 'build': (y, x)}
 edit_mode = 0               # 0: Play, 1: Levels, 2: Workers
 use_power = False           # Nouvel état pour le toggle du pouvoir
@@ -121,38 +122,36 @@ def set_edit_mode(mode):
     _reset_interaction()
     return get_render_state()
 
-def handle_action(action_name, *args):
-    """Main interaction handler."""
-    global interaction_step, selected_worker_pos, selected_move_pos, edit_mode
-    global g, board, player, game_result
+def handle_action(actionName, *args):
+    global interaction_step, selected_worker_pos, selected_move_pos, selected_build_pos, edit_mode, use_power
     
-    if action_name == 'click_cell':
-        y, x = int(args[0]), int(args[1])
+    if actionName == "togglePower":
+        use_power = args[0]
+        # Si on est à l'étape 3, le clic sur le bouton VALIDE le coup
+        if interaction_step == 3:
+            matches = _get_matching_actions(selected_build_pos[0], selected_build_pos[1])
+            for action, p_val in matches:
+                if p_val == use_power:
+                    return getNextState(action)
+        return get_render_state()
 
-        if edit_mode != 0:
-            _apply_edit(y, x)
-            return get_render_state()
-
-        if _end_game():
-            return get_render_state()
-
+    if actionName == "click_cell":
+        y, x = args[0], args[1]
+        
         # --- Step 0: Select Worker ---
         if interaction_step == 0:
-            # FIX: Use _get_worker_id instead of rigid > 0 check to allow Player 1 negative values
             if _get_worker_id(y, x) != -1 and _has_valid_moves(y, x):
                 interaction_step = 1
                 selected_worker_pos = (y, x)
 
         # --- Step 1: Select Move Target ---
         elif interaction_step == 1:
-            # Check FIRST if the move is valid (allows NO_MOVE on the worker itself for complex gods)
             if _is_valid_move_target(y, x):
                 interaction_step = 2
                 selected_move_pos = (y, x)
             elif (y, x) == selected_worker_pos:
                 _reset_interaction()
             elif _get_worker_id(y, x) != -1 and _has_valid_moves(y, x):
-                # Changed mind: selected another own worker
                 selected_worker_pos = (y, x)
             else:
                 _reset_interaction()
@@ -160,17 +159,26 @@ def handle_action(action_name, *args):
         # --- Step 2: Select Build Target ---
         elif interaction_step == 2:
             if _is_valid_build_target(y, x):
-                # === ACTION COMMIT ===
-                action = _construct_action_from_selection(y, x)
-                return getNextState(action)
-            # Si le clic de construction est invalide, on peut décider de reset ou de rester à l'étape 2
-            return get_render_state()
-    
-    elif actionName == "togglePower":
-        use_power = args[0]
-        # No need to reset interaction anymore, UI allows all valid targets visually
-
-    return get_render_state()
+                matches = _get_matching_actions(y, x)
+                # S'il y a ambiguïté (ex: Atlas), on passe à l'étape 3 pour attendre le clic du bouton
+                if len(matches) > 1:
+                    interaction_step = 3
+                    selected_build_pos = (y, x)
+                # S'il n'y a qu'une seule façon de jouer ce coup, on l'exécute de suite
+                elif len(matches) == 1:
+                    return getNextState(matches[0][0])
+            else:
+                _reset_interaction()
+                
+        # --- Step 3: Pending Power Validation ---
+        elif interaction_step == 3:
+            # Permet de changer d'avis sur la case de construction avant de valider
+            if _is_valid_build_target(y, x):
+                selected_build_pos = (y, x)
+            else:
+                _reset_interaction()
+                
+        return get_render_state()
 
 async def run_ai_step():
     canonicalBoard = g.getCanonicalForm(board, player)
@@ -187,12 +195,13 @@ def _end_game():
     return max(game_result) > 0
 
 def _reset_interaction(full_reset=True):
-    global interaction_step, selected_worker_pos, selected_move_pos, previous_coords
+    global interaction_step, selected_worker_pos, selected_move_pos, selected_build_pos, previous_coords
     interaction_step = 0
     if full_reset:
         previous_coords = {}
     selected_worker_pos = None
     selected_move_pos = None
+    selected_build_pos = None
 
 def _apply_edit(y, x):
     global board, edit_mode
@@ -264,27 +273,19 @@ def _is_valid_build_target(y, x):
             return True
     return False
 
-def _construct_action_from_selection(build_y, build_x):
-    """Intelligently matches the user's clicks to the exact required engine action integer."""
+def _get_matching_actions(build_y, build_x):
+    """Retourne toutes les actions valides qui correspondent EXACTEMENT aux coordonnées cliquées."""
     w_id = _get_worker_id(selected_worker_pos[0], selected_worker_pos[1])
     m_dir = _coords_to_direction(selected_worker_pos[0], selected_worker_pos[1], selected_move_pos[0], selected_move_pos[1])
     b_dir = _coords_to_direction(selected_move_pos[0], selected_move_pos[1], build_y, build_x)
     
-    chosen_action = -1
-    fallback_action = -1
-    
+    matches = []
     for action, is_valid in enumerate(valids):
         if is_valid:
             w, p, v_m, v_b = constants._decode_action(action)
             if w == w_id and v_m == m_dir and v_b == b_dir:
-                fallback_action = action
-                # If use_power toggle matches the action's power state, it's our primary choice
-                if bool(p) == use_power:
-                    chosen_action = action
-                    break
-                    
-    # Return the exact matched action, or the fallback if the user forgot to toggle the button for an active god
-    return chosen_action if chosen_action != -1 else fallback_action
+                matches.append((action, bool(p)))
+    return matches
 
 def _decode_coords_from_action(action):
     w_id, p, m_dir, b_dir = constants._decode_action(action)
@@ -311,32 +312,19 @@ def _decode_coords_from_action(action):
     }
 
 def _can_use_power_context(power_active):
-    """Contextually checks if the power (or non-power) option is mathematically available."""
-    if interaction_step == 0:
-        for action, is_valid in enumerate(valids):
-            if is_valid:
-                w, p, _, _ = constants._decode_action(action)
-                if bool(p) == power_active: return True
-        return False
-        
-    elif interaction_step == 1:
-        w_id = _get_worker_id(selected_worker_pos[0], selected_worker_pos[1])
-        for action, is_valid in enumerate(valids):
-            if is_valid:
-                w, p, _, _ = constants._decode_action(action)
-                if w == w_id and bool(p) == power_active: return True
-        return False
-        
-    elif interaction_step == 2:
-        w_id = _get_worker_id(selected_worker_pos[0], selected_worker_pos[1])
-        m_dir = _coords_to_direction(selected_worker_pos[0], selected_worker_pos[1], selected_move_pos[0], selected_move_pos[1])
-        for action, is_valid in enumerate(valids):
-            if is_valid:
-                w, p, v_m_dir, _ = constants._decode_action(action)
-                if w == w_id and v_m_dir == m_dir and bool(p) == power_active: return True
-        return False
-    return False
+    """Contextually checks if the power option is available. 
+    Buttons are now strictly enabled ONLY during ambiguity resolution (Step 3)."""
     
+    if interaction_step == 3:
+        matches = _get_matching_actions(selected_build_pos[0], selected_build_pos[1])
+        for action, p_val in matches:
+            if p_val == power_active: 
+                return True
+                
+    # Pour toutes les autres étapes (0, 1, 2), l'auto-détection fait le travail, 
+    # donc on désactive (grise) les boutons pour ne pas perturber l'utilisateur.
+    return False
+
 # ==========================================
 # ===== VIEW GENERATION ====================
 # ==========================================
@@ -429,6 +417,13 @@ def _make_cell(r, c, board, interaction_step):
             if _is_valid_build_target(r, c):
                 cell['isSelectable'] = True
             if (r, c) == selected_move_pos:
+                cell['isSelected'] = True
+
+        # Step 3: Await Power Validation
+        elif interaction_step == 3:
+            if _is_valid_build_target(r, c):
+                cell['isSelectable'] = True
+            if (r, c) == selected_move_pos or (r, c) == selected_build_pos:
                 cell['isSelected'] = True
 
     return cell

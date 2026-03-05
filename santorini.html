@@ -80,15 +80,22 @@
 
 <!-- Players name and power -->
 
-
   <div class="ui horizontal basic segments">
     <div class="ui center aligned vertically fitted segment">
-      <span class="ui large green text" id="p0title">You</span>
-      <p id="p0details">Click highlighted cells to select where to move/build</p>
+      <span class="ui large green text" id="p0title">
+        You
+        <span x-show="$store.game.extra.p0_god > 0" x-text="' - ' + gods_name[$store.game.extra.p0_god]">
+        </span>
+      </span>
+      <p class="description" x-show="$store.game.extra.p0_god > 0" x-text="gods_descr[$store.game.extra.p0_god]"></p>
     </div>
     <div class="ui center aligned vertically fitted segment">
-      <span class="ui large red text" id="p1title">AI</span>
-      <p id="p1details">Will run after you</p>
+      <span class="ui large red text" id="p1title">
+        AI
+        <span x-show="$store.game.extra.p1_god > 0" x-text="' - ' + gods_name[$store.game.extra.p1_god]">
+        </span>
+      </span>
+      <p class="description" x-show="$store.game.extra.p1_god > 0" x-text="gods_descr[$store.game.extra.p1_god]"></p>
     </div>
   </div>
 
@@ -137,13 +144,17 @@
 
   <div x-show="!$store.game.isLoading" class="ui fluid large compact buttons" :disabled="$store.game.isThinking">
     <button class="ui icon button" @click="$store.game.undo()" :disabled="!$store.game.canUndo" :class="{ 'loading': $store.game.isThinking }"><i class="undo icon"></i></button>
-    <button class="ui basic teal button" @click="$store.game.togglePower(false)" :disabled="$store.game.canSelectNoPower">Without power</button>
-    <button class="ui basic blue button" @click="$store.game.togglePower(true)" :disabled="$store.game.canSelectPower">With power</button>
+    <button class="ui basic teal button" @click="$store.game.act('togglePower', false)" :disabled="!$store.game.extra.canSelectNoPower">Without power</button>
+    <button class="ui basic blue button" @click="$store.game.act('togglePower', true)" :disabled="!$store.game.extra.canSelectPower">With power</button>
   </div>
   <button x-show="$store.game.isLoading" class="ui fluid large active loading button" id="loadingBtn">‌</button>
   <div x-show="$store.game.editMode" class="ui info message" >
     <div class="header">Info for editing</div>
     <p>Tap on cells to change their heights, then tap again on edit button and tap on cells to toggle worker. Tap on god power to change them and finally tap edit button to validate</p>
+  </div>
+  <div class="ui message" x-show="$store.game.extra.p0_god > 0 || $store.game.extra.p1_god > 0">
+    <strong>Instructions : </strong>
+    <span x-text="gods_instructions[$store.game.currentPlayer === 0 ? $store.game.extra.p0_god : $store.game.extra.p1_god]"></span>
   </div>
 
 </div>

@@ -144,8 +144,8 @@
 
   <div x-show="!$store.game.isLoading" class="ui fluid large compact buttons" :disabled="$store.game.isThinking">
     <button class="ui icon button" @click="$store.game.undo()" :disabled="!$store.game.canUndo" :class="{ 'loading': $store.game.isThinking }"><i class="undo icon"></i></button>
-    <button class="ui basic teal button" @click="$store.game.togglePower(false)" :disabled="!$store.game.extra.canSelectNoPower">Without power</button>
-    <button class="ui basic blue button" @click="$store.game.togglePower(true)" :disabled="!$store.game.extra.canSelectPower">With power</button>
+    <button class="ui basic teal button" @click="$store.game.act('togglePower', false)" :disabled="!$store.game.extra.canSelectNoPower">Without power</button>
+    <button class="ui basic blue button" @click="$store.game.act('togglePower', true)" :disabled="!$store.game.extra.canSelectPower">With power</button>
   </div>
   <button x-show="$store.game.isLoading" class="ui fluid large active loading button" id="loadingBtn">‌</button>
   <div x-show="$store.game.editMode" class="ui info message" >
