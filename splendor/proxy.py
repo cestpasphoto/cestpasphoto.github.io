@@ -1,452 +1,246 @@
-from MCTS import MCTS
-from SplendorGame import SplendorGame as Game
-from SplendorLogic import move_to_str, np_all_cards_1, np_all_cards_2, np_all_cards_3, np_all_nobles, list_different_gems_up_to_3, list_different_gems_up_to_2
-import numpy as np
 import json
 
 # ==========================================
-# ===== CONSTANTS & CONFIGURATION ==========
+# ===== MOVE MAPPING & VALIDATION ==========
 # ==========================================
 
-NB_PLAYERS = 3
-COLORS = ['white', 'blue', 'green', 'red', 'black', 'yellow']
+# Helper array matching the one in your splendor.js
+DIFFERENT_GEMS_UP_TO_3 = [
+    [0], [1], [2], [3], [4],
+    [0,1], [0,2], [0,3], [0,4], [1,2], [1,3], [1,4], [2,3], [2,4], [3,4],
+    [0,1,2], [0,1,3], [0,1,4], [0,2,3], [0,2,4], [0,3,4], [1,2,3], [1,2,4], [1,3,4], [2,3,4]
+]
 
-class dotdict(dict):
-    def __getattr__(self, name):
-        return self[name]
-
-# ==========================================
-# ===== GLOBAL STATE =======================
-# ==========================================
-
-g = None
-board = None
-mcts = None
-player = 0         # ID du joueur dont c'est le tour (0, 1, 2)
-history = []       # Historique pour le Undo
-valids = []        # Coups valides (bitmask)
-game_result = [0] * NB_PLAYERS
-
-# --- State Machine de l'UI ---
-# L'interaction dans Splendor n'est pas linéaire comme Santorini.
-# On stocke l'intention du joueur avant validation.
-selected_gems = [] # Liste d'entiers (couleurs de 0 à 4)
-edit_mode = 0      # 0: Play, 1: Edit
-
-# ==========================================
-# ===== MAIN INTERFACE FUNCTIONS ===========
-# ==========================================
-
-def init_game(numMCTSSims):
-    global g, board, mcts, player, history, valids, game_result
-    global selected_gems, edit_mode
-
-    mcts_args = dotdict({
-        'numMCTSSims'     : numMCTSSims,
-        'fpu'             : 0.10,
-        'cpuct'           : 1.00,
-        'prob_fullMCTS'   : 1.,
-        'forced_playouts' : False,
-        'no_mem_optim'    : False,
-    })
-
-    g = Game()
-    board = g.getInitBoard()
-    mcts = MCTS(g, None, mcts_args)
-    player = 0
-    history = []
-    valids = g.getValidMoves(board, player)
-    game_result = [0] * NB_PLAYERS
-    
-    _reset_interaction()
-    edit_mode = 0
-    return get_render_state()
-
-def getNextState(action):
-    global g, board, mcts, player, history, valids, game_result
-    
-    # Save history
-    history.insert(0, [player, np.copy(board)])
-    
-    # Execute move
-    board, player = g.getNextState(board, player, action)
-
-    # Check end game
-    # getGameEnded renvoie souvent un tableau de scores ou [0,0,0] si non fini
-    res = g.getGameEnded(board, player) 
-    if any(r != 0 for r in res):
-        game_result = res
-        
-    valids = g.getValidMoves(board, player)
-    
-    _reset_interaction()
-    return get_render_state()
-
-def undo(player_types=None):
-    global g, board, player, history, valids, game_result
-    
-    # 1. Annulation UI locale (désélectionner les gemmes)
-    if len(selected_gems) > 0:
-        _reset_interaction()
-        return get_render_state()
-
-    # 2. Fonction utilitaire pour dépiler un état
-    def pop_one_state():
-        global board, player, valids, game_result
-        if len(history) > 0:
-            prev = history.pop(0)
-            player = prev[0]
-            board = prev[1]
-            valids = g.getValidMoves(board, player)
-            game_result = [0] * NB_PLAYERS
-            return True
-        return False
-
-    # 3. Retour arrière effectif (et saut des IA si player_types est fourni)
-    if pop_one_state():
-        if player_types is not None:
-            while len(history) > 0 and player_types[player] == 1:
-                pop_one_state()
-
-    _reset_interaction()
-    return get_render_state()
-
-def set_edit_mode(mode):
-    global edit_mode
-    edit_mode = int(mode)
-    _reset_interaction()
-    return get_render_state()
-
-# ==========================================
-# ===== ROUTEUR D'ACTIONS (UI -> MOTEUR) ===
-# ==========================================
-
-def handle_action(action_type, *args):
-    global selected_gems, valids, board
-    
-    # --- MODE EDITION ---
-    if edit_mode != 0:
-        if action_type == 'edit_bank_gem':
-            c = int(args[0])
-            g.board.bank[0][c] = (g.board.bank[0][c] + 1) % 8  # Cycle 0-7
-            
-        elif action_type == 'edit_player_gem':
-            p_id, c = int(args[0]), int(args[1])
-            g.board.players_gems[p_id][c] = (g.board.players_gems[p_id][c] + 1) % 11 # Cycle 0-10
-            
-        elif action_type == 'edit_player_card_count':
-            # Éditer les cartes gagnées (qui donnent le bonus de gemme permanent)
-            p_id, c = int(args[0]), int(args[1])
-            g.board.players_cards[p_id][c] = (g.board.players_cards[p_id][c] + 1) % 10
-            
-        elif action_type == 'edit_assign_card':
-            # Assigne une carte de la table à un joueur et la retire du deck
-            tier, card_idx, p_id, status = int(args[0]), int(args[1]), int(args[2]), args[3]
-            _assign_card_from_tier_to_player(tier, card_idx, p_id, status)
-            
-        elif action_type == 'edit_cycle_noble':
-            # Change le noble présent sur le plateau
-            index = int(args[0])
-            _cycle_noble(index)
-
-        # IMPORTANT: Après toute modification du plateau en édition, 
-        # on doit recalculer les coups valides pour ne pas corrompre le jeu.
-        valids = g.getValidMoves(board, player)
-        return get_render_state()
-
-    # --- MODE JEU NORMAL ---
-    if _end_game():
-        return get_render_state()
-        
-
-    # --- SÉLECTION DE GEMMES ---
-    if action_type == 'toggle_gem':
-        color = int(args[0])
-        if color in selected_gems:
-            selected_gems.remove(color)
-        elif len(selected_gems) < 3:
-            selected_gems.append(color)
-        return get_render_state() # Rafraîchit l'UI (surbrillance)
-
-    # --- VALIDATION DES GEMMES ---
-    elif action_type == 'confirm_gems':
-        action_idx = _find_gem_action_index(selected_gems)
-        if action_idx >= 0 and valids[action_idx]:
-            return getNextState(action_idx)
-        else:
-            # Action invalide, on reset la sélection
-            print(f'Action invalide {selected_gems=} {action_idx=} {valids[action_idx]=}')
-            _reset_interaction()
-
-    # --- ACHAT ET RÉSERVATION ---
-    elif action_type in ['buy_card', 'reserve_card', 'buy_reserved']:
-        action_idx = _find_card_action_index(action_type, *args)
-        if action_idx >= 0 and valids[action_idx]:
-            return getNextState(action_idx)
-
-    return get_render_state()
-
-def _reset_interaction():
-    global selected_gems
-    selected_gems = []
-
-
-def _find_card_action_index(action_type, *args):
+def _get_move_index():
     """
-    Traduit une intention d'achat ou de réservation en Index d'Action (0-29).
-    args contient généralement (tier, index) ou juste (index).
+    Translates the current sel_type and sel_items into the MCTS action integer.
+    WARNING: The offsets (12, 15, etc.) must perfectly match the ones in your
+    original splendor.js `move_sel.getMoveIndex()` function.
     """
-    if action_type == 'buy_card':
-        tier, index = int(args[0]), int(args[1])
-        # Indices 0 à 11
-        return (tier * 4) + index
-        
-    elif action_type == 'reserve_card':
-        tier, index = int(args[0]), int(args[1])
-        # Indices 12 à 23
-        return 12 + (tier * 4) + index
-        
-    elif action_type == 'reserve_deck':
-        tier = int(args[0])
-        # Indices 24 à 26
-        return 24 + tier
-        
-    elif action_type == 'buy_reserved':
-        index = int(args[0])
-        # Indices 27 à 29
-        return 27 + index
-        
-    return -1
-
-
-def _find_gem_action_index(gems, discard=False):
-    """
-    Traduit une liste d'entiers (ex: [0, 2, 4] pour White, Green, Black)
-    en Index d'Action de prise ou de défausse de jetons (30-79).
-    """
-    if not gems:
+    global sel_type, sel_items
+    
+    if sel_type == 'none' or not sel_items:
         return -1
         
-    # --- Cas 1 : 2 Gemmes Identiques ---
-    if len(gems) == 2 and gems[0] == gems[1]:
-        color = gems[0]
-        if discard:
-            return 75 + color # 75-79: Give back 2 identical
+    if sel_type == 'card':
+        tier, index = sel_items[0]
+        if tier == -1:
+            # Buy reserved card (indices 12 to 14 typically)
+            return 12 + index
         else:
-            return 55 + color # 55-59: Get 2 identical
-
-    # --- Cas 2 : Combinaison de gemmes différentes ---
-    # On construit un tableau signature de taille 7 (comme dans ta logique)
-    # pour le comparer avec tes listes pré-générées.
-    target_sig = [0] * 7
-    for color in gems:
-        target_sig[color] += 1
+            # Buy card from board (indices 0 to 11 typically)
+            return tier * 4 + index
+            
+    elif sel_type == 'rsv':
+        tier, index = sel_items[0]
+        # Reserve card from board (indices 15 to 26 typically)
+        return 15 + tier * 4 + index
         
-    target_arr = np.array(target_sig, dtype=np.int8)
-
-    if discard:
-        # Recherche dans les 15 combinaisons de défausse (up to 2)
-        for i, comb in enumerate(list_different_gems_up_to_2):
-            if np.array_equal(comb, target_arr):
-                return 60 + i # 60-74: Give back different gems
-    else:
-        # Recherche dans les 25 combinaisons de prise (up to 3)
-        for i, comb in enumerate(list_different_gems_up_to_3):
-            if np.array_equal(comb, target_arr):
-                return 30 + i # 30-54: Get different gems
+    elif sel_type == 'gem':
+        if len(sel_items) == 2 and sel_items[0] == sel_items[1]:
+            # Take 2 of the same color
+            # Usually placed after card reservations, e.g., 27 + color
+            # Adjust the '27' offset based on your JS
+            return 27 + sel_items[0] 
+        else:
+            # Take up to 3 different colors
+            sorted_gems = sorted(sel_items)
+            try:
+                combo_index = DIFFERENT_GEMS_UP_TO_3.index(sorted_gems)
+                # Adjust the '32' offset based on your JS
+                return 32 + combo_index 
+            except ValueError:
+                return -1
 
     return -1
 
+def _is_selection_valid():
+    """ Checks if the currently formulated move is legal according to the engine """
+    global g, board, player
+    
+    if sel_type == 'none':
+        return False
+        
+    move = _get_move_index()
+    if move < 0 or move >= g.getActionSize():
+        return False
+        
+    # Get valid moves bitmask from MCTS
+    valids = g.getValidMoves(board, player)
+    return bool(valids[move])
 
 # ==========================================
-# ===== VIEW GENERATION (LE MEGA-JSON) =====
+# ===== EXPOSED ACTION ROUTERS =============
 # ==========================================
+# These functions are called directly by game.js via act()
+# and must return the updated JSON state.
+
+def reset_and_render():
+    """ Resets selection and updates UI (useful for a 'Cancel' button) """
+    reset_selection()
+    return get_render_state()
+
+def click_and_render(item_category, arg1, arg2=-1):
+    """ Wrapper around click_item to return the updated state """
+    click_item(item_category, arg1, arg2)
+    return get_render_state()
+
+def confirm_action():
+    """ Executes the selected move if valid """
+    global sel_type, sel_items, player, board
+    
+    if not _is_selection_valid():
+        return get_render_state() # Do nothing if invalid
+        
+    move = _get_move_index()
+    
+    # Play the move using the existing Splendor proxy logic
+    player, board = getNextState(move)
+    
+    # Reset interaction state machine for the next turn
+    reset_selection()
+    
+    return get_render_state()
+
+# ==========================================
+# ===== INTERACTION STATE MACHINE ==========
+# ==========================================
+
+# State variables replacing the JS 'move_sel' class
+sel_type = 'none' # Can be 'none', 'card', 'rsv', 'gem'
+sel_items = []    # List of selected items
+
+def reset_selection():
+    """ Resets the current user selection """
+    global sel_type, sel_items
+    sel_type = 'none'
+    sel_items = []
+
+def click_item(item_category, arg1, arg2=-1):
+    """
+    Handles clicks from the UI to update the selection state machine.
+    - item_category: 'gem', 'card', or 'reserved'
+    - arg1: color (0-4) for gem, tier (0-2) for card, or index (0-2) for reserved
+    - arg2: index (0-3) for card on board
+    """
+    global sel_type, sel_items
+    
+    if item_category == 'gem':
+        color = arg1
+        if sel_type != 'gem':
+            # First gem selected
+            sel_type = 'gem'
+            sel_items = [color]
+        else:
+            if color in sel_items:
+                if len(sel_items) == 1:
+                    # Second click on the same gem: try to take 2 of the same color
+                    sel_items.append(color)
+                elif len(sel_items) == 2 and sel_items[0] == sel_items[1] and sel_items[0] == color:
+                    # Third click on the same gem: reset selection
+                    reset_selection()
+                else:
+                    # Deselect this specific gem
+                    sel_items.remove(color)
+                    if not sel_items:
+                        sel_type = 'none'
+            else:
+                # Clicking a different gem color
+                if len(sel_items) == 2 and sel_items[0] == sel_items[1]:
+                    # Cannot mix 2 same colors + 1 different
+                    pass 
+                elif len(sel_items) < 3:
+                    sel_items.append(color)
+
+    elif item_category == 'card':
+        tier = arg1
+        index = arg2
+        if sel_type == 'card' and sel_items == [[tier, index]]:
+            # Second click on the same card -> switch to reserve mode
+            sel_type = 'rsv'
+        elif sel_type == 'rsv' and sel_items == [[tier, index]]:
+            # Third click -> deselect completely
+            reset_selection()
+        else:
+            # First click -> select to buy
+            sel_type = 'card'
+            sel_items = [[tier, index]]
+
+    elif item_category == 'reserved':
+        index = arg1
+        if sel_type == 'card' and sel_items == [[-1, index]]:
+            # Second click -> deselect (cannot reserve an already reserved card)
+            reset_selection()
+        else:
+            # First click -> select to buy (-1 tier convention for reserved)
+            sel_type = 'card'
+            sel_items = [[-1, index]]
 
 def get_render_state():
-    """
-    Construit l'arbre complet des données pour Alpine.js.
-    Élimine le besoin de faire 50 appels JS pour afficher le plateau.
-    """
-    global board, player, game_result, edit_mode, selected_gems
-
-    # 1. Status Message
-    status = ""
-    if _end_game():
-        status = f"Game Over! Winners: {[i for i, v in enumerate(game_result) if v > 0]}"
-    elif edit_mode != 0:
-        status = "Edit Mode Active"
-    else:
-        status = f"Player {player}'s Turn"
-        if len(selected_gems) > 0:
-            status += f" (Gems selected: {len(selected_gems)})"
-
-    # 2. La Banque
-    bank_data = []
-    for c in range(6):
-        qty = int(g.board.bank[0][c])
-        bank_data.append({
-            'colorIdx': c,
-            'colorName': COLORS[c],
-            'qty': qty,
-            'isSelected': c in selected_gems,
-            'isAvailable': qty > 0
-        })
-
-    # 3. Les Cartes sur la table (Tiers)
-    tiers_data = []
-    for tier in range(3):
+    global g, board, player
+    
+    # Return empty state if game is not initialized yet
+    if g is None or board is None:
+        return json.dumps({"view": {}, "extra": {}})
+        
+    num_players = g.num_players
+    
+    view = {
+        "bank": [int(g.board.bank[0][c]) for c in range(6)], # 5 gem colors + 1 gold
+        "tiers": [],
+        "decks": [int(g.board.nb_deck_tiers[2*t]) for t in range(3)],
+        "nobles": [],
+        "players": []
+    }
+    
+    # 1. Cards on the board (3 tiers x 4 cards)
+    for t in range(3):
         tier_cards = []
-        for index in range(4): # 4 cartes visibles par tier
-            card = _get_tier_card(tier, index)
-            tier_cards.append(card)
-        tiers_data.append(tier_cards)
-
-    # 4. Les Nobles
-    nobles_data = []
-    for index in range(NB_PLAYERS + 1):
-        # Lecture depuis g.board.nobles
-        nobles_data.append(_get_noble(index))
-
-    # 5. Les Joueurs
-    players_data = []
-    for p in range(NB_PLAYERS):
-        p_data = {
-            'id': p,
-            'isCurrentTurn': (p == player),
-            'gems': [int(g.board.players_gems[p][c]) for c in range(6)],
-            'cardsCount': [int(g.board.players_cards[p][c]) for c in range(5)], # Uniquement les 5 couleurs
-            'score': int(g.getScore(board, p)),
-            'reserved': [_get_player_reserved(p, i) for i in range(3)]
-        }
-        players_data.append(p_data)
-
-    # 6. Construction Finale
-    state = {
-        'statusMessage': status,
-        'currentPlayer': player,
-        'gameEnded': _end_game(),
-        'editMode': edit_mode,
-        'canUndo': len(history) > 0 or len(selected_gems) > 0,
-        'viewData': {
-            'bank': bank_data,
-            'tiers': tiers_data,
-            'nobles': nobles_data,
-            'players': players_data,
-            'canConfirmGems': len(selected_gems) in [2, 3] # Règle visuelle basique
-        }
-    }
-    
-    return json.dumps(state)
-
-
-# ==========================================
-# ===== HELPERS DE LECTURE DU BOARD ========
-# ==========================================
-# Ces fonctions remplacent les anciens getters individuels
-# et transforment la donnée Numpy brute en dictionnaires python propres.
-
-def _end_game():
-    return any(r != 0 for r in game_result)
-
-def _convert_card_to_dict(line0, line1):
-    """
-    Décode les 2 lignes décrivant une carte Splendor.
-    line0: [W, U, G, R, B, -, -] -> Coûts
-    line1: [W, U, G, R, B, -, Pts] -> Gain de ressource et Points
-    """
-    # Si la carte est vide (slot inoccupé sur le plateau)
-    if np.all(line0 == 0) and np.all(line1 == 0):
-        return None
+        for i in range(4):
+            c1 = g.board.cards_tiers[8*t + 2*i]
+            c2 = g.board.cards_tiers[8*t + 2*i + 1]
+            tier_cards.append(_convertCardToJS(c1, c2))
+        view["tiers"].append(tier_cards)
         
-    # La carte produit une gemme de la couleur indiquée dans line1 (indices 0 à 4)
-    # On cherche quel index (0 à 4) vaut 1
-    color_name = ""
-    for i in range(5):
-        if line1[i] > 0:
-            color_name = COLORS[i]
-            break
+    # 2. Available Nobles
+    for n in g.board.nobles:
+        if n.sum() > 0:
+            view["nobles"].append(n.nonzero()[0].tolist())
+        else:
+            view["nobles"].append([]) # Empty slot
             
-    return {
-        'color': color_name,
-        'points': int(line1[6]),
-        'cost': [int(c) for c in line0[0:5]] # Les 5 premières valeurs de line0
-    }
-
-def _get_noble(index):
-    """
-    Décode la ligne décrivant un noble.
-    noble_data: [W, U, G, R, B, Gold, Pts]
-    """
-    noble_data = g.board.nobles[index]
-    
-    if np.all(noble_data == 0):
-        return None
+    # 3. Players state
+    for p in range(num_players):
+        # Calculate points matching the old getPoints() logic
+        pts = int(g.board.players_cards[p][6])
+        pts += int(np.count_nonzero(g.board.players_nobles[3*p:3*p+3].sum(axis=1)) * 3)
         
-    return {
-        'points': int(noble_data[6]),
-        'cost': [int(c) for c in noble_data[0:5]]
-    }
-
-def _get_tier_card(tier, index):
-    card_data_1 = g.board.cards_tiers[8*tier + 2*index]
-    card_data_2 = g.board.cards_tiers[8*tier + 2*index + 1]
-    return _convert_card_to_dict(card_data_1, card_data_2)
-
-def _get_player_reserved(player_id, index):
-    card_data_1 = g.board.players_reserved[6*player_id + 2*index]
-    card_data_2 = g.board.players_reserved[6*player_id + 2*index + 1]
-    return _convert_card_to_dict(card_data_1, card_data_2)
-
-
-def _assign_card_from_tier_to_player(tier, card_idx, p_id, status):
-    """
-    Transfère une carte de la table vers un joueur (gagnée ou réservée),
-    puis la retire de la table et pioche la suivante.
-    """
-    card_1 = np.copy(g.board.cards_tiers[8*tier + 2*card_idx])
-    card_2 = np.copy(g.board.cards_tiers[8*tier + 2*card_idx + 1])
-    
-    # Sécurité : vérifier que la carte n'est pas déjà vide
-    if np.all(card_1 == 0) and np.all(card_2 == 0):
-        return
-
-    # --- 1. Donner la carte au joueur ---
-    if status == 'won':
-        # On extrait la couleur de la carte pour augmenter les bonus permanents du joueur
-        card_dict = _convert_card_to_dict(card_1, card_2)
-        if card_dict and card_dict['color']:
-            c_idx = COLORS.index(card_dict['color'])
-            g.board.players_cards[p_id][c_idx] += 1
-           
-    elif status == 'reserved':
-        # Chercher le premier slot de réservation vide (max 3)
-        for r_idx in range(3):
-            if np.all(g.board.players_reserved[6*p_id + 2*r_idx] == 0):
-                g.board.players_reserved[6*p_id + 2*r_idx] = card_1
-                g.board.players_reserved[6*p_id + 2*r_idx + 1] = card_2
-                break
-
-    g.board._fill_new_card(tier, card_idx, deterministic=False)
-
-def _cycle_noble(index):
-    """
-    Remplace le noble sélectionné par un autre noble de la liste complète.
-    Idéal pour une édition rapide en tapant dessus.
-    """
-    from SplendorLogic import np_all_nobles  # Assure-toi que c'est bien importé
-    
-    current_noble = g.board.nobles[index]
-    
-    # Si l'emplacement est vide, on prend le premier
-    if np.all(current_noble == 0):
-        g.board.nobles[index] = np_all_nobles[0]
-        return
+        p_data = {
+            "gems": [int(g.board.players_gems[p][c]) for c in range(6)],
+            "cards": [int(g.board.players_cards[p][c]) for c in range(6)], # Bonus from cards
+            "reserved": [],
+            "nobles": [],
+            "points": pts
+        }
         
-    # Sinon, on cherche son ID actuel et on passe au suivant
-    for i, noble in enumerate(np_all_nobles):
-        if np.array_equal(noble, current_noble):
-            next_id = (i + 1) % len(np_all_nobles)
-            g.board.nobles[index] = np_all_nobles[next_id]
-            return
-
-   
+        # Reserved cards (max 3 slots)
+        for i in range(3):
+            c1 = g.board.players_reserved[6*p + 2*i]
+            c2 = g.board.players_reserved[6*p + 2*i + 1]
+            p_data["reserved"].append(_convertCardToJS(c1, c2))
+            
+        # Owned nobles
+        for i in range(3):
+            if g.board.players_nobles[3*p + i].sum() > 0:
+                p_data["nobles"].append(g.board.players_nobles[3*p + i].nonzero()[0].tolist())
+                
+        view["players"].append(p_data)
+        
+    # 4. Interaction metadata (Selection states)
+    extra = {
+        "sel_type": sel_type,
+        "sel_items": sel_items,
+        "can_confirm": _is_selection_valid() # We will implement this next
+    }
+    
+    return json.dumps({"view": view, "extra": extra})

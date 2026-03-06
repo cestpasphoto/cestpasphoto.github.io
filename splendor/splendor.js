@@ -2,21 +2,55 @@
 /* =====  CONFIG ===== */
 /* =================== */
 
-// Files to be loaded by Pyodide into the virtual file system.
-// pyConstantsFileName is defined in constants_*.js (loaded before this file).
+// Fichiers Python à charger dans Pyodide
 const list_of_files = [
   ['splendor/Game.py', 'Game.py'],
-  ['splendor/proxy.py', 'proxy.py'], // The new Controller
+  ['splendor/proxy.py', 'proxy.py'],
   ['splendor/MCTS.py', 'MCTS.py'],
-  ['splendor/SplendorGame_3pl.py', 'SplendorGame.py'],
   ['splendor/SplendorLogic.py', 'SplendorLogic.py'],
   ['splendor/SplendorLogicNumba.py', 'SplendorLogicNumba.py'],
-  [pyConstantsFileName, 'SplendorConstants.py'],
+  [pyConstantsFileName, 'SplendorGame.py'], // Récupère le SplendorGame_3pl.py
 ];
 
-// Number of MCTS Simulations per move
-// Adjusted for a balance between speed and strength in the browser.
-const numMCTSSims = 50;
+// Configuration de l'IA et du jeu (attendue par game.js)
+const numMCTSSims = 50; // Ajuste si besoin
+const numPlayers = nb_players; // Fait le pont avec ta variable dans constants_3pl.js
+
+/* =================== */
+/* =====  CONST  ===== */
+/* =================== */
+
+const colors = [
+  ["gainsboro"  , "ghostwhite", "black"], // white
+  ["dodgerblue" , "mediumblue", "white"], // blue
+  ["lightgreen" , "green"     , "white"], // green
+  ["tomato"     , "red"       , "white"], // red
+  ["dimgray"    , "black"     , "white"], // black
+  ["lightyellow", "yellow"    , "black"], // yellow
+  ["darkgray"   , "darkgray"  , "black"]  // For noble
+];
+
+const tokensCoord = [
+  "left: 17%; top: 17%",
+  "left: 65%; top: 15%",
+  "left: 35%; top: 40%",
+  "left: 10%; top: 62%",
+  "left: 60%; top: 65%",
+];
+
+const nobles_names = [
+  "Isabelle of Castile", "Anne of Brittany", "Mary Stuart", "Elisabeth of Austria", 
+  "Charles V", "Machiavelli", "Suleiman the Magnificent", "Henry VIII",
+  "Francis I", "Catherine of Medici"
+];
+
+// Note : nobles_req is kept just in case you use it for tooltips, 
+// though the actual requirements checking is fully done in Python now.
+const nobles_req = [
+  "4[W] 4[B] 4[K]", "3[B] 3[G] 3[R]", "3[R] 3[G] 3[B]", "3[W] 3[B] 3[K]",
+  "3[W] 3[R] 3[K]", "4[B] 4[W] 4[R]", "4[B] 4[G] 4[R]", "4[R] 4[B] 4[K]",
+  "3[R] 3[W] 3[G]", "3[G] 3[W] 3[B]"
+];
 
 /* =================== */
 /* ===== ANALYTICS === */
