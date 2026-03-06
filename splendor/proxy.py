@@ -1,4 +1,10 @@
 import json
+import numpy as np
+from MCTS import MCTS
+from SplendorGame import SplendorGame as Game
+from SplendorLogic import np_all_cards_1, np_all_cards_2, np_all_cards_3, np_all_nobles
+from SplendorLogicNumba import my_packbits, my_unpackbits
+
 
 class dotdict(dict):
     def __getattr__(self, name):
@@ -25,6 +31,11 @@ def init_game(numMCTSSims):
     end = [0,0]
 
     return get_render_state()
+
+def changeDifficulty(numMCTSSims):
+    global mcts
+    if mcts is not None:
+        mcts.args.numMCTSSims = numMCTSSims
 
 def getNextState(action):
     global g, board, mcts, player, history
@@ -181,21 +192,27 @@ def _get_last_action_details():
 # and must return the updated JSON state.
 
 def handle_action(action_name, *args):
-    """Le Dispatcher unique appelé par $store.game.act()"""
     if 'g' not in globals() or g is None:
         return json.dumps({"viewData": {}, "extra": {}})
         
-    if action_name == "reset_and_render":
-        return reset_and_render()
-    elif action_name == "click_and_render":
-        arg1 = args[0]
-        arg2 = args[1] if len(args) > 1 else -1
-        return click_and_render(args[0], arg1, arg2) # Note: l'ordre dépend de comment tu passes item_category depuis Alpine
-    elif action_name == "confirm_action":
-        return confirm_action()
-    elif action_name == "undo":
-        return undo()
+    if action_name == "reset_and_render": return reset_and_render()
+    elif action_name == "click_and_render": return click_and_render(args[0], args[1], args[2] if len(args) > 2 else -1)
+    elif action_name == "confirm_action": return confirm_action()
+    elif action_name == "undo": return undo()
     
+    # Nouvelles actions pour le mode Édition :
+    elif action_name == "set_edit_mode": return set_edit_mode(args[0])
+    elif action_name == "filter_cards":
+        global editor_matching_cards
+        editor_matching_cards = filterCards(args[0], args[1], args[2])
+        return get_render_state()
+    elif action_name == "change_deck_card":
+        return changeDeckCard(args[0], args[1], args[2], args[3], args[4], False)
+    elif action_name == "change_noble":
+        return changeNoble(args[0], args[1], args[2])
+    elif action_name == "change_gem":
+        return changeGemOrNbCards(args[0], args[1], args[2], args[3])
+        
     return get_render_state()
 
 def reset_and_render():
@@ -417,7 +434,7 @@ def get_render_state():
             if g.board.players_nobles[3*p + i].sum() > 0:
                 p_data["nobles"].append(_convertTokensToJS(g.board.players_nobles[3*p + i])[:3])
                 p_data["noble_points"] = int(g.board.players_nobles[3*p:3*p+3, 6].sum())
-                
+
         view["players"].append(p_data)
         
     # 4. Interaction metadata (Selection states)
@@ -427,7 +444,8 @@ def get_render_state():
         "can_confirm": _is_selection_valid(),
         "move_desc": _get_move_short_desc(),
         "last_action": _get_last_action_details(),
-        "previous_player": history[0][0] if history else -1
+        "previous_player": history[0][0] if history else -1,
+        "matching_cards": editor_matching_cards,
     }
 
     end_status = g.getGameEnded(board, player)
@@ -437,7 +455,113 @@ def get_render_state():
         "extra": extra,
         "currentPlayer": player,
         "gameEnded": bool(end_status[0] != 0),
-        "canUndo": len(history) > 0
+        "canUndo": len(history) > 0,
+        "editMode": edit_mode,
     }
     
     return json.dumps(response)
+
+
+# ==========================================
+# ===== EDIT MODE ==========================
+# ==========================================
+
+edit_mode = 0
+editor_matching_cards = []
+
+def set_edit_mode(mode):
+    global edit_mode
+    edit_mode = mode
+    return get_render_state()
+
+def filterCards(tier, color, points):
+    pattern = np.zeros(7,)
+    pattern[color] = 1
+    pattern[6] = points
+    list_cards = [np_all_cards_1, np_all_cards_2, np_all_cards_3][tier].reshape(-1,2,7)
+    indexes = np.where((list_cards[:,1,:] == pattern).all(axis=1))[0]
+    return [_convertCardToJS(list_cards[i,0,:], list_cards[i,1,:]) for i in indexes]
+
+def searchCard(card, many_cards, onlyCardIncome=False):
+    if (onlyCardIncome):
+        assert(card.ndim == 1)
+        assert(many_cards.ndim == 3)
+        return np.where((many_cards[:,1,:] == card).all(axis=1))[0]
+
+    assert(card.ndim == 2)
+    if many_cards.ndim == 3:    
+        result = np.where(np.logical_and(
+            (many_cards[:,0,:] == card[0,:]).all(axis=1),
+            (many_cards[:,1,:] == card[1,:]).all(axis=1)
+        ))[0]
+    else:
+        result = np.where(np.logical_and(
+            (many_cards[ ::2,:] == card[0,:]).all(axis=1),
+            (many_cards[1::2,:] == card[1,:]).all(axis=1)
+        ))[0]
+        result *= 2
+    return result
+
+def changeDeckCard(tier, color, points, selectedIndexInList, locationIndex, lapidaryMode):
+    global g, board, player
+    pattern = np.zeros(7,)
+    pattern[color] = 1
+    pattern[6] = points
+    list_cards = [np_all_cards_1, np_all_cards_2, np_all_cards_3][tier].reshape(-1,2,7)
+    indexes = searchCard(pattern, list_cards, onlyCardIncome=True)
+
+    newCardIndex = indexes[selectedIndexInList]
+    newCardX, newCardY = divmod(newCardIndex, list_cards.shape[0] // 5)
+    newCard = list_cards[newCardIndex, :, :]
+
+    oldCard = g.board.cards_tiers[8*tier+2*locationIndex:8*tier+2*locationIndex+2]
+    oldCardIndex = searchCard(oldCard, list_cards)[0]
+    oldCardX, oldCardY = divmod(oldCardIndex, list_cards.shape[0] // 5)
+    old_i = 8*tier + 2*locationIndex
+
+    if newCardIndex != oldCardIndex:
+        index_visible = searchCard(newCard, g.board.cards_tiers)
+        index_reserved = searchCard(newCard, g.board.players_reserved)
+        deck_cards = my_unpackbits(g.board.nb_deck_tiers[2*tier+1, newCardX])
+        new_is_in_deck = (deck_cards[newCardY] > 0)
+        if (index_visible.size > 0 or index_reserved.size > 0):
+            new_i = index_visible[0] if index_visible.size else index_reserved[0]
+            g.board.cards_tiers[[old_i  , new_i  ], :] = g.board.cards_tiers[[new_i  , old_i  ], :]
+            g.board.cards_tiers[[old_i+1, new_i+1], :] = g.board.cards_tiers[[new_i+1, old_i+1], :]
+        else:
+            g.board.cards_tiers[old_i  , :] = newCard[0, :]
+            g.board.cards_tiers[old_i+1, :] = newCard[1, :]
+            if (new_is_in_deck):
+                deck_cards[newCardY] = 0
+                g.board.nb_deck_tiers[2*tier+1, newCardX] = my_packbits(deck_cards)
+                g.board.nb_deck_tiers[2*tier, newCardX] -= 1
+                
+                deck_cards = my_unpackbits(g.board.nb_deck_tiers[2*tier+1, oldCardX])
+                deck_cards[oldCardY] = 1
+                g.board.nb_deck_tiers[2*tier+1, oldCardX] = my_packbits(deck_cards)
+                g.board.nb_deck_tiers[2*tier, oldCardX] += 1
+
+    if lapidaryMode:
+        end_tier = 8*(tier+1)
+        g.board.cards_tiers[old_i:end_tier, :] = np.roll(g.board.cards_tiers[old_i:end_tier, :], shift=-2, axis=0)
+
+    return get_render_state()
+
+def changeGemOrNbCards(p, color, type_, delta):
+    global g, board, player
+    if (p < 0): # Bank
+        g.board.bank[0][color]          = max(0, g.board.bank[0][color]          + delta)
+    elif type_ == 'gem':
+        g.board.players_gems[p][color]  = max(0, g.board.players_gems[p][color]  + delta)
+    else:
+        g.board.players_cards[p][color] = max(0, g.board.players_cards[p][color] + delta)
+
+    return get_render_state()
+
+def changeNoble(index, nobleId, assignedPlayer):
+    global g, board, player
+    g.board.nobles[index, :] = np_all_nobles[nobleId, :] if assignedPlayer < 0 else 0
+    for p in range(g.num_players):
+        g.board.players_nobles[3*p+index, :] = np_all_nobles[nobleId, :] if assignedPlayer == p else 0
+
+    return get_render_state()

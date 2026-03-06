@@ -161,8 +161,7 @@
               </template>
             </a>
           </template>
-        </div
-        >
+        </div>
       </div>
     </template>
   </div>
@@ -288,173 +287,236 @@
 
 
 
-<div class="ui modal">
+<div class="ui modal" id="editModal" x-data="splendorEditor()" x-init="initModal()">
   <i class="close inside icon"></i>
-  <div class="header" id="mod_head"></div>
+  <div class="header" x-text="step === 'card' ? 'Edit card - ' + ['1st','2nd','3rd','4th'][c_index] + ' on ' + ['bottom','middle','top'][c_tier] + ' line' : (step === 'noble' ? 'Edit nobles' : 'Edit bank/players')"></div>
   <div class="content">
-    <div id="card_editor">
-
+    
+    <div x-show="step === 'card'">
       <div class="ui center aligned grid">
-        <div class="two wide column"><div id="editor_info0"></div></div>
-        <div class="two wide column"><div id="editor_info1"></div></div>
-        <div class="two wide column"><div id="editor_info2"></div></div>
-        <div class="two wide column"><div id="editor_info3"></div></div>
+        <template x-for="i in [0,1,2,3]">
+           <div class="two wide column">
+             <svg class="svgS" viewBox="0 0 32 32">
+               <rect width="100%" height="100%" :fill="colors[$store.game.view.tiers[c_tier][i][0] >= 0 ? $store.game.view.tiers[c_tier][i][0] : 0][0]"/>
+               <rect width="100%" height="33%" fill="white" fill-opacity="50%"/>
+               <rect width="0.4em" height="0.5em" x="65%" y="5%" :fill="colors[$store.game.view.tiers[c_tier][i][0] >= 0 ? $store.game.view.tiers[c_tier][i][0] : 0][1]"/>
+               <text x="25%" y="17%" text-anchor="middle" dominant-baseline="central" font-size="0.7em" font-weight="bolder" :fill="colors[$store.game.view.tiers[c_tier][i][0] >= 0 ? $store.game.view.tiers[c_tier][i][0] : 0][2]" x-show="$store.game.view.tiers[c_tier][i][1] > 0" x-text="$store.game.view.tiers[c_tier][i][1]"></text>
+               <template x-for="(token, tIdx) in $store.game.view.tiers[c_tier][i][2]">
+                 <g>
+                   <circle :cx="tokensCoordSmall[tIdx][0]" :cy="tokensCoordSmall[tIdx][1]" r="0.3em" :fill="colors[token[0]][1]" />
+                   <text :x="tokensCoordSmall[tIdx][0]" :y="tokensCoordSmall[tIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[token[0]][2]" x-text="token[1]"></text>
+                 </g>
+               </template>
+               <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="c_index === i" />
+             </svg>
+           </div>
+        </template>
       </div>
 
       <div class="ui hidden divider"></div>
       <div class="ui large wrapped wrapping buttons">
-        <button class="ui gray basic button" id="mod_but_col0" onclick="cardEditor.buttonClick(this.id)">White</button>
-        <button class="ui blue basic button" id="mod_but_col1" onclick="cardEditor.buttonClick(this.id)">Blue</button>
-        <button class="ui green basic button" id="mod_but_col2" onclick="cardEditor.buttonClick(this.id)">Green</button>
-        <button class="ui red basic button" id="mod_but_col3" onclick="cardEditor.buttonClick(this.id)">Red</button>
-        <button class="ui black basic button" id="mod_but_col4" onclick="cardEditor.buttonClick(this.id)">Black</button>
+        <template x-for="(cName, i) in ['White', 'Blue', 'Green', 'Red', 'Black']">
+          <button class="ui button" :class="c_color === i ? colors[i][1].replace('dodgerblue','blue').replace('dimgray','black').replace('tomato','red').replace('lightgreen','green').replace('gainsboro','gray') : 'basic ' + colors[i][1].replace('dodgerblue','blue').replace('dimgray','black').replace('tomato','red').replace('lightgreen','green').replace('gainsboro','gray')" @click="setCardProp('c_color', i)" x-text="cName"></button>
+        </template>
       </div>
-
       <div class="ui hidden divider"></div>
       <div class="ui large wrapped wrapping buttons">
-        <button class="ui basic button" id="mod_but_pts0" onclick="cardEditor.buttonClick(this.id)">0</button>
-        <button class="ui basic button" id="mod_but_pts1" onclick="cardEditor.buttonClick(this.id)">1</button>
-        <button class="ui basic button" id="mod_but_pts2" onclick="cardEditor.buttonClick(this.id)">2</button>
-        <button class="ui basic button" id="mod_but_pts3" onclick="cardEditor.buttonClick(this.id)">3</button>
-        <button class="ui basic button" id="mod_but_pts4" onclick="cardEditor.buttonClick(this.id)">4</button>
-        <button class="ui basic button" id="mod_but_pts5" onclick="cardEditor.buttonClick(this.id)">5</button>
+        <template x-for="pts in [0,1,2,3,4,5]">
+          <button class="ui button" :class="c_pts === pts ? '' : 'basic'" @click="setCardProp('c_pts', pts)" x-text="pts"></button>
+        </template>
       </div>
 
       <div class="ui hidden divider"></div>
-      <div class="ui text container">
-        <div class="ui four column compact centered grid">
-          <div class="column" id="sel_c0"></div>
-          <div class="column" id="sel_c1"></div>
-          <div class="column" id="sel_c2"></div>
-          <div class="column" id="sel_c3"></div>
-
-          <div class="column" id="sel_c4"></div>
-          <div class="column" id="sel_c5"></div>
-          <div class="column" id="sel_c6"></div>
-          <div class="column" id="sel_c7"></div>
-        </div>
-      </div>
+      <div class="ui text container"><div class="ui four column compact centered grid">
+        <template x-for="(card, matchIdx) in $store.game.extra.matching_cards">
+          <div class="column">
+            <a href="#" @click.prevent="commitCard(matchIdx)">
+              <svg class="svgL" viewBox="0 0 60 60">
+                 <rect width="100%" height="100%" :fill="colors[card[0]][0]"/>
+                 <rect width="100%" height="30%" fill="white" fill-opacity="50%"/>
+                 <rect width="13px" height="13px" x="65%" y="5%" :fill="colors[card[0]][1]"/>
+                 <text x="25%" y="17%" text-anchor="middle" dominant-baseline="central" font-size="16px" font-weight="bolder" :fill="colors[card[0]][2]" x-show="card[1] > 0" x-text="card[1]"></text>
+                 <template x-for="(token, tIdx) in card[2]"><g>
+                   <circle :cx="tokensCoord[tIdx][0]" :cy="tokensCoord[tIdx][1]" r="0.5em" :fill="colors[token[0]][1]" />
+                   <text :x="tokensCoord[tIdx][0]" :y="tokensCoord[tIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[token[0]][2]" x-text="token[1]"></text>
+                 </g></template>
+                 <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="card.toString() === $store.game.view.tiers[c_tier][c_index].toString()" />
+              </svg>
+            </a>
+          </div>
+        </template>
+      </div></div>
     </div>
 
-    <div id="noble_editor" style="display: none">
-      <div class="ui equal width compact center aligned grid" id="noble_slots">
-        <div class="column"><div id="bank_noble0" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
-        <div class="column"><div id="bank_noble1" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
-        <div class="column"><div id="bank_noble2" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
-        <div class="column"><div id="bank_noble3" onclick="nobleEditor.buttonClick(this.id);event.preventDefault();"></div></div>
+    <div x-show="step === 'noble'">
+      <div class="ui equal width compact center aligned grid">
+        <template x-for="s in [0,1,2,3]">
+          <div class="column"><a href="#" @click.prevent="n_slot = s">
+             <svg class="svgS" viewBox="0 0 32 32">
+                <rect width="100%" height="100%" :fill="colors[6][0]"/>
+                <rect width="50%" height="100%" fill="white" fill-opacity="50%"/>
+                <template x-if="n_ids[s] >= 0"><template x-for="(req, rIdx) in all_nobles[n_ids[s]]">
+                  <g>
+                    <rect :x="'calc(' + tokensCoordNoble[rIdx][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[rIdx][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[req[0]][1]" />
+                    <text :x="tokensCoordNoble[rIdx][0]" :y="tokensCoordNoble[rIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[req[0]][2]" x-text="req[1]"></text>
+                  </g>
+                </template></template>
+                <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="n_slot === s" />
+             </svg>
+          </a></div>
+        </template>
       </div>
 
-      <div class="ui hidden divider"></div>
-      Change by any noble in the list:
+      <div class="ui hidden divider"></div>Change by any noble in the list:<br>
+      
       <div class="ui five column compact centered grid">
-        <div class="column" id="avail_noble0" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble1" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble2" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble3" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble4" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-
-        <div class="column" id="avail_noble5" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble6" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble7" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble8" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
-        <div class="column" id="avail_noble9" onclick="nobleEditor.clickToEdit(this.id);event.preventDefault();"></div>
+         <template x-for="(noble, nIdx) in all_nobles" :key="'avail-noble-'+nIdx">
+            <div class="column"><a href="#" @click.prevent="n_ids[n_slot] = nIdx; commitNoble()">
+               <svg class="svgS" viewBox="0 0 32 32">
+                  <rect width="100%" height="100%" :fill="colors[6][0]"/>
+                  <rect width="50%" height="100%" fill="white" fill-opacity="50%"/>
+                  <template x-for="(req, rIdx) in noble"><g>
+                      <rect :x="'calc(' + tokensCoordNoble[rIdx][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[rIdx][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[req[0]][1]" />
+                      <text :x="tokensCoordNoble[rIdx][0]" :y="tokensCoordNoble[rIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[req[0]][2]" x-text="req[1]"></text>
+                  </g></template>
+               </svg>
+            </a></div>
+         </template>
       </div>
       <div class="ui fluid large wrapped wrapping buttons">
-        <button class="ui basic button" id="noble_assign_P-1" onclick="nobleEditor.clickToEdit(this.id)">Not won</button>
-        <button class="ui basic button" id="noble_assign_P0"  onclick="nobleEditor.clickToEdit(this.id)">Won by P0</button>
-        <button class="ui basic button" id="noble_assign_P1"  onclick="nobleEditor.clickToEdit(this.id)">Won by P1</button>
-        <button class="ui basic button" id="noble_assign_P2"  onclick="nobleEditor.clickToEdit(this.id)">Won by P2</button>
+        <button class="ui button" :class="n_assigns[n_slot] === -1 ? '' : 'basic'" @click="n_assigns[n_slot] = -1; commitNoble()">Not won</button>
+        <template x-for="pIdx in $store.game.view.players.length">
+            <button class="ui button" :class="n_assigns[n_slot] === (pIdx-1) ? '' : 'basic'" @click="n_assigns[n_slot] = (pIdx-1); commitNoble()" x-text="'Won by P' + (pIdx-1)"></button>
+        </template>
       </div>
     </div>
 
-    <div id="gem_editor" style="display: none">
+    <div x-show="step === 'gem'">
       <div class="ui fluid large buttons">
-        <button class="ui basic button" id="editor_P-1" onclick="gemEditor.buttonClick(this.id)">Bank</button>
-        <button class="ui basic button" id="editor_P0" onclick="gemEditor.buttonClick(this.id)">Player0</button>
-        <button class="ui basic button" id="editor_P1" onclick="gemEditor.buttonClick(this.id)">Player1</button>
-        <button class="ui basic button" id="editor_P2" onclick="gemEditor.buttonClick(this.id)">Player2</button>
+        <button class="ui button" :class="g_player === -1 ? '' : 'basic'" @click="g_player = -1">Bank</button>
+        <template x-for="pIdx in $store.game.view.players.length">
+           <button class="ui button" :class="g_player === (pIdx-1) ? '' : 'basic'" @click="g_player = (pIdx-1)" x-text="'Player ' + (pIdx-1)"></button>
+        </template>
       </div>
 
       <div class="ui hidden divider"></div>
       <div class="ui equal width compact center aligned grid">
-        <div class="column">
-          <button class="ui basic large button" id="editor_g0_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g0"></div>
-          <button class="ui basic large button" id="editor_g0_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_g1_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g1"></div>
-          <button class="ui basic large button" id="editor_g1_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_g2_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g2"></div>
-          <button class="ui basic large button" id="editor_g2_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_g3_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g3"></div>
-          <button class="ui basic large button" id="editor_g3_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_g4_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g4"></div>
-          <button class="ui basic large button" id="editor_g4_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_g5_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_g5"></div>
-          <button class="ui basic large button" id="editor_g5_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
+        <template x-for="color in [0,1,2,3,4,5]">
+           <div class="column">
+             <button class="ui basic large button" @click="commitGem('gem', color, 1)">+</button>
+             <svg class="svgS" viewBox="0 0 32 32">
+                <circle cx="50%" cy="50%" r="50%" :fill="colors[color][1]" />
+                <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[color][2]" 
+                      x-text="g_player === -1 ? $store.game.view.bank[color] : $store.game.view.players[g_player].gems[color]"></text>
+             </svg>
+             <button class="ui basic large button" @click="commitGem('gem', color, -1)">-</button>
+           </div>
+        </template>
       </div>
 
-      <div class="ui hidden divider"></div>
-      <div class="ui equal width compact center aligned grid" id="editor_c_grid">
-        <div class="column">
-          <button class="ui basic large button" id="editor_c0_plus" onclick="gemEditor.clickToEdit(this.id)">+</button>
-          <div id="editor_c0"></div>
-          <button class="ui basic large button" id="editor_c0_minus" onclick="gemEditor.clickToEdit(this.id)">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_c1_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
-          <div id="editor_c1"></div>
-          <button class="ui basic large button" id="editor_c1_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_c2_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
-          <div id="editor_c2"></div>
-          <button class="ui basic large button" id="editor_c2_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_c3_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
-          <div id="editor_c3"></div>
-          <button class="ui basic large button" id="editor_c3_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
-        </div>
-        <div class="column">
-          <button class="ui basic large button" id="editor_c4_plus" onclick="gemEditor.clickToEdit(this.id);">+</button>
-          <div id="editor_c4"></div>
-          <button class="ui basic large button" id="editor_c4_minus" onclick="gemEditor.clickToEdit(this.id);">-</button>
-        </div>
-        <div class="column">
-        </div>
+      <div class="ui hidden divider" x-show="g_player >= 0"></div>
+      <div class="ui equal width compact center aligned grid" x-show="g_player >= 0">
+        <template x-for="color in [0,1,2,3,4]">
+           <div class="column">
+             <button class="ui basic large button" @click="commitGem('card', color, 1)">+</button>
+             <svg class="svgS" viewBox="0 0 32 32">
+                <rect width="100%" height="100%" :fill="colors[color][1]" />
+                <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[color][2]" 
+                      x-text="$store.game.view.players[g_player]?.cards[color]"></text>
+             </svg>
+             <button class="ui basic large button" @click="commitGem('card', color, -1)">-</button>
+           </div>
+        </template>
+        <div class="column"></div>
       </div>
     </div>
   </div>
+  
   <div class="actions">
-    <div class="ui primary button" id="edit_next_section" onclick="currentEditor.btnNext();">Edit nobles</div>
+    <div class="ui primary button" @click="if(step === 'card') gotoNoble(); else if(step === 'noble') gotoGem(); else $('#editModal').modal('hide');" x-text="step === 'card' ? 'Edit nobles' : (step === 'noble' ? 'Edit gems' : 'Close')"></div>
   </div>
 </div>
 
-
-
 <script>
-const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
-const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
-window.onload = () =>
-  [ `${counterAPI_base}/overall`, `${counterAPI_base}/overall_${counterAPI_suffix}`,`${counterAPI_base}/splendor_${counterAPI_suffix}`]
-  .forEach(u => fetch(u).catch(() => {}));
-main();
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('splendorEditor', () => ({
+      step: 'card',
+      c_tier: 0, c_index: 0, c_color: 0, c_pts: 0,
+      n_slot: 0, n_assigns: [-1,-1,-1,-1], n_ids: [-2,-2,-2,-2],
+      g_player: -1,
+
+      initModal() {
+        this.$watch('$store.game.editMode', val => {
+            if (val > 0) {
+                this.resetToCard(0, 0);
+                $('#editModal').modal({
+                    onHide: () => { 
+                        if (Alpine.store('game').editMode !== 0) {
+                            pyodide.runPythonAsync(`proxy.set_edit_mode(0)`).then(j => update_store(j));
+                        }
+                    }
+                }).modal('show');
+            } else {
+                $('#editModal').modal('hide');
+            }
+        });
+      },
+      
+      resetToCard(tier, index) {
+        this.step = 'card';
+        this.c_tier = tier;
+        this.c_index = index;
+        let card = Alpine.store('game').view.tiers[tier][index];
+        this.c_color = card[0] >= 0 ? card[0] : 0;
+        this.c_pts = card[1] >= 0 ? card[1] : 0;
+        Alpine.store('game').act('filter_cards', this.c_tier, this.c_color, this.c_pts);
+      },
+
+      setCardProp(prop, val) {
+        this[prop] = val;
+        Alpine.store('game').act('filter_cards', this.c_tier, this.c_color, this.c_pts);
+      },
+      
+      commitCard(cardIdx) {
+        Alpine.store('game').act('change_deck_card', this.c_tier, this.c_color, this.c_pts, cardIdx, this.c_index);
+        let n_tier = (this.c_index === 3) ? this.c_tier + 1 : this.c_tier;
+        let n_index = (this.c_index + 1) % 4;
+        if (n_tier >= 3) this.gotoNoble(); else this.resetToCard(n_tier, n_index);
+      },
+
+      gotoNoble() {
+        this.step = 'noble';
+        this.n_slot = 0;
+        let v_nobles = Alpine.store('game').view.nobles;
+        for(let i=0; i<4; i++) {
+            if (i < v_nobles.length && v_nobles[i].length > 0) {
+                this.n_ids[i] = this.findNobleId(v_nobles[i]);
+            } else {
+                this.n_ids[i] = -1; // Not perfectly accurate for player-owned nobles but preserves old UI flow
+            }
+            this.n_assigns[i] = -1;
+        }
+      },
+      
+      findNobleId(tokensJS) {
+         let tokStr = tokensJS.toString();
+         for(let i=0; i<all_nobles.length; i++) if (all_nobles[i].toString() === tokStr) return i;
+         return -1;
+      },
+
+      commitNoble() {
+         Alpine.store('game').act('change_noble', this.n_slot, this.n_ids[this.n_slot], this.n_assigns[this.n_slot]);
+         if (this.n_slot < ($store.game.view.players.length - 1)) this.n_slot++; else this.gotoGem();
+      },
+
+      gotoGem() { this.step = 'gem'; this.g_player = -1; },
+      
+      commitGem(type, color, delta) {
+         Alpine.store('game').act('change_gem', this.g_player, color, type, delta);
+      }
+    }));
+  });
 </script>
+
 </div></body>
 </html>
