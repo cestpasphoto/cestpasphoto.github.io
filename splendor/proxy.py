@@ -169,7 +169,8 @@ def _get_last_action_details():
     """Formate le dernier coup pour le highlight (petit point tan)"""
     global history
     if not history: return ["none", -1]
-    last_move = history[0][2]
+    last_move = int(history[0][2])
+
     if last_move < 0: return ["none", -1]
     
     if last_move < 12: return ["card", last_move]
@@ -254,7 +255,7 @@ def undo(are_players_human=None):
         # On remonte l'historique jusqu'à trouver un tour où le joueur courant était humain
         index_to_restore = 0
         for index, state in enumerate(history):
-            p = state[0]
+            p = int(state[0])
             if are_players_human[p] and (index+1 == len(history) or history[index+1][0] != p):
                 index_to_restore = index
                 break
@@ -385,11 +386,11 @@ def get_render_state():
         return json.dumps({"viewData": {}, "extra": {}})
         
     num_players = g.num_players
-    
+
     view = {
         "bank": [int(g.board.bank[0][c]) for c in range(6)],
         "tiers": [],
-        "decks": [int(g.board.nb_deck_tiers[2*t]) for t in range(3)],
+        "decks": [int(g.board.nb_deck_tiers[2*t, :5].sum()) for t in range(3)],
         "nobles": [],
         "players": []
     }
@@ -444,7 +445,7 @@ def get_render_state():
         "can_confirm": _is_selection_valid(),
         "move_desc": _get_move_short_desc(),
         "last_action": _get_last_action_details(),
-        "previous_player": history[0][0] if history else -1,
+        "previous_player": int(history[0][0]) if history else -1,
         "matching_cards": editor_matching_cards,
     }
 
@@ -453,14 +454,13 @@ def get_render_state():
     response = {
         "viewData": view, # <-- Assure-toi que cette variable est bien construite comme dans ton code
         "extra": extra,
-        "currentPlayer": player,
+        "currentPlayer": int(player),
         "gameEnded": bool(end_status[0] != 0),
         "canUndo": len(history) > 0,
-        "editMode": edit_mode,
+        "editMode": int(edit_mode),
     }
     
     return json.dumps(response)
-
 
 # ==========================================
 # ===== EDIT MODE ==========================

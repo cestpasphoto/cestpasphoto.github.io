@@ -100,191 +100,223 @@
   <h1 class="ui huge center aligned header">Splendor with AI</h1> 
   <div class="ui hidden divider"></div>
 
-  <div class="ui very compact equal width center aligned grid">
-    <template x-for="(noble, index) in $store.game.view.nobles" :key="'noble-'+index">
-      <div class="column">
-        <template x-if="noble.length > 0">
-          <svg class="svgS" viewBox="0 0 32 32">
-            <rect width="100%" height="100%" :fill="colors[6][0]"/>
-            <rect width="50%" height="100%" fill="white" fill-opacity="50%"/>
-            <template x-for="(req, rIdx) in noble">
-              <g>
-                <rect :x="'calc(' + tokensCoordNoble[rIdx][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[rIdx][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[req[0]][1]" />
-                <text :x="tokensCoordNoble[rIdx][0]" :y="tokensCoordNoble[rIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[req[0]][2]" x-text="req[1]"></text>
-              </g>
-            </template>
-          </svg>
-        </template>
-      </div>
-    </template>
-  </div>
-
-
-  <div class="ui very compact equal width center aligned grid">
-    <template x-for="tierIdx in [2, 1, 0]" :key="'tier-'+tierIdx">
-      <div class="row">
-        
-        <div class="column">
-          <svg class="svgL" viewBox="0 0 60 60" style="cursor: pointer;"
-               @click="$store.game.act('click_and_render', 'deck', tierIdx)">
-            <polygon points="0,0 60,0 60,60 0,60" fill="black"/>
-            <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" fill="darkgray" x-text="$store.game.view.decks[tierIdx] + ' cards'"></text>
-            
-            <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'deck' && $store.game.extra.sel_items[0] === tierIdx" />
-            
-            <circle cx="85%" cy="15%" r="5px" fill="tan" stroke="black" stroke-width="1" x-show="$store.game.extra?.last_action?.[0] === 'deck' && $store.game.extra?.last_action?.[1] === tierIdx" />
-          </svg>
-        </div>
-
-        <div class="column">
-          <template x-for="(card, cardIdx) in $store.game.view.tiers[tierIdx]" :key="'card-'+tierIdx+'-'+cardIdx">
-            <a href="#" @click.prevent="card[0] >= 0 ? $store.game.act('click_and_render', 'card', tierIdx, cardIdx) : null">
-              <template x-if="card[0] >= 0">
-                <svg class="svgL" viewBox="0 0 60 60">
-                  <rect width="100%" height="100%" :fill="colors[card[0]][0]"/>
-                  <rect width="100%" height="30%" fill="white" fill-opacity="50%"/>
-                  <rect width="13px" height="13px" x="65%" y="5%" :fill="colors[card[0]][1]"/>
-                  <text x="25%" y="17%" text-anchor="middle" dominant-baseline="central" font-size="16px" font-weight="bolder" :fill="colors[card[0]][2]" x-show="card[1] > 0" x-text="card[1]"></text>
-                  <template x-for="(token, tIdx) in card[2]">
-                    <g>
-                      <circle :cx="tokensCoord[tIdx][0]" :cy="tokensCoord[tIdx][1]" r="0.5em" :fill="colors[token[0]][1]" />
-                      <text :x="tokensCoord[tIdx][0]" :y="tokensCoord[tIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[token[0]][2]" x-text="token[1]"></text>
-                    </g>
-                  </template>
-                  <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'card' && $store.game.extra.sel_items[0] && $store.game.extra.sel_items[0][0] === tierIdx && $store.game.extra.sel_items[0][1] === cardIdx" />
-                  <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:tan" x-show="$store.game.extra.sel_type === 'rsv' && $store.game.extra.sel_items[0] && $store.game.extra.sel_items[0][0] === tierIdx && $store.game.extra.sel_items[0][1] === cardIdx" />
-                  <circle cx="85%" cy="15%" r="5px" fill="tan" x-show="['card', 'rsv'].includes($store.game.extra?.last_action?.[0]) && $store.game.extra?.last_action?.[1] === (tierIdx * 4 + cardIdx)" />
-                </svg>
-              </template>
-              <template x-if="card[0] < 0">
-                 <svg class="svgL" viewBox="0 0 60 60"></svg>
-              </template>
-            </a>
-          </template>
-        </div>
-      </div>
-    </template>
-  </div>
-
-
-  <div class="ui very compact equal width center aligned grid">
-    <template x-for="(count, colorIdx) in $store.game.view.bank" :key="'bank-'+colorIdx">
-      <div class="column">
-        <template x-if="count > 0 || colorIdx === 5">
-          <a href="#" @click.prevent="colorIdx < 5 ? $store.game.act('click_and_render', 'gem', colorIdx) : null">
-            <svg class="svgM" viewBox="0 0 32 32">
-              <circle cx="50%" cy="50%" r="50%" :fill="colors[colorIdx][1]" />
-              <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[colorIdx][2]" x-text="count"></text>
-              <circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'gem' && $store.game.extra.sel_items.includes(colorIdx) && $store.game.extra.sel_items[0] !== $store.game.extra.sel_items[1]" />
-              <circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:tan" x-show="$store.game.extra.sel_type === 'gem' && $store.game.extra.sel_items.includes(colorIdx) && $store.game.extra.sel_items[0] === $store.game.extra.sel_items[1]" />
-              <circle cx="85%" cy="15%" r="5px" fill="tan" x-show="$store.game.extra?.last_action?.[0] === 'gem' && $store.game.extra?.last_action?.[1]?.includes(colorIdx)" />
-            </svg>
-          </a>
-        </template>
-        <template x-if="count === 0 && colorIdx < 5">
-          <svg class="svgM" viewBox="0 0 32 32">
-            <circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'gem' && $store.game.extra.sel_items.includes(colorIdx)" />
-          </svg>
-        </template>
-      </div>
-    </template>
-  </div>
-
-
-
-  <div class="ui hidden divider mobile hidden"></div>
-  <div class="ui fluid large compact buttons" x-show="!$store.game.isLoading && !$store.game.isThinking && $store.game.extra.sel_type !== 'none'">
-    <button class="ui basic icon button" id="undoBtn" 
-            @click="$store.game.act('undo')" 
-            :class="{ 'disabled': !$store.game.canUndo }">
-      <i class="undo icon"></i>
-    </button>
-    <button class="ui button" 
-            id="btn_confirm"
-            :class="{ 
-                'disabled basic': !$store.game.extra.can_confirm && $store.game.extra.sel_type !== 'none',
-                'green': $store.game.extra.can_confirm,
-                'green basic disabled': $store.game.extra.sel_type === 'none'
-            }"
-            @click="$store.game.act('confirm_action')"
-            x-text="$store.game.extra.sel_type === 'none' ? 'CLICK ON A CARD OR A GEM' : ($store.game.extra.can_confirm ? 'Confirm to ' + $store.game.extra.move_desc : 'Cannot ' + $store.game.extra.move_desc)">
-    </button>
-  </div>
-
-  <button x-show="$store.game.isLoading || $store.game.isThinking" class="ui fluid large active loading button">‌</button>
-
-  <template x-for="(player, pIdx) in $store.game.view.players" :key="'player-'+pIdx">
-    <div class="ui hidden divider computer only"></div>
-    <div class="ui horizontal divider" 
-         x-html="(pIdx === 0 ? 'You' : ($store.game.arePlayersHuman[pIdx] ? 'Player '+pIdx : 'AI' + (pIdx===2 ? ' bis' : ''))) + ' - ' + player.points + ' point' + (player.points > 1 ? 's' : '') + (player.noble_points > 0 ? ' (incl. ' + player.noble_points + ' <i class=\'chess queen icon\'></i>)' : '') + ' - ' + player.total_gems + ' <i class=\'gem icon\'></i>'">
-    </div>
-    <div class="ui very compact equal width center aligned grid">
-      
-      <template x-for="(gCount, gIdx) in player.gems" :key="'p'+pIdx+'-gem-'+gIdx">
-        <div class="column">
-          <a href="#" @click.prevent="($store.game.currentPlayer === pIdx && pIdx === 0 && gIdx < 5) ? $store.game.act('click_and_render', 'gemback', gIdx) : null">
-            <template x-if="gCount > 0 || gIdx === 5">
-              <svg class="svgS" viewBox="0 0 32 32">
-                <circle cx="50%" cy="50%" r="50%" :fill="colors[gIdx][1]" />
-                <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[gIdx][2]" x-text="gCount"></text>
-                <circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'gemback' && $store.game.extra.sel_items.includes(gIdx) && $store.game.extra.sel_items[0] !== $store.game.extra.sel_items[1]" />
-                <circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:tan" x-show="$store.game.extra.sel_type === 'gemback' && $store.game.extra.sel_items.includes(gIdx) && $store.game.extra.sel_items[0] === $store.game.extra.sel_items[1]" />
-                <circle cx="85%" cy="15%" r="5px" fill="tan" x-show="$store.game.extra?.last_action?.[0] === 'gemback' && $store.game.extra?.last_action?.[1]?.includes(gIdx) && pIdx === $store.game.extra?.previous_player" />
-              </svg>
-            </template>
-            <template x-if="gCount === 0 && gIdx < 5">
-              <svg class="svgS" viewBox="0 0 32 32"></svg>
-            </template>
-          </a>
-        </div>
-      </template>
-
-      <template x-for="(cCount, cIdx) in player.cards" :key="'p'+pIdx+'-card-'+cIdx">
-        <template x-if="cIdx < 5">
+  <template x-if="!$store.game.isLoading && $store.game.view && $store.game.view.tiers">
+    <div>
+      <div class="ui very compact equal width center aligned grid">
+        <template x-for="(noble, index) in $store.game.view.nobles" :key="'noble-'+index">
           <div class="column">
-            <template x-if="cCount > 0">
+            <template x-if="noble.length > 0">
               <svg class="svgS" viewBox="0 0 32 32">
-                <rect width="100%" height="100%" :fill="colors[cIdx][1]" />
-                <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[cIdx][2]" x-text="cCount"></text>
+                <rect width="100%" height="100%" :fill="colors[6][0]"/>
+                <rect width="50%" height="100%" fill="white" fill-opacity="50%"/>
+                
+                <g x-show="noble && noble.length > 0">
+                  <rect :x="'calc(' + tokensCoordNoble[0][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[0][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[noble?.[0]?.[0] || 0][1]" />
+                  <text :x="tokensCoordNoble[0][0]" :y="tokensCoordNoble[0][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[noble?.[0]?.[0] || 0][2]" x-text="noble?.[0]?.[1] || ''"></text>
+                </g>
+                <g x-show="noble && noble.length > 1">
+                  <rect :x="'calc(' + tokensCoordNoble[1][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[1][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[noble?.[1]?.[0] || 0][1]" />
+                  <text :x="tokensCoordNoble[1][0]" :y="tokensCoordNoble[1][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[noble?.[1]?.[0] || 0][2]" x-text="noble?.[1]?.[1] || ''"></text>
+                </g>
+                <g x-show="noble && noble.length > 2">
+                  <rect :x="'calc(' + tokensCoordNoble[2][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[2][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[noble?.[2]?.[0] || 0][1]" />
+                  <text :x="tokensCoordNoble[2][0]" :y="tokensCoordNoble[2][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[noble?.[2]?.[0] || 0][2]" x-text="noble?.[2]?.[1] || ''"></text>
+                </g>
               </svg>
-            </template>
-            <template x-if="cCount === 0">
-              <svg class="svgS" viewBox="0 0 32 32"></svg>
             </template>
           </div>
         </template>
-      </template>
+      </div>
 
-      <template x-for="(rCard, rIdx) in player.reserved" :key="'p'+pIdx+'-res-'+rIdx">
-        <div class="column">
-         <a href="#" @click.prevent="($store.game.currentPlayer === pIdx && pIdx === 0) ? $store.game.act('click_and_render', 'reserved', rIdx) : null">
-           <template x-if="rCard[0] >= 0">
-             <svg class="svgS" viewBox="0 0 32 32">
-               <rect width="100%" height="100%" :fill="colors[rCard[0]][0]"/>
-               <rect width="100%" height="33%" fill="white" fill-opacity="50%"/>
-               <rect width="0.4em" height="0.5em" x="65%" y="5%" :fill="colors[rCard[0]][1]"/>
-               <text x="25%" y="17%" text-anchor="middle" dominant-baseline="central" font-size="0.7em" font-weight="bolder" :fill="colors[rCard[0]][2]" x-show="rCard[1] > 0" x-text="rCard[1]"></text>
-               <template x-for="(token, tIdx) in rCard[2]">
-                 <g>
-                   <circle :cx="tokensCoordSmall[tIdx][0]" :cy="tokensCoordSmall[tIdx][1]" r="0.3em" :fill="colors[token[0]][1]" />
-                   <text :x="tokensCoordSmall[tIdx][0]" :y="tokensCoordSmall[tIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[token[0]][2]" x-text="token[1]"></text>
-                 </g>
-               </template>
-               <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'card' && $store.game.extra.sel_items[0] && $store.game.extra.sel_items[0][0] === -1 && $store.game.extra.sel_items[0][1] === rIdx" />
-               <circle cx="85%" cy="15%" r="5px" fill="tan" x-show="$store.game.extra?.last_action?.[0] === 'buyrsv' && $store.game.extra?.last_action?.[1] === rIdx && pIdx === $store.game.extra?.previous_player" />
-             </svg>
-           </template>
-         </a>
-       </div>
+
+      <div class="ui very compact equal width center aligned grid">
+        <template x-for="tierIdx in [2, 1, 0]" :key="'tier-'+tierIdx">
+          <div class="row">
+            
+            <div class="column">
+              <svg class="svgL" viewBox="0 0 60 60" style="cursor: pointer;"
+                   @click="$store.game.act('click_and_render', 'deck', tierIdx)">
+                <polygon points="0,0 60,0 60,60 0,60" fill="black"/>
+                <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" fill="darkgray" x-text="$store.game.view.decks[tierIdx] + ' cards'"></text>
+                
+                <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'deck' && $store.game.extra.sel_items[0] === tierIdx" />
+                
+                <circle cx="85%" cy="15%" r="5px" fill="tan" stroke="black" stroke-width="1" x-show="$store.game.extra?.last_action?.[0] === 'deck' && $store.game.extra?.last_action?.[1] === tierIdx" />
+              </svg>
+            </div>
+
+            <div class="column">
+              <template x-for="(card, cardIdx) in $store.game.view.tiers[tierIdx]" :key="'card-'+tierIdx+'-'+cardIdx">
+                <a href="#" @click.prevent="card[0] >= 0 ? $store.game.act('click_and_render', 'card', tierIdx, cardIdx) : null">
+                  <template x-if="card[0] >= 0">
+                    <svg class="svgL" viewBox="0 0 60 60">
+                      <rect width="100%" height="100%" :fill="colors[card[0]][0]"/>
+                      <rect width="100%" height="30%" fill="white" fill-opacity="50%"/>
+                      <rect width="13px" height="13px" x="65%" y="5%" :fill="colors[card[0]][1]"/>
+                      <text x="25%" y="17%" text-anchor="middle" dominant-baseline="central" font-size="16px" font-weight="bolder" :fill="colors[card[0]][2]" x-show="card[1] > 0" x-text="card[1]"></text>
+                      
+                      <g x-show="card[2] && card[2].length > 0">
+                        <circle :cx="tokensCoord[0][0]" :cy="tokensCoord[0][1]" r="0.5em" :fill="colors[card[2]?.[0]?.[0] || 0][1]" />
+                        <text :x="tokensCoord[0][0]" :y="tokensCoord[0][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[card[2]?.[0]?.[0] || 0][2]" x-text="card[2]?.[0]?.[1] || ''"></text>
+                      </g>
+                      <g x-show="card[2] && card[2].length > 1">
+                        <circle :cx="tokensCoord[1][0]" :cy="tokensCoord[1][1]" r="0.5em" :fill="colors[card[2]?.[1]?.[0] || 0][1]" />
+                        <text :x="tokensCoord[1][0]" :y="tokensCoord[1][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[card[2]?.[1]?.[0] || 0][2]" x-text="card[2]?.[1]?.[1] || ''"></text>
+                      </g>
+                      <g x-show="card[2] && card[2].length > 2">
+                        <circle :cx="tokensCoord[2][0]" :cy="tokensCoord[2][1]" r="0.5em" :fill="colors[card[2]?.[2]?.[0] || 0][1]" />
+                        <text :x="tokensCoord[2][0]" :y="tokensCoord[2][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[card[2]?.[2]?.[0] || 0][2]" x-text="card[2]?.[2]?.[1] || ''"></text>
+                      </g>
+                      <g x-show="card[2] && card[2].length > 3">
+                        <circle :cx="tokensCoord[3][0]" :cy="tokensCoord[3][1]" r="0.5em" :fill="colors[card[2]?.[3]?.[0] || 0][1]" />
+                        <text :x="tokensCoord[3][0]" :y="tokensCoord[3][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[card[2]?.[3]?.[0] || 0][2]" x-text="card[2]?.[3]?.[1] || ''"></text>
+                      </g>
+
+                      <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'card' && $store.game.extra.sel_items[0] && $store.game.extra.sel_items[0][0] === tierIdx && $store.game.extra.sel_items[0][1] === cardIdx" />
+                      <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:tan" x-show="$store.game.extra.sel_type === 'rsv' && $store.game.extra.sel_items[0] && $store.game.extra.sel_items[0][0] === tierIdx && $store.game.extra.sel_items[0][1] === cardIdx" />
+                      <circle cx="85%" cy="15%" r="5px" fill="tan" x-show="['card', 'rsv'].includes($store.game.extra?.last_action?.[0]) && $store.game.extra?.last_action?.[1] === (tierIdx * 4 + cardIdx)" />
+                    </svg>
+                  </template>
+                  <template x-if="card[0] < 0">
+                     <svg class="svgL" viewBox="0 0 60 60"></svg>
+                  </template>
+                </a>
+              </template>
+            </div>
+          </div>
+        </template>
+      </div>
+
+
+      <div class="ui very compact equal width center aligned grid">
+        <template x-for="(count, colorIdx) in $store.game.view.bank" :key="'bank-'+colorIdx">
+          <div class="column">
+            <template x-if="count > 0 || colorIdx === 5">
+              <a href="#" @click.prevent="colorIdx < 5 ? $store.game.act('click_and_render', 'gem', colorIdx) : null">
+                <svg class="svgM" viewBox="0 0 32 32">
+                  <circle cx="50%" cy="50%" r="50%" :fill="colors[colorIdx][1]" />
+                  <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[colorIdx][2]" x-text="count"></text>
+                  <circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'gem' && $store.game.extra.sel_items.includes(colorIdx) && $store.game.extra.sel_items[0] !== $store.game.extra.sel_items[1]" />
+                  <circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:tan" x-show="$store.game.extra.sel_type === 'gem' && $store.game.extra.sel_items.includes(colorIdx) && $store.game.extra.sel_items[0] === $store.game.extra.sel_items[1]" />
+                  <circle cx="85%" cy="15%" r="5px" fill="tan" x-show="$store.game.extra?.last_action?.[0] === 'gem' && $store.game.extra?.last_action?.[1]?.includes(colorIdx)" />
+                </svg>
+              </a>
+            </template>
+            <template x-if="count === 0 && colorIdx < 5">
+              <svg class="svgM" viewBox="0 0 32 32">
+                <circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'gem' && $store.game.extra.sel_items.includes(colorIdx)" />
+              </svg>
+            </template>
+          </div>
+        </template>
+      </div>
+
+
+
+      <div class="ui hidden divider mobile hidden"></div>
+      <div class="ui fluid large compact buttons" x-show="!$store.game.isLoading && !$store.game.isThinking && $store.game.extra.sel_type !== 'none'">
+        <button class="ui basic icon button" id="undoBtn" 
+                @click="$store.game.act('undo')" 
+                :class="{ 'disabled': !$store.game.canUndo }">
+          <i class="undo icon"></i>
+        </button>
+        <button class="ui button" 
+                id="btn_confirm"
+                :class="{ 
+                    'disabled basic': !$store.game.extra.can_confirm && $store.game.extra.sel_type !== 'none',
+                    'green': $store.game.extra.can_confirm,
+                    'green basic disabled': $store.game.extra.sel_type === 'none'
+                }"
+                @click="$store.game.act('confirm_action')"
+                x-text="$store.game.extra.sel_type === 'none' ? 'CLICK ON A CARD OR A GEM' : ($store.game.extra.can_confirm ? 'Confirm to ' + $store.game.extra.move_desc : 'Cannot ' + $store.game.extra.move_desc)">
+        </button>
+      </div>
+
+      <template x-for="(player, pIdx) in $store.game.view.players" :key="'player-'+pIdx">
+        <div> <div class="ui hidden divider computer only"></div>
+          <div class="ui horizontal divider" 
+               x-html="(pIdx === 0 ? 'You' : ($store.game.arePlayersHuman[pIdx] ? 'Player '+pIdx : 'AI' + (pIdx===2 ? ' bis' : ''))) + ' - ' + player.points + ' point' + (player.points > 1 ? 's' : '') + (player.noble_points > 0 ? ' (incl. ' + player.noble_points + ' <i class=\'chess queen icon\'></i>)' : '') + ' - ' + player.total_gems + ' <i class=\'gem icon\'></i>'">
+          </div>
+          <div class="ui very compact equal width center aligned grid">
+            
+            <template x-for="(gCount, gIdx) in player.gems" :key="'p'+pIdx+'-gem-'+gIdx">
+              <div class="column">
+                <a href="#" @click.prevent="($store.game.currentPlayer === pIdx && pIdx === 0 && gIdx < 5) ? $store.game.act('click_and_render', 'gemback', gIdx) : null">
+                  <template x-if="gCount > 0 || gIdx === 5">
+                    <svg class="svgS" viewBox="0 0 32 32">
+                      <circle cx="50%" cy="50%" r="50%" :fill="colors[gIdx][1]" />
+                      <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[gIdx][2]" x-text="gCount"></text>
+                      <circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'gemback' && $store.game.extra.sel_items.includes(gIdx) && $store.game.extra.sel_items[0] !== $store.game.extra.sel_items[1]" />
+                      <circle cx="50%" cy="50%" r="45%" style="fill:none;stroke-width:10%;stroke:tan" x-show="$store.game.extra.sel_type === 'gemback' && $store.game.extra.sel_items.includes(gIdx) && $store.game.extra.sel_items[0] === $store.game.extra.sel_items[1]" />
+                      <circle cx="85%" cy="15%" r="5px" fill="tan" x-show="$store.game.extra?.last_action?.[0] === 'gemback' && $store.game.extra?.last_action?.[1]?.includes(gIdx) && pIdx === $store.game.extra?.previous_player" />
+                    </svg>
+                  </template>
+                  <template x-if="gCount === 0 && gIdx < 5">
+                    <svg class="svgS" viewBox="0 0 32 32"></svg>
+                  </template>
+                </a>
+              </div>
+            </template>
+
+            <template x-for="(cCount, cIdx) in player.cards" :key="'p'+pIdx+'-card-'+cIdx">
+              <div class="column" x-show="cIdx < 5">
+                <template x-if="cCount > 0">
+                  <svg class="svgS" viewBox="0 0 32 32">
+                    <rect width="100%" height="100%" :fill="colors[cIdx][1]" />
+                    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[cIdx][2]" x-text="cCount"></text>
+                  </svg>
+                </template>
+                <template x-if="cCount === 0">
+                  <svg class="svgS" viewBox="0 0 32 32"></svg>
+                </template>
+              </div>
+            </template>
+
+            <template x-for="(rCard, rIdx) in player.reserved" :key="'p'+pIdx+'-res-'+rIdx">
+              <div class="column">
+               <a href="#" @click.prevent="($store.game.currentPlayer === pIdx && pIdx === 0) ? $store.game.act('click_and_render', 'reserved', rIdx) : null">
+                 <template x-if="rCard[0] >= 0">
+                   <svg class="svgS" viewBox="0 0 32 32">
+                     <rect width="100%" height="100%" :fill="colors[rCard[0]][0]"/>
+                     <rect width="100%" height="33%" fill="white" fill-opacity="50%"/>
+                     <rect width="0.4em" height="0.5em" x="65%" y="5%" :fill="colors[rCard[0]][1]"/>
+                     <text x="25%" y="17%" text-anchor="middle" dominant-baseline="central" font-size="0.7em" font-weight="bolder" :fill="colors[rCard[0]][2]" x-show="rCard[1] > 0" x-text="rCard[1]"></text>
+                     
+                     <g x-show="rCard[2] && rCard[2].length > 0">
+                       <circle :cx="tokensCoordSmall[0][0]" :cy="tokensCoordSmall[0][1]" r="0.3em" :fill="colors[rCard[2]?.[0]?.[0] || 0][1]" />
+                       <text :x="tokensCoordSmall[0][0]" :y="tokensCoordSmall[0][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[rCard[2]?.[0]?.[0] || 0][2]" x-text="rCard[2]?.[0]?.[1] || ''"></text>
+                     </g>
+                     <g x-show="rCard[2] && rCard[2].length > 1">
+                       <circle :cx="tokensCoordSmall[1][0]" :cy="tokensCoordSmall[1][1]" r="0.3em" :fill="colors[rCard[2]?.[1]?.[0] || 0][1]" />
+                       <text :x="tokensCoordSmall[1][0]" :y="tokensCoordSmall[1][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[rCard[2]?.[1]?.[0] || 0][2]" x-text="rCard[2]?.[1]?.[1] || ''"></text>
+                     </g>
+                     <g x-show="rCard[2] && rCard[2].length > 2">
+                       <circle :cx="tokensCoordSmall[2][0]" :cy="tokensCoordSmall[2][1]" r="0.3em" :fill="colors[rCard[2]?.[2]?.[0] || 0][1]" />
+                       <text :x="tokensCoordSmall[2][0]" :y="tokensCoordSmall[2][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[rCard[2]?.[2]?.[0] || 0][2]" x-text="rCard[2]?.[2]?.[1] || ''"></text>
+                     </g>
+                     <g x-show="rCard[2] && rCard[2].length > 3">
+                       <circle :cx="tokensCoordSmall[3][0]" :cy="tokensCoordSmall[3][1]" r="0.3em" :fill="colors[rCard[2]?.[3]?.[0] || 0][1]" />
+                       <text :x="tokensCoordSmall[3][0]" :y="tokensCoordSmall[3][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[rCard[2]?.[3]?.[0] || 0][2]" x-text="rCard[2]?.[3]?.[1] || ''"></text>
+                     </g>
+
+                     <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="$store.game.extra.sel_type === 'card' && $store.game.extra.sel_items[0] && $store.game.extra.sel_items[0][0] === -1 && $store.game.extra.sel_items[0][1] === rIdx" />
+                     <circle cx="85%" cy="15%" r="5px" fill="tan" x-show="$store.game.extra?.last_action?.[0] === 'buyrsv' && $store.game.extra?.last_action?.[1] === rIdx && pIdx === $store.game.extra?.previous_player" />
+                   </svg>
+                 </template>
+               </a>
+             </div>
+            </template>
+
+          </div>
+        </div>
       </template>
 
     </div>
   </template>
 
+  <button x-show="$store.game.isLoading || $store.game.isThinking" class="ui fluid large active loading button">‌</button>
 
 </div>
-
-
 
 
 <div class="ui modal" id="editModal" x-data="splendorEditor()" x-init="initModal()">
@@ -292,144 +324,192 @@
   <div class="header" x-text="step === 'card' ? 'Edit card - ' + ['1st','2nd','3rd','4th'][c_index] + ' on ' + ['bottom','middle','top'][c_tier] + ' line' : (step === 'noble' ? 'Edit nobles' : 'Edit bank/players')"></div>
   <div class="content">
     
-    <div x-show="step === 'card'">
-      <div class="ui center aligned grid">
-        <template x-for="i in [0,1,2,3]">
-           <div class="two wide column">
-             <svg class="svgS" viewBox="0 0 32 32">
-               <rect width="100%" height="100%" :fill="colors[$store.game.view.tiers[c_tier][i][0] >= 0 ? $store.game.view.tiers[c_tier][i][0] : 0][0]"/>
-               <rect width="100%" height="33%" fill="white" fill-opacity="50%"/>
-               <rect width="0.4em" height="0.5em" x="65%" y="5%" :fill="colors[$store.game.view.tiers[c_tier][i][0] >= 0 ? $store.game.view.tiers[c_tier][i][0] : 0][1]"/>
-               <text x="25%" y="17%" text-anchor="middle" dominant-baseline="central" font-size="0.7em" font-weight="bolder" :fill="colors[$store.game.view.tiers[c_tier][i][0] >= 0 ? $store.game.view.tiers[c_tier][i][0] : 0][2]" x-show="$store.game.view.tiers[c_tier][i][1] > 0" x-text="$store.game.view.tiers[c_tier][i][1]"></text>
-               <template x-for="(token, tIdx) in $store.game.view.tiers[c_tier][i][2]">
-                 <g>
-                   <circle :cx="tokensCoordSmall[tIdx][0]" :cy="tokensCoordSmall[tIdx][1]" r="0.3em" :fill="colors[token[0]][1]" />
-                   <text :x="tokensCoordSmall[tIdx][0]" :y="tokensCoordSmall[tIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[token[0]][2]" x-text="token[1]"></text>
-                 </g>
-               </template>
-               <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="c_index === i" />
-             </svg>
-           </div>
-        </template>
-      </div>
+    <template x-if="$store.game.view && $store.game.view.tiers">
+      <div>
+        <div x-show="step === 'card'">
+          <div class="ui center aligned grid">
+            <template x-for="i in [0,1,2,3]">
+               <div class="two wide column">
+                 <svg class="svgS" viewBox="0 0 32 32">
+                   <rect width="100%" height="100%" :fill="colors[$store.game.view.tiers[c_tier][i][0] >= 0 ? $store.game.view.tiers[c_tier][i][0] : 0][0]"/>
+                   <rect width="100%" height="33%" fill="white" fill-opacity="50%"/>
+                   <rect width="0.4em" height="0.5em" x="65%" y="5%" :fill="colors[$store.game.view.tiers[c_tier][i][0] >= 0 ? $store.game.view.tiers[c_tier][i][0] : 0][1]"/>
+                   <text x="25%" y="17%" text-anchor="middle" dominant-baseline="central" font-size="0.7em" font-weight="bolder" :fill="colors[$store.game.view.tiers[c_tier][i][0] >= 0 ? $store.game.view.tiers[c_tier][i][0] : 0][2]" x-show="$store.game.view.tiers[c_tier][i][1] > 0" x-text="$store.game.view.tiers[c_tier][i][1]"></text>
+                   
+                   <g x-show="$store.game.view.tiers[c_tier][i][2] && $store.game.view.tiers[c_tier][i][2].length > 0">
+                     <circle :cx="tokensCoordSmall[0][0]" :cy="tokensCoordSmall[0][1]" r="0.3em" :fill="colors[$store.game.view.tiers[c_tier][i][2]?.[0]?.[0] || 0][1]" />
+                     <text :x="tokensCoordSmall[0][0]" :y="tokensCoordSmall[0][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[$store.game.view.tiers[c_tier][i][2]?.[0]?.[0] || 0][2]" x-text="$store.game.view.tiers[c_tier][i][2]?.[0]?.[1] || ''"></text>
+                   </g>
+                   <g x-show="$store.game.view.tiers[c_tier][i][2] && $store.game.view.tiers[c_tier][i][2].length > 1">
+                     <circle :cx="tokensCoordSmall[1][0]" :cy="tokensCoordSmall[1][1]" r="0.3em" :fill="colors[$store.game.view.tiers[c_tier][i][2]?.[1]?.[0] || 0][1]" />
+                     <text :x="tokensCoordSmall[1][0]" :y="tokensCoordSmall[1][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[$store.game.view.tiers[c_tier][i][2]?.[1]?.[0] || 0][2]" x-text="$store.game.view.tiers[c_tier][i][2]?.[1]?.[1] || ''"></text>
+                   </g>
+                   <g x-show="$store.game.view.tiers[c_tier][i][2] && $store.game.view.tiers[c_tier][i][2].length > 2">
+                     <circle :cx="tokensCoordSmall[2][0]" :cy="tokensCoordSmall[2][1]" r="0.3em" :fill="colors[$store.game.view.tiers[c_tier][i][2]?.[2]?.[0] || 0][1]" />
+                     <text :x="tokensCoordSmall[2][0]" :y="tokensCoordSmall[2][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[$store.game.view.tiers[c_tier][i][2]?.[2]?.[0] || 0][2]" x-text="$store.game.view.tiers[c_tier][i][2]?.[2]?.[1] || ''"></text>
+                   </g>
+                   <g x-show="$store.game.view.tiers[c_tier][i][2] && $store.game.view.tiers[c_tier][i][2].length > 3">
+                     <circle :cx="tokensCoordSmall[3][0]" :cy="tokensCoordSmall[3][1]" r="0.3em" :fill="colors[$store.game.view.tiers[c_tier][i][2]?.[3]?.[0] || 0][1]" />
+                     <text :x="tokensCoordSmall[3][0]" :y="tokensCoordSmall[3][1]" text-anchor="middle" dominant-baseline="central" font-size="0.6em" font-weight="bolder" :fill="colors[$store.game.view.tiers[c_tier][i][2]?.[3]?.[0] || 0][2]" x-text="$store.game.view.tiers[c_tier][i][2]?.[3]?.[1] || ''"></text>
+                   </g>
 
-      <div class="ui hidden divider"></div>
-      <div class="ui large wrapped wrapping buttons">
-        <template x-for="(cName, i) in ['White', 'Blue', 'Green', 'Red', 'Black']">
-          <button class="ui button" :class="c_color === i ? colors[i][1].replace('dodgerblue','blue').replace('dimgray','black').replace('tomato','red').replace('lightgreen','green').replace('gainsboro','gray') : 'basic ' + colors[i][1].replace('dodgerblue','blue').replace('dimgray','black').replace('tomato','red').replace('lightgreen','green').replace('gainsboro','gray')" @click="setCardProp('c_color', i)" x-text="cName"></button>
-        </template>
-      </div>
-      <div class="ui hidden divider"></div>
-      <div class="ui large wrapped wrapping buttons">
-        <template x-for="pts in [0,1,2,3,4,5]">
-          <button class="ui button" :class="c_pts === pts ? '' : 'basic'" @click="setCardProp('c_pts', pts)" x-text="pts"></button>
-        </template>
-      </div>
-
-      <div class="ui hidden divider"></div>
-      <div class="ui text container"><div class="ui four column compact centered grid">
-        <template x-for="(card, matchIdx) in $store.game.extra.matching_cards">
-          <div class="column">
-            <a href="#" @click.prevent="commitCard(matchIdx)">
-              <svg class="svgL" viewBox="0 0 60 60">
-                 <rect width="100%" height="100%" :fill="colors[card[0]][0]"/>
-                 <rect width="100%" height="30%" fill="white" fill-opacity="50%"/>
-                 <rect width="13px" height="13px" x="65%" y="5%" :fill="colors[card[0]][1]"/>
-                 <text x="25%" y="17%" text-anchor="middle" dominant-baseline="central" font-size="16px" font-weight="bolder" :fill="colors[card[0]][2]" x-show="card[1] > 0" x-text="card[1]"></text>
-                 <template x-for="(token, tIdx) in card[2]"><g>
-                   <circle :cx="tokensCoord[tIdx][0]" :cy="tokensCoord[tIdx][1]" r="0.5em" :fill="colors[token[0]][1]" />
-                   <text :x="tokensCoord[tIdx][0]" :y="tokensCoord[tIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[token[0]][2]" x-text="token[1]"></text>
-                 </g></template>
-                 <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="card.toString() === $store.game.view.tiers[c_tier][c_index].toString()" />
-              </svg>
-            </a>
+                   <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="c_index === i" />
+                 </svg>
+               </div>
+            </template>
           </div>
-        </template>
-      </div></div>
-    </div>
 
-    <div x-show="step === 'noble'">
-      <div class="ui equal width compact center aligned grid">
-        <template x-for="s in [0,1,2,3]">
-          <div class="column"><a href="#" @click.prevent="n_slot = s">
-             <svg class="svgS" viewBox="0 0 32 32">
-                <rect width="100%" height="100%" :fill="colors[6][0]"/>
-                <rect width="50%" height="100%" fill="white" fill-opacity="50%"/>
-                <template x-if="n_ids[s] >= 0"><template x-for="(req, rIdx) in all_nobles[n_ids[s]]">
-                  <g>
-                    <rect :x="'calc(' + tokensCoordNoble[rIdx][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[rIdx][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[req[0]][1]" />
-                    <text :x="tokensCoordNoble[rIdx][0]" :y="tokensCoordNoble[rIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[req[0]][2]" x-text="req[1]"></text>
-                  </g>
-                </template></template>
-                <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="n_slot === s" />
-             </svg>
-          </a></div>
-        </template>
-      </div>
+          <div class="ui hidden divider"></div>
+          <div class="ui large wrapped wrapping buttons">
+            <template x-for="(cName, i) in ['White', 'Blue', 'Green', 'Red', 'Black']">
+              <button class="ui button" :class="c_color === i ? colors[i][1].replace('dodgerblue','blue').replace('dimgray','black').replace('tomato','red').replace('lightgreen','green').replace('gainsboro','gray') : 'basic ' + colors[i][1].replace('dodgerblue','blue').replace('dimgray','black').replace('tomato','red').replace('lightgreen','green').replace('gainsboro','gray')" @click="setCardProp('c_color', i)" x-text="cName"></button>
+            </template>
+          </div>
+          <div class="ui hidden divider"></div>
+          <div class="ui large wrapped wrapping buttons">
+            <template x-for="pts in [0,1,2,3,4,5]">
+              <button class="ui button" :class="c_pts === pts ? '' : 'basic'" @click="setCardProp('c_pts', pts)" x-text="pts"></button>
+            </template>
+          </div>
 
-      <div class="ui hidden divider"></div>Change by any noble in the list:<br>
-      
-      <div class="ui five column compact centered grid">
-         <template x-for="(noble, nIdx) in all_nobles" :key="'avail-noble-'+nIdx">
-            <div class="column"><a href="#" @click.prevent="n_ids[n_slot] = nIdx; commitNoble()">
-               <svg class="svgS" viewBox="0 0 32 32">
-                  <rect width="100%" height="100%" :fill="colors[6][0]"/>
-                  <rect width="50%" height="100%" fill="white" fill-opacity="50%"/>
-                  <template x-for="(req, rIdx) in noble"><g>
-                      <rect :x="'calc(' + tokensCoordNoble[rIdx][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[rIdx][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[req[0]][1]" />
-                      <text :x="tokensCoordNoble[rIdx][0]" :y="tokensCoordNoble[rIdx][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[req[0]][2]" x-text="req[1]"></text>
-                  </g></template>
-               </svg>
-            </a></div>
-         </template>
-      </div>
-      <div class="ui fluid large wrapped wrapping buttons">
-        <button class="ui button" :class="n_assigns[n_slot] === -1 ? '' : 'basic'" @click="n_assigns[n_slot] = -1; commitNoble()">Not won</button>
-        <template x-for="pIdx in $store.game.view.players.length">
-            <button class="ui button" :class="n_assigns[n_slot] === (pIdx-1) ? '' : 'basic'" @click="n_assigns[n_slot] = (pIdx-1); commitNoble()" x-text="'Won by P' + (pIdx-1)"></button>
-        </template>
-      </div>
-    </div>
+          <div class="ui hidden divider"></div>
+          <div class="ui text container"><div class="ui four column compact centered grid">
+            <template x-for="(card, matchIdx) in $store.game.extra.matching_cards">
+              <div class="column">
+                <a href="#" @click.prevent="commitCard(matchIdx)">
+                  <svg class="svgL" viewBox="0 0 60 60">
+                     <rect width="100%" height="100%" :fill="colors[card[0]][0]"/>
+                     <rect width="100%" height="30%" fill="white" fill-opacity="50%"/>
+                     <rect width="13px" height="13px" x="65%" y="5%" :fill="colors[card[0]][1]"/>
+                     <text x="25%" y="17%" text-anchor="middle" dominant-baseline="central" font-size="16px" font-weight="bolder" :fill="colors[card[0]][2]" x-show="card[1] > 0" x-text="card[1]"></text>
+                     
+                     <g x-show="card[2] && card[2].length > 0">
+                       <circle :cx="tokensCoord[0][0]" :cy="tokensCoord[0][1]" r="0.5em" :fill="colors[card[2]?.[0]?.[0] || 0][1]" />
+                       <text :x="tokensCoord[0][0]" :y="tokensCoord[0][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[card[2]?.[0]?.[0] || 0][2]" x-text="card[2]?.[0]?.[1] || ''"></text>
+                     </g>
+                     <g x-show="card[2] && card[2].length > 1">
+                       <circle :cx="tokensCoord[1][0]" :cy="tokensCoord[1][1]" r="0.5em" :fill="colors[card[2]?.[1]?.[0] || 0][1]" />
+                       <text :x="tokensCoord[1][0]" :y="tokensCoord[1][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[card[2]?.[1]?.[0] || 0][2]" x-text="card[2]?.[1]?.[1] || ''"></text>
+                     </g>
+                     <g x-show="card[2] && card[2].length > 2">
+                       <circle :cx="tokensCoord[2][0]" :cy="tokensCoord[2][1]" r="0.5em" :fill="colors[card[2]?.[2]?.[0] || 0][1]" />
+                       <text :x="tokensCoord[2][0]" :y="tokensCoord[2][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[card[2]?.[2]?.[0] || 0][2]" x-text="card[2]?.[2]?.[1] || ''"></text>
+                     </g>
+                     <g x-show="card[2] && card[2].length > 3">
+                       <circle :cx="tokensCoord[3][0]" :cy="tokensCoord[3][1]" r="0.5em" :fill="colors[card[2]?.[3]?.[0] || 0][1]" />
+                       <text :x="tokensCoord[3][0]" :y="tokensCoord[3][1]" text-anchor="middle" dominant-baseline="central" font-size="0.9em" font-weight="bolder" :fill="colors[card[2]?.[3]?.[0] || 0][2]" x-text="card[2]?.[3]?.[1] || ''"></text>
+                     </g>
 
-    <div x-show="step === 'gem'">
-      <div class="ui fluid large buttons">
-        <button class="ui button" :class="g_player === -1 ? '' : 'basic'" @click="g_player = -1">Bank</button>
-        <template x-for="pIdx in $store.game.view.players.length">
-           <button class="ui button" :class="g_player === (pIdx-1) ? '' : 'basic'" @click="g_player = (pIdx-1)" x-text="'Player ' + (pIdx-1)"></button>
-        </template>
-      </div>
+                     <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="card.toString() === $store.game.view.tiers[c_tier][c_index].toString()" />
+                  </svg>
+                </a>
+              </div>
+            </template>
+          </div></div>
+        </div>
 
-      <div class="ui hidden divider"></div>
-      <div class="ui equal width compact center aligned grid">
-        <template x-for="color in [0,1,2,3,4,5]">
-           <div class="column">
-             <button class="ui basic large button" @click="commitGem('gem', color, 1)">+</button>
-             <svg class="svgS" viewBox="0 0 32 32">
-                <circle cx="50%" cy="50%" r="50%" :fill="colors[color][1]" />
-                <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[color][2]" 
-                      x-text="g_player === -1 ? $store.game.view.bank[color] : $store.game.view.players[g_player].gems[color]"></text>
-             </svg>
-             <button class="ui basic large button" @click="commitGem('gem', color, -1)">-</button>
-           </div>
-        </template>
-      </div>
+        <div x-show="step === 'noble'">
+          <div class="ui equal width compact center aligned grid">
+            <template x-for="s in [0,1,2,3]">
+              <div class="column"><a href="#" @click.prevent="n_slot = s">
+                 <svg class="svgS" viewBox="0 0 32 32">
+                    <rect width="100%" height="100%" :fill="colors[6][0]"/>
+                    <rect width="50%" height="100%" fill="white" fill-opacity="50%"/>
+                    
+                    <g x-show="n_ids[s] >= 0 && all_nobles[n_ids[s]].length > 0">
+                       <rect :x="'calc(' + tokensCoordNoble[0][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[0][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[all_nobles[n_ids[s]]?.[0]?.[0] || 0][1]" />
+                       <text :x="tokensCoordNoble[0][0]" :y="tokensCoordNoble[0][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[all_nobles[n_ids[s]]?.[0]?.[0] || 0][2]" x-text="all_nobles[n_ids[s]]?.[0]?.[1] || ''"></text>
+                    </g>
+                    <g x-show="n_ids[s] >= 0 && all_nobles[n_ids[s]].length > 1">
+                       <rect :x="'calc(' + tokensCoordNoble[1][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[1][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[all_nobles[n_ids[s]]?.[1]?.[0] || 0][1]" />
+                       <text :x="tokensCoordNoble[1][0]" :y="tokensCoordNoble[1][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[all_nobles[n_ids[s]]?.[1]?.[0] || 0][2]" x-text="all_nobles[n_ids[s]]?.[1]?.[1] || ''"></text>
+                    </g>
+                    <g x-show="n_ids[s] >= 0 && all_nobles[n_ids[s]].length > 2">
+                       <rect :x="'calc(' + tokensCoordNoble[2][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[2][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[all_nobles[n_ids[s]]?.[2]?.[0] || 0][1]" />
+                       <text :x="tokensCoordNoble[2][0]" :y="tokensCoordNoble[2][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[all_nobles[n_ids[s]]?.[2]?.[0] || 0][2]" x-text="all_nobles[n_ids[s]]?.[2]?.[1] || ''"></text>
+                    </g>
 
-      <div class="ui hidden divider" x-show="g_player >= 0"></div>
-      <div class="ui equal width compact center aligned grid" x-show="g_player >= 0">
-        <template x-for="color in [0,1,2,3,4]">
-           <div class="column">
-             <button class="ui basic large button" @click="commitGem('card', color, 1)">+</button>
-             <svg class="svgS" viewBox="0 0 32 32">
-                <rect width="100%" height="100%" :fill="colors[color][1]" />
-                <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[color][2]" 
-                      x-text="$store.game.view.players[g_player]?.cards[color]"></text>
-             </svg>
-             <button class="ui basic large button" @click="commitGem('card', color, -1)">-</button>
-           </div>
-        </template>
-        <div class="column"></div>
+                    <rect width="100%" height="100%" style="fill:none;stroke-width:10%;stroke:aquamarine" x-show="n_slot === s" />
+                 </svg>
+              </a></div>
+            </template>
+          </div>
+
+          <div class="ui hidden divider"></div>Change by any noble in the list:<br>
+          
+          <div class="ui five column compact centered grid">
+             <template x-for="(noble, nIdx) in all_nobles" :key="'avail-noble-'+nIdx">
+                <div class="column"><a href="#" @click.prevent="n_ids[n_slot] = nIdx; commitNoble()">
+                   <svg class="svgS" viewBox="0 0 32 32">
+                      <rect width="100%" height="100%" :fill="colors[6][0]"/>
+                      <rect width="50%" height="100%" fill="white" fill-opacity="50%"/>
+                      
+                      <g x-show="noble && noble.length > 0">
+                        <rect :x="'calc(' + tokensCoordNoble[0][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[0][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[noble?.[0]?.[0] || 0][1]" />
+                        <text :x="tokensCoordNoble[0][0]" :y="tokensCoordNoble[0][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[noble?.[0]?.[0] || 0][2]" x-text="noble?.[0]?.[1] || ''"></text>
+                      </g>
+                      <g x-show="noble && noble.length > 1">
+                        <rect :x="'calc(' + tokensCoordNoble[1][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[1][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[noble?.[1]?.[0] || 0][1]" />
+                        <text :x="tokensCoordNoble[1][0]" :y="tokensCoordNoble[1][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[noble?.[1]?.[0] || 0][2]" x-text="noble?.[1]?.[1] || ''"></text>
+                      </g>
+                      <g x-show="noble && noble.length > 2">
+                        <rect :x="'calc(' + tokensCoordNoble[2][0] + ' - 0.3em)'" :y="'calc(' + tokensCoordNoble[2][1] + ' - 0.3em)'" width="0.6em" height="0.6em" :fill="colors[noble?.[2]?.[0] || 0][1]" />
+                        <text :x="tokensCoordNoble[2][0]" :y="tokensCoordNoble[2][1]" text-anchor="middle" dominant-baseline="central" font-size="0.5em" font-weight="bolder" :fill="colors[noble?.[2]?.[0] || 0][2]" x-text="noble?.[2]?.[1] || ''"></text>
+                      </g>
+
+                   </svg>
+                </a></div>
+             </template>
+          </div>
+          <div class="ui fluid large wrapped wrapping buttons">
+            <button class="ui button" :class="n_assigns[n_slot] === -1 ? '' : 'basic'" @click="n_assigns[n_slot] = -1; commitNoble()">Not won</button>
+            <template x-for="pIdx in $store.game.view.players.length">
+                <button class="ui button" :class="n_assigns[n_slot] === (pIdx-1) ? '' : 'basic'" @click="n_assigns[n_slot] = (pIdx-1); commitNoble()" x-text="'Won by P' + (pIdx-1)"></button>
+            </template>
+          </div>
+        </div>
+
+        <div x-show="step === 'gem'">
+          <div class="ui fluid large buttons">
+            <button class="ui button" :class="g_player === -1 ? '' : 'basic'" @click="g_player = -1">Bank</button>
+            <template x-for="pIdx in $store.game.view.players.length">
+               <button class="ui button" :class="g_player === (pIdx-1) ? '' : 'basic'" @click="g_player = (pIdx-1)" x-text="'Player ' + (pIdx-1)"></button>
+            </template>
+          </div>
+
+          <div class="ui hidden divider"></div>
+          <div class="ui equal width compact center aligned grid">
+            <template x-for="color in [0,1,2,3,4,5]">
+               <div class="column">
+                 <button class="ui basic large button" @click="commitGem('gem', color, 1)">+</button>
+                 <svg class="svgS" viewBox="0 0 32 32">
+                    <circle cx="50%" cy="50%" r="50%" :fill="colors[color][1]" />
+                    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[color][2]" 
+                          x-text="g_player === -1 ? $store.game.view.bank[color] : $store.game.view.players[g_player].gems[color]"></text>
+                 </svg>
+                 <button class="ui basic large button" @click="commitGem('gem', color, -1)">-</button>
+               </div>
+            </template>
+          </div>
+
+          <div class="ui hidden divider" x-show="g_player >= 0"></div>
+          <div class="ui equal width compact center aligned grid" x-show="g_player >= 0">
+            <template x-for="color in [0,1,2,3,4]">
+               <div class="column">
+                 <button class="ui basic large button" @click="commitGem('card', color, 1)">+</button>
+                 <svg class="svgS" viewBox="0 0 32 32">
+                    <rect width="100%" height="100%" :fill="colors[color][1]" />
+                    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[color][2]" 
+                          x-text="$store.game.view.players[g_player]?.cards[color]"></text>
+                 </svg>
+                 <button class="ui basic large button" @click="commitGem('card', color, -1)">-</button>
+               </div>
+            </template>
+            <div class="column"></div>
+          </div>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
   
   <div class="actions">
@@ -492,7 +572,7 @@
             if (i < v_nobles.length && v_nobles[i].length > 0) {
                 this.n_ids[i] = this.findNobleId(v_nobles[i]);
             } else {
-                this.n_ids[i] = -1; // Not perfectly accurate for player-owned nobles but preserves old UI flow
+                this.n_ids[i] = -1; 
             }
             this.n_assigns[i] = -1;
         }
