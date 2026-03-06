@@ -30,13 +30,9 @@ const colors = [
   ["darkgray"   , "darkgray"  , "black"]  // For noble
 ];
 
-const tokensCoord = [
-  "left: 17%; top: 17%",
-  "left: 65%; top: 15%",
-  "left: 35%; top: 40%",
-  "left: 10%; top: 62%",
-  "left: 60%; top: 65%",
-];
+const tokensCoord      = [["20%", "83%"], ["20%", "53%"], ["50%", "83%"], ["50%", "53%"]];
+const tokensCoordSmall = [["20%", "83%"], ["20%", "50%"], ["50%", "83%"], ["50%", "50%"]];
+const tokensCoordNoble = [["25%", "83%"], ["25%", "50%"], ["25%", "16%"]];
 
 const nobles_names = [
   "Isabelle of Castile", "Anne of Brittany", "Mary Stuart", "Elisabeth of Austria", 

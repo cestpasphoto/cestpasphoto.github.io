@@ -1,5 +1,40 @@
 import json
 
+class dotdict(dict):
+    def __getattr__(self, name):
+        return self[name]
+
+def init_game(numMCTSSims):
+    global g, board, mcts, player, history
+
+    mcts_args = dotdict({
+        'numMCTSSims'     : numMCTSSims,
+        'fpu'             : 0.10,
+        'cpuct'           : 1.00,
+        'prob_fullMCTS'   : 1.,
+        'forced_playouts' : False,
+        'no_mem_optim'    : False,
+    })
+
+    g = Game()
+    board = g.getInitBoard()
+    mcts = MCTS(g, None, mcts_args)
+    player = 0
+    history = []
+    valids = g.getValidMoves(board, player)
+    end = [0,0]
+
+    return get_render_state()
+
+def getNextState(action):
+    global g, board, mcts, player, history
+    history.insert(0, [player, np.copy(board), action])
+    board, player = g.getNextState(board, player, action)
+    end = g.getGameEnded(board, player)
+    valids = g.getValidMoves(board, player)
+
+    return get_render_state()
+
 # ==========================================
 # ===== MOVE MAPPING & VALIDATION ==========
 # ==========================================
@@ -10,6 +45,24 @@ DIFFERENT_GEMS_UP_TO_3 = [
     [0,1], [0,2], [0,3], [0,4], [1,2], [1,3], [1,4], [2,3], [2,4], [3,4],
     [0,1,2], [0,1,3], [0,1,4], [0,2,3], [0,2,4], [0,3,4], [1,2,3], [1,2,4], [1,3,4], [2,3,4]
 ]
+
+# Helper array for returning gems (up to 2)
+DIFFERENT_GEMS_UP_TO_2 = [
+    [0], [1], [2], [3], [4],
+    [0,1], [0,2], [0,3], [0,4], [1,2], [1,3], [1,4], [2,3], [2,4], [3,4]
+]
+
+def _convertTokensToJS(card_data_1):
+    tokens_col = card_data_1[:6].nonzero()[0]
+    tokens_val = card_data_1[tokens_col]
+    return np.vstack([tokens_col, tokens_val]).T.tolist()
+
+def _convertCardToJS(card_data_1, card_data_2):
+    if card_data_1.sum() == 0: # Empty card
+        return [-1, -1, []]
+    color, points = card_data_2.nonzero()[0][0].item(), card_data_2[6].item()
+    tokens = _convertTokensToJS(card_data_1)
+    return [color, points, tokens]
 
 def _get_move_index():
     """
@@ -25,30 +78,40 @@ def _get_move_index():
     if sel_type == 'card':
         tier, index = sel_items[0]
         if tier == -1:
-            # Buy reserved card (indices 12 to 14 typically)
-            return 12 + index
+            return 27 + index
         else:
-            # Buy card from board (indices 0 to 11 typically)
             return tier * 4 + index
             
     elif sel_type == 'rsv':
         tier, index = sel_items[0]
-        # Reserve card from board (indices 15 to 26 typically)
-        return 15 + tier * 4 + index
+        return 12 + tier * 4 + index
         
     elif sel_type == 'gem':
         if len(sel_items) == 2 and sel_items[0] == sel_items[1]:
-            # Take 2 of the same color
-            # Usually placed after card reservations, e.g., 27 + color
-            # Adjust the '27' offset based on your JS
-            return 27 + sel_items[0] 
+            return 55 + sel_items[0] 
         else:
             # Take up to 3 different colors
             sorted_gems = sorted(sel_items)
             try:
                 combo_index = DIFFERENT_GEMS_UP_TO_3.index(sorted_gems)
-                # Adjust the '32' offset based on your JS
-                return 32 + combo_index 
+                return 30 + combo_index 
+            except ValueError:
+                return -1
+    
+    elif sel_type == 'deck':
+        # Reserve blind card from deck (indices 24 to 26 typically)
+        return 24 + sel_items[0]
+        
+    elif sel_type == 'gemback':
+        if len(sel_items) == 2 and sel_items[0] == sel_items[1]:
+            # Return 2 of the same color
+            return 60 + DIFFERENT_GEMS_UP_TO_2.index([sel_items[0]]) + len(DIFFERENT_GEMS_UP_TO_2)
+        else:
+            # Return 1 or 2 different colors
+            sorted_gems = sorted(sel_items)
+            try:
+                combo_index = DIFFERENT_GEMS_UP_TO_2.index(sorted_gems)
+                return 60 + combo_index 
             except ValueError:
                 return -1
 
@@ -69,11 +132,71 @@ def _is_selection_valid():
     valids = g.getValidMoves(board, player)
     return bool(valids[move])
 
+def _get_move_short_desc():
+    """Génère le texte exact qu'affichait l'ancien JS"""
+    global sel_type, sel_items
+    if sel_type == 'none' or not sel_items: return "none"
+    
+    if sel_type == 'card':
+        if sel_items[0][0] == -1: return "buy a reserved card"
+        return "buy a card"
+    elif sel_type == 'rsv':
+        return "reserve a card"
+    elif sel_type == 'deck':
+        return "reserve a card from deck"
+    elif sel_type == 'gem':
+        if len(sel_items) == 2 and sel_items[0] == sel_items[1]: return "take 2 similar gems"
+        if len(sel_items) == 1: return "take 1 gem"
+        return f"take {len(sel_items)} different gems"
+    elif sel_type == 'gemback':
+        if len(sel_items) == 2 and sel_items[0] == sel_items[1]: return "give back 2 similar gems"
+        if len(sel_items) == 1: return "give back 1 gem"
+        return f"give back {len(sel_items)} different gems"
+    return "none"
+
+def _get_last_action_details():
+    """Formate le dernier coup pour le highlight (petit point tan)"""
+    global history
+    if not history: return ["none", -1]
+    last_move = history[0][2]
+    if last_move < 0: return ["none", -1]
+    
+    if last_move < 12: return ["card", last_move]
+    elif last_move < 24: return ["rsv", last_move - 12]
+    elif last_move < 27: return ["deck", last_move - 24]
+    elif last_move < 30: return ["buyrsv", last_move - 27]
+    elif last_move < 60: 
+        combo_idx = last_move - 30
+        gems = DIFFERENT_GEMS_UP_TO_3[combo_idx] if last_move < 55 else [last_move - 55, last_move - 55]
+        return ["gem", gems]
+    else: 
+        combo_idx = last_move - 60
+        gems = DIFFERENT_GEMS_UP_TO_2[combo_idx] if last_move < 75 else [last_move - 75, last_move - 75]
+        return ["gemback", gems]
+
 # ==========================================
 # ===== EXPOSED ACTION ROUTERS =============
 # ==========================================
 # These functions are called directly by game.js via act()
 # and must return the updated JSON state.
+
+def handle_action(action_name, *args):
+    """Le Dispatcher unique appelé par $store.game.act()"""
+    if 'g' not in globals() or g is None:
+        return json.dumps({"viewData": {}, "extra": {}})
+        
+    if action_name == "reset_and_render":
+        return reset_and_render()
+    elif action_name == "click_and_render":
+        arg1 = args[0]
+        arg2 = args[1] if len(args) > 1 else -1
+        return click_and_render(args[0], arg1, arg2) # Note: l'ordre dépend de comment tu passes item_category depuis Alpine
+    elif action_name == "confirm_action":
+        return confirm_action()
+    elif action_name == "undo":
+        return undo()
+    
+    return get_render_state()
 
 def reset_and_render():
     """ Resets selection and updates UI (useful for a 'Cancel' button) """
@@ -94,12 +217,37 @@ def confirm_action():
         
     move = _get_move_index()
     
-    # Play the move using the existing Splendor proxy logic
-    player, board = getNextState(move)
+    # Play the move. We discard the return value because getNextState 
+    # now returns a JSON string for the AI script, but updates globals internally.
+    _ = getNextState(move) 
     
     # Reset interaction state machine for the next turn
     reset_selection()
     
+    # We must re-render because reset_selection() changed the state AFTER getNextState
+    return get_render_state()
+
+def undo(are_players_human=None):
+    global board, player, history
+    
+    if are_players_human is None:
+        are_players_human = [True, True, True]
+        
+    if len(history) > 0:
+        # On remonte l'historique jusqu'à trouver un tour où le joueur courant était humain
+        index_to_restore = 0
+        for index, state in enumerate(history):
+            p = state[0]
+            if are_players_human[p] and (index+1 == len(history) or history[index+1][0] != p):
+                index_to_restore = index
+                break
+                
+        state = history[index_to_restore]
+        player = state[0]
+        board = np.copy(state[1])
+        history = history[index_to_restore+1:]
+        reset_selection()
+        
     return get_render_state()
 
 # ==========================================
@@ -127,6 +275,8 @@ def click_item(item_category, arg1, arg2=-1):
     
     if item_category == 'gem':
         color = arg1
+        if color == 5:
+            return
         if sel_type != 'gem':
             # First gem selected
             sel_type = 'gem'
@@ -176,17 +326,51 @@ def click_item(item_category, arg1, arg2=-1):
             sel_type = 'card'
             sel_items = [[-1, index]]
 
+    elif item_category == 'deck':
+        tier = arg1
+        if sel_type == 'deck' and sel_items == [tier]:
+            # Second click on same deck -> deselect
+            reset_selection()
+        else:
+            # First click -> select deck to reserve
+            sel_type = 'deck'
+            sel_items = [tier]
+            
+    elif item_category == 'gemback':
+        color = arg1
+        # Cannot return gold (usually handled automatically or impossible)
+        if color == 5:
+            return 
+            
+        if sel_type != 'gemback':
+            sel_type = 'gemback'
+            sel_items = [color]
+        else:
+            if color in sel_items:
+                if len(sel_items) == 1:
+                    sel_items.append(color)
+                elif len(sel_items) == 2 and sel_items[0] == sel_items[1] and sel_items[0] == color:
+                    reset_selection()
+                else:
+                    sel_items.remove(color)
+                    if not sel_items:
+                        sel_type = 'none'
+            else:
+                if len(sel_items) == 2 and sel_items[0] == sel_items[1]:
+                    pass # Cannot mix 2 same + 1 diff
+                elif len(sel_items) < 2: # Max 2 gems to return per action usually
+                    sel_items.append(color)
+
 def get_render_state():
-    global g, board, player
+    global g, board, player, history
     
-    # Return empty state if game is not initialized yet
     if g is None or board is None:
-        return json.dumps({"view": {}, "extra": {}})
+        return json.dumps({"viewData": {}, "extra": {}})
         
     num_players = g.num_players
     
     view = {
-        "bank": [int(g.board.bank[0][c]) for c in range(6)], # 5 gem colors + 1 gold
+        "bank": [int(g.board.bank[0][c]) for c in range(6)],
         "tiers": [],
         "decks": [int(g.board.nb_deck_tiers[2*t]) for t in range(3)],
         "nobles": [],
@@ -205,15 +389,13 @@ def get_render_state():
     # 2. Available Nobles
     for n in g.board.nobles:
         if n.sum() > 0:
-            view["nobles"].append(n.nonzero()[0].tolist())
+            view["nobles"].append(_convertTokensToJS(n)[:3])
         else:
             view["nobles"].append([]) # Empty slot
             
     # 3. Players state
     for p in range(num_players):
-        # Calculate points matching the old getPoints() logic
-        pts = int(g.board.players_cards[p][6])
-        pts += int(np.count_nonzero(g.board.players_nobles[3*p:3*p+3].sum(axis=1)) * 3)
+        pts = int(g.getScore(board, p))
         
         p_data = {
             "gems": [int(g.board.players_gems[p][c]) for c in range(6)],
@@ -222,6 +404,7 @@ def get_render_state():
             "nobles": [],
             "points": pts
         }
+        p_data["total_gems"] = sum(p_data["gems"])
         
         # Reserved cards (max 3 slots)
         for i in range(3):
@@ -232,7 +415,8 @@ def get_render_state():
         # Owned nobles
         for i in range(3):
             if g.board.players_nobles[3*p + i].sum() > 0:
-                p_data["nobles"].append(g.board.players_nobles[3*p + i].nonzero()[0].tolist())
+                p_data["nobles"].append(_convertTokensToJS(g.board.players_nobles[3*p + i])[:3])
+                p_data["noble_points"] = int(g.board.players_nobles[3*p:3*p+3, 6].sum())
                 
         view["players"].append(p_data)
         
@@ -240,7 +424,20 @@ def get_render_state():
     extra = {
         "sel_type": sel_type,
         "sel_items": sel_items,
-        "can_confirm": _is_selection_valid() # We will implement this next
+        "can_confirm": _is_selection_valid(),
+        "move_desc": _get_move_short_desc(),
+        "last_action": _get_last_action_details(),
+        "previous_player": history[0][0] if history else -1
+    }
+
+    end_status = g.getGameEnded(board, player)
+    
+    response = {
+        "viewData": view, # <-- Assure-toi que cette variable est bien construite comme dans ton code
+        "extra": extra,
+        "currentPlayer": player,
+        "gameEnded": bool(end_status[0] != 0),
+        "canUndo": len(history) > 0
     }
     
-    return json.dumps({"view": view, "extra": extra})
+    return json.dumps(response)
