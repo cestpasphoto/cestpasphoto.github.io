@@ -238,7 +238,7 @@
       <template x-for="(player, pIdx) in $store.game.view.players" :key="'player-'+pIdx">
         <div> <div class="ui hidden divider computer only"></div>
           <div class="ui horizontal divider" 
-               x-html="(pIdx === 0 ? 'You' : ($store.game.arePlayersHuman[pIdx] ? 'Player '+pIdx : 'AI' + (pIdx===2 ? ' bis' : ''))) + ' - ' + player.points + ' point' + (player.points > 1 ? 's' : '') + (player.noble_points > 0 ? ' (incl. ' + player.noble_points + ' <i class=\'chess queen icon\'></i>)' : '') + ' - ' + player.total_gems + ' <i class=\'gem icon\'></i>'">
+               x-html="(pIdx === 0 ? 'You' : ($store.game.arePlayersHuman[pIdx] ? 'Player '+pIdx : 'AI '+pIdx)) + ' - ' + player.points + ' point' + (player.points > 1 ? 's' : '') + (player.noble_points > 0 ? ' (incl. ' + player.noble_points + ' <i class=\'chess queen icon\'></i>)' : '') + ' - ' + player.total_gems + ' <i class=\'gem icon\'></i>'">
           </div>
           <div class="ui very compact equal width center aligned grid">
             
