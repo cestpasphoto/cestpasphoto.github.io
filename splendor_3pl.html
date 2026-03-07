@@ -131,7 +131,7 @@
 
       <div class="ui very compact equal width center aligned grid">
         <template x-for="tierIdx in [2, 1, 0]" :key="'tier-'+tierIdx">
-          <div class="row">
+          <div class="ui row">
             
             <div class="column">
               <svg class="svgL" viewBox="0 0 60 60" style="cursor: pointer;"
@@ -145,8 +145,9 @@
               </svg>
             </div>
 
-            <div class="column">
-              <template x-for="(card, cardIdx) in $store.game.view.tiers[tierIdx]" :key="'card-'+tierIdx+'-'+cardIdx">
+
+            <template x-for="(card, cardIdx) in $store.game.view.tiers[tierIdx]" :key="'card-'+tierIdx+'-'+cardIdx">
+              <div class="column">
                 <a href="#" @click.prevent="card[0] >= 0 ? $store.game.act('click_and_render', 'card', tierIdx, cardIdx) : null">
                   <template x-if="card[0] >= 0">
                     <svg class="svgL" viewBox="0 0 60 60">
@@ -177,12 +178,14 @@
                       <circle cx="85%" cy="15%" r="5px" fill="tan" x-show="['card', 'rsv'].includes($store.game.extra?.last_action?.[0]) && $store.game.extra?.last_action?.[1] === (tierIdx * 4 + cardIdx)" />
                     </svg>
                   </template>
-                  <template x-if="card[0] < 0">
-                     <svg class="svgL" viewBox="0 0 60 60"></svg>
+                  <template x-if="card[0] < 0">   
+                    <svg class="svgL" viewBox="0 0 60 60"></svg>
                   </template>
                 </a>
-              </template>
-            </div>
+              </div>
+            </template>
+
+
           </div>
         </template>
       </div>
@@ -214,16 +217,16 @@
 
 
       <div class="ui hidden divider mobile hidden"></div>
-      <div class="ui fluid large compact buttons" x-show="!$store.game.isLoading && !$store.game.isThinking && $store.game.extra.sel_type !== 'none'">
+      <div class="ui fluid large compact buttons" x-show="!$store.game.isLoading">
         <button class="ui basic icon button" id="undoBtn" 
                 @click="$store.game.act('undo')" 
-                :class="{ 'disabled': !$store.game.canUndo }">
+                :class="{ 'disabled': !$store.game.canUndo || $store.game.isThinking || $store.game.extra.sel_type == 'none'}">
           <i class="undo icon"></i>
         </button>
         <button class="ui button" 
                 id="btn_confirm"
                 :class="{ 
-                    'disabled basic': !$store.game.extra.can_confirm && $store.game.extra.sel_type !== 'none',
+                    'disabled basic': (!$store.game.extra.can_confirm && $store.game.extra.sel_type !== 'none') || $store.game.isThinking,
                     'green': $store.game.extra.can_confirm,
                     'green basic disabled': $store.game.extra.sel_type === 'none'
                 }"
@@ -242,7 +245,7 @@
             <template x-for="(gCount, gIdx) in player.gems" :key="'p'+pIdx+'-gem-'+gIdx">
               <div class="column">
                 <a href="#" @click.prevent="($store.game.currentPlayer === pIdx && pIdx === 0 && gIdx < 5) ? $store.game.act('click_and_render', 'gemback', gIdx) : null">
-                  <template x-if="gCount > 0 || gIdx === 5">
+                  <template x-if="gCount > 0">
                     <svg class="svgS" viewBox="0 0 32 32">
                       <circle cx="50%" cy="50%" r="50%" :fill="colors[gIdx][1]" />
                       <text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" alignment-baseline="central" font-size="1.5em" font-weight="bolder" :fill="colors[gIdx][2]" x-text="gCount"></text>
@@ -251,7 +254,7 @@
                       <circle cx="85%" cy="15%" r="5px" fill="tan" x-show="$store.game.extra?.last_action?.[0] === 'gemback' && $store.game.extra?.last_action?.[1]?.includes(gIdx) && pIdx === $store.game.extra?.previous_player" />
                     </svg>
                   </template>
-                  <template x-if="gCount === 0 && gIdx < 5">
+                  <template x-if="gCount === 0">
                     <svg class="svgS" viewBox="0 0 32 32"></svg>
                   </template>
                 </a>

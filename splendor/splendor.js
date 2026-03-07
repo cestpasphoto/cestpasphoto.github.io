@@ -13,7 +13,7 @@ const list_of_files = [
 ];
 
 // Configuration de l'IA et du jeu (attendue par game.js)
-const numMCTSSims = 50; // Ajuste si besoin
+const numMCTSSims = 25;
 const numPlayers = nb_players; // Fait le pont avec ta variable dans constants_3pl.js
 
 /* =================== */
