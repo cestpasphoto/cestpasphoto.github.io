@@ -3,256 +3,192 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Smallworld AI</title>
-  
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
   
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
-  
-  <script src="./smallworld/constants_3pl.js"></script> 
-  <script src="./common/game.js"></script> 
-  <script src="./smallworld/smallworld.js"></script> 
+
+  <script src="./smallworld/constants_3pl.js"></script>
+  <script src="./common/game.js"></script>
+  <script src="./smallworld/smallworld.js"></script>
 
   <style>
-    .svg-map { width: 100%; height: auto; background-color: #f0f8ff; border: 1px solid #ccc; border-radius: 8px;}
-    .svg-poly { transition: fill 0.3s, stroke-width 0.2s; cursor: pointer; }
-    .svg-poly:hover { filter: brightness(0.9); }
-    .token-text { font-family: sans-serif; font-weight: bold; pointer-events: none; }
+    /* Styles pour rendre la carte SVG interactive et propre */
+    .map-svg { width: 100%; height: auto; user-select: none; }
+    .area-poly { transition: fill-opacity 0.2s, stroke-width 0.2s; cursor: pointer; }
+    .area-poly:hover { fill-opacity: 0.7; }
+    .area-poly.disabled { cursor: default; }
+    
+    .token-text { font-family: sans-serif; font-weight: bold; font-size: 3px; alignment-baseline: central; text-anchor: middle; }
+    .icon-text { font-family: 'Icons'; font-size: 3.5px; alignment-baseline: central; text-anchor: middle; }
   </style>
 </head>
+<body><div x-data x-init="$store.game.start()">
 
-<body class="ui container" style="padding-top: 20px;">
+<div class="ui borderless menu">
+  <div class="ui container">    
+    <div class="fitted item">
+      <button class="ui icon button" @click="$store.game.reset()"><i class="file outline icon"></i></button>
+    </div> 
+    <div class="fitted item" style="display: none;"> 
+      </div>
+    <div class="fitted item"> 
+      <div class="ui small form">
+        <div class="field">
+          <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
+            <optgroup label="Above optimal">
+            <option value="12800">God-like</option>
+            <option value="3200">Boosted</option>
+            </optgroup>
+            <optgroup label="Level used during training">
+            <option value="800">Native</option>
+            </optgroup>
+            <optgroup label="Sub optimal levels">
+            <option value="200" selected>Medium</option>
+            <option value="50">Easy</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="fitted item"> 
+      <div class="ui small form">
+        <div class="field">
+          <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
+              <option value="P0" selected>You vs AI</option>
+              <option value="P1">AI vs you</option>
+              <option value="Human">No AI</option>
+              <option value="AI">WarGames</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <div x-data="smallworldUI()" x-init="$store.game.start()">
+<div class="ui main container">
+  <h1 class="ui huge center aligned header">Smallworld with AI</h1> 
+  <div class="ui hidden divider"></div>
 
-    <div class="ui borderless menu">
-      <div class="item"><div class="ui header">Smallworld</div></div>
+  <button x-show="$store.game.isLoading || $store.game.isThinking" class="ui fluid large active loading button">Loading...</button>
+
+  <template x-if="!$store.game.isLoading && $store.game.view && $store.game.view.board">
+    <div>
       
-      <div class="item">
-        <div class="ui form"><div class="inline fields" style="margin-bottom: 0;">
-          <template x-for="(isHuman, idx) in $store.game.arePlayersHuman" :key="idx">
-            <div class="field" style="margin-right: 15px;">
-              <label x-text="'P' + idx + ':'"></label>
-              <select x-model="$store.game.arePlayersHuman[idx]" @change="$store.game.trigger_ai_check()" class="ui dropdown compact">
-                <option :value="true" :selected="$store.game.arePlayersHuman[idx] === true">Humain</option>
-                <option :value="false" :selected="$store.game.arePlayersHuman[idx] === false">IA</option>
-              </select>
+      <div class="ui horizontal segments">
+        <template x-for="(player, pIdx) in $store.game.view.players" :key="'player-'+pIdx">
+          <div class="ui center aligned segment" :class="{'secondary': $store.game.currentPlayer !== pIdx}">
+            <h3 class="ui header" :class="ui_playerColorClass(pIdx)" x-text="'Player ' + pIdx + ' - ' + player.score + ' pts'"></h3>
+            
+            <template x-for="(ppl, pplIdx) in player.peoples" :key="'p'+pIdx+'-ppl'+pplIdx">
+              <div x-show="ppl[1] !== 0" style="margin-top: 5px;">
+                <span class="ui label" :class="{'basic': ppl[1] < 0, [ui_playerColorClass(pIdx)]: true}">
+                  <span x-text="ui_raceName(ppl[1]) + ' ' + ui_powerName(ppl[2])"></span>
+                  <div class="detail" x-text="ppl[5] + ' \uf0c0'"></div> </span>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
+
+      <div class="ui hidden divider"></div>
+
+      <div style="position: relative; width: 100%; aspect-ratio: 140/100;">
+        
+        <template x-for="(area, aIdx) in $store.game.view.board" :key="'area-'+aIdx">
+          <svg viewBox="0 0 140 100" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+            
+            <g style="pointer-events: auto; cursor: pointer;" 
+               @click="ui_isAreaClickable(aIdx) ? $store.game.act('click_area', aIdx) : null">
+              
+              <polygon :points="ui_polyStr(aIdx)" 
+                       :fill="ui_areaColor(area)"
+                       :stroke="ui_areaStroke(aIdx)"
+                       :stroke-width="ui_areaStrokeWidth(aIdx)"
+                       :stroke-dasharray="ui_areaDasharray(aIdx)"></polygon>
+              
+              <text x-show="ui_territoryPos(aIdx).x > 0"
+                    :x="ui_territoryPos(aIdx).x" :y="ui_territoryPos(aIdx).y"
+                    text-anchor="middle" dominant-baseline="central" font-size="3" font-weight="bolder" fill="black"
+                    x-html="ui_terrainSymbols(area)"></text>
+
+              <g x-show="ui_defensePos(aIdx).x > 0 && (area[2] > 0 || area[3] == 4)">
+                 <g :transform="'translate(' + (ui_defensePos(aIdx).x - 3) + ',' + (ui_defensePos(aIdx).y - 3) + ')'"
+                    x-html="ui_defenseSvg(area)"></g>
+              </g>
+
+              <g x-show="area[0] > 0" :transform="'translate(' + (ui_tokenPos(aIdx).x - 3) + ',' + (ui_tokenPos(aIdx).y - 3) + ')'">
+                  <rect width="6" height="6" x="0" y="0" :fill="ui_tokenStyle(area[1]).bg" />
+                  
+                  <text x="3" y="3" text-anchor="middle" dominant-baseline="central" font-size="5" font-weight="bolder" 
+                        :fill="ui_tokenStyle(area[1]).txt" x-text="ui_tokenStyle(area[1]).char"></text>
+                  
+                  <text x="0.5" y="2" font-size="1.5" font-weight="bolder" 
+                        :fill="ui_tokenStyle(area[1]).txt" x-text="area[0]"></text>
+                        
+                  <circle x-show="ui_hasPreviousMove(aIdx)" cx="3" cy="6" r="1" :fill="ui_previousMoveColor(aIdx)" stroke="white" stroke-width="0.2"/>
+              </g>
+
+            </g>
+          </svg>
+        </template>
+      </div>
+
+      <div class="ui hidden divider"></div>
+
+      <div class="ui center aligned grid">
+        <div class="sixteen wide column">
+          <div class="ui mini labels" id="roundP" x-html="ui_roundDisplay()"></div>
+        </div>
+
+        <div class="sixteen wide column">
+          <button class="ui button" :class="ui_btnClass(10, 'green')" x-show="$store.game.extra.allowedBtns[10]" @click="$store.game.act('click_btn', 10)">Start Game</button>
+          
+          <button class="ui button" :class="ui_btnClass(0, 'green')" x-show="$store.game.extra.allowedBtns[0]" @click="$store.game.act('click_btn', 0)">Attack</button>
+          <button class="ui button" :class="ui_btnClass(1, 'blue')" x-show="$store.game.extra.allowedBtns[1]" @click="$store.game.act('click_btn', 1)">Use Ppl</button>
+          <button class="ui button" :class="ui_btnClass(2, 'blue')" x-show="$store.game.extra.allowedBtns[2]" @click="$store.game.act('click_btn', 2)" x-text="$store.game.extra.selectingDiplomacy ? 'Diplomacy' : 'Use Power'"></button>
+          <button class="ui button" :class="ui_btnClass(8, 'red')" x-show="$store.game.extra.allowedBtns[8]" @click="$store.game.act('click_btn', 8)">Abandon</button>
+          
+          <button class="ui button" :class="ui_btnClass(3, 'pink')" x-show="$store.game.extra.allowedBtns[3]" @click="$store.game.act('click_btn', 3)">Deploy all</button>
+          <button class="ui button" :class="ui_btnClass(4, 'pink')" x-show="$store.game.extra.allowedBtns[4]" @click="$store.game.act('click_btn', 4)">Deploy 1</button>
+          <button class="ui button" :class="ui_btnClass(7, 'blue')" x-show="$store.game.extra.allowedBtns[7]" @click="$store.game.act('click_btn', 7)">Skip Deploy</button>
+          
+          <button class="ui button" :class="ui_btnClass(5, 'blue')" x-show="$store.game.extra.allowedBtns[5]" @click="$store.game.act('click_btn', 5)">Pick Combo</button>
+          <button class="ui button" :class="ui_btnClass(9, 'grey')" x-show="$store.game.extra.allowedBtns[9]" @click="$store.game.act('click_btn', 9)">Go in Decline</button>
+          <button class="ui button" :class="ui_btnClass(6, 'blue')" x-show="$store.game.extra.allowedBtns[6]" @click="$store.game.act('click_btn', 6)">End Turn</button>
+          
+          <button class="ui icon button" @click="$store.game.undo()" :disabled="!$store.game.canUndo"><i class="undo icon"></i></button>
+          <button class="ui primary button" x-show="$store.game.extra.confirmNeeded" @click="$store.game.act('confirm')">Confirm ?</button>
+        </div>
+      </div>
+
+      <div class="ui hidden divider"></div>
+
+      <div class="ui segment" x-show="$store.game.extra.allowedBtns[5] || $store.game.extra.selectedBtn === 5">
+        <h4 class="ui header">Available Combinations</h4>
+        <div class="ui stackable center aligned middle aligned grid">
+          <template x-for="(deckItem, dIdx) in $store.game.view.deck" :key="'deck-'+dIdx">
+            <div class="row" style="padding: 5px 0;">
+              <div class="three wide column">
+                <button class="ui fluid compact button" 
+                        :class="ui_deckBtnClass(dIdx)" 
+                        @click="$store.game.extra.allowedBtns[5] ? $store.game.act('click_deck', dIdx) : null"
+                        x-html="dIdx + ' <i class=\'coins icon\'></i>'">
+                </button>
+              </div>
+              <div class="thirteen wide left aligned column" x-html="ui_deckDescr(deckItem)"></div>
             </div>
           </template>
-        </div></div>
+        </div>
       </div>
 
-      <div class="right menu">
-        <div class="item">
-          <button class="ui icon button" @click="$store.game.undo()" :disabled="!$store.game.canUndo || $store.game.isLoading || $store.game.isThinking">
-            <i class="undo icon"></i>
-          </button>
-        </div>
-        <div class="item">
-          <button class="ui icon button" @click="$store.game.reset()" :disabled="$store.game.isLoading || $store.game.isThinking">
-            <i class="sync icon"></i>
-          </button>
-        </div>
-      </div>
     </div>
+  </template>
 
-    <div class="ui center aligned basic segment">
-      <div x-show="$store.game.isLoading" class="ui active inline loader"></div>
-        <div x-show="$store.game.isThinking" class="ui active centered inline loader text">
-        L'IA réfléchit...
-        <button class="ui mini red basic button" style="margin-left: 15px;" @click="$store.game.arePlayersHuman[$store.game.view.currentPlayer] = true">
-          <i class="stop icon"></i> Stopper l'IA
-        </button>
-      </div>
-      <h2 x-show="!$store.game.isLoading && !$store.game.isThinking" class="ui header" x-text="$store.game.statusMessage"></h2>
-    </div>
-
-    <template x-if="$store.game.view && $store.game.view.territories && !$store.game.isLoading">
-      <div class="ui stackable grid">
-        
-        <div class="ten wide column">
-          
-          <div class="ui negative message" x-show="getPolyPoints(0) === ''">
-            <div class="header">Données géométriques introuvables</div>
-            <p>Impossible de lire <code>mapAreas</code>. Regarde la console (F12) pour voir l'erreur.</p>
-          </div>
-
-          <div style="position: relative; width: 100%; aspect-ratio: 1.4; background-color: #f0f8ff; border: 1px solid #ccc; border-radius: 8px; overflow: hidden;">
-            
-            <template x-for="terr in $store.game.view.territories" :key="terr.id">
-              
-              <svg xmlns="http://www.w3.org/2000/svg" 
-                   style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;" 
-                   x-init="$el.setAttribute('viewBox', typeof mapDimensions !== 'undefined' ? mapDimensions : '0 0 140 100')">
-                
-                <g style="pointer-events: auto;">
-                  
-                  <polygon class="svg-poly"
-                           :points="getPolyPoints(terr.id)"
-                           :fill="getTerrainColor(terr.terrain)"
-                           :stroke="terr.isSelected ? '#ff0000' : (terr.owner >= 0 ? playerColors[terr.owner] : '#666')"
-                           :stroke-width="terr.isSelected ? 1.0 : (terr.owner >= 0 ? 0.8 : 0.2)"
-                           :stroke-dasharray="terr.canAttack ? '1, 0.5' : 'none'"
-                           @click="$store.game.act('select_area', terr.id)">
-                  </polygon>
-
-                  <g x-show="typeof elementsCoord !== 'undefined' && elementsCoord[terr.id]">
-                    
-                    <g :transform="'translate(' + elementsCoord[terr.id]?.[0] + ',' + elementsCoord[terr.id]?.[1] + ')'">
-                      <circle cx="0" cy="0" r="3.5" :fill="terr.owner >= 0 ? playerColors[terr.owner] : 'white'" fill-opacity="0.95" stroke="#333" stroke-width="0.3"/>
-                      <text class="token-text" x="0" y="1" font-size="3" text-anchor="middle" fill="black" 
-                            x-text="terr.nbPeople > 0 ? terr.nbPeople : ''"></text>
-                    </g>
-
-                    <g x-show="terr.addedDefense > 0" :transform="'translate(' + elementsCoord[terr.id]?.[2] + ',' + elementsCoord[terr.id]?.[3] + ')'">
-                      <rect x="-2.5" y="-2" width="5" height="4" fill="#d95c5c" rx="0.5" stroke="#333" stroke-width="0.2"/>
-                      <text class="token-text" x="0" y="0.8" font-size="2.5" text-anchor="middle" fill="white" 
-                            x-text="'+' + terr.addedDefense"></text>
-                    </g>
-
-                    <g x-show="elementsCoord[terr.id]?.[4] !== -1 && (terr.isCavern || terr.isMine || terr.isMagic)" 
-                       :transform="'translate(' + elementsCoord[terr.id]?.[4] + ',' + elementsCoord[terr.id]?.[5] + ')'">
-                       
-                       <circle cx="0" cy="0" r="2.5" fill="#333" fill-opacity="0.8"/>
-                       <text class="token-text" x="0" y="0.8" font-size="2.2" text-anchor="middle" fill="white" 
-                             x-text="terr.isMagic ? '★' : (terr.isMine ? 'M' : (terr.isCavern ? 'C' : ''))">
-                       </text>
-                    </g>
-
-                  </g>
-                </g>
-              </svg>
-            </template>
-          </div>
-
-          <div class="ui segment center aligned" style="background-color: #fafafa; margin-top: 15px;">
-            <h4 class="ui header" x-show="$store.game.view.territories.find(t => t.isSelected)">
-              Action sur région <span x-text="$store.game.view.territories.find(t => t.isSelected)?.id"></span>
-              
-              <div class="sub header" style="margin-top: 5px;">
-                Attaquable: <strong x-text="$store.game.view.territories.find(t => t.isSelected)?.canAttack ? 'Oui' : 'Non'"></strong> | 
-                Déployable: <strong x-text="$store.game.view.territories.find(t => t.isSelected)?.canDeploy ? 'Oui' : 'Non'"></strong>
-              </div>
-            </h4>
-            
-            <div class="ui stackable buttons">
-              <button class="ui green button" :disabled="!$store.game.view.territories.find(t => t.isSelected)?.canAttack" @click="$store.game.act('attack')">
-                <i class="crosshairs icon"></i> Attaquer
-              </button>
-              <button class="ui blue button" :disabled="!$store.game.view.territories.find(t => t.isSelected)?.canUsePeople" @click="$store.game.act('use_people')">
-                Peuple Spécial
-              </button>
-              <button class="ui blue button" :disabled="!$store.game.view.territories.find(t => t.isSelected)?.canUsePower" @click="$store.game.act('use_power')">
-                Pouvoir Spécial
-              </button>
-              <button class="ui pink button" :disabled="!$store.game.view.territories.find(t => t.isSelected)?.canDeploy" @click="$store.game.act('deploy')">
-                <i class="map marker alternate icon"></i> Déployer ici
-              </button>
-            </div>
-            
-            <div class="ui divider"></div>
-            
-            <div class="ui stackable buttons">
-              <button class="ui pink button" :disabled="!$store.game.view.ui?.canDeploy" @click="$store.game.act('start_deploy')">
-                <i class="flag icon"></i> Déploiement
-              </button>
-              <button class="ui black button" :disabled="!$store.game.view.ui?.canEndTurn" @click="$store.game.act('decline')">
-                <i class="bed icon"></i> Déclin
-              </button>
-              <button class="ui primary button" :disabled="!$store.game.view.ui?.canEndTurn" @click="$store.game.act('end_turn')">
-                <i class="step forward icon"></i> Fin du Tour
-              </button>
-            </div>
-          </div>
-
-        </div>
-
-        <div class="six wide column">
-          
-          <h4 class="ui dividing header">Dernières actions</h4>
-          <div class="ui segment" style="max-height: 160px; overflow-y: auto; background-color: #fafafa; padding: 10px;">
-            <div class="ui relaxed list" x-show="$store.game.view.actionLog && $store.game.view.actionLog.length > 0">
-              <template x-for="(log, idx) in $store.game.view.actionLog" :key="idx">
-                <div class="item">
-                  <i class="angle right icon"></i>
-                  <div class="content">
-                    <div class="description" x-text="log" :style="idx === 0 ? 'font-weight: bold; color: black;' : 'color: grey;'"></div>
-                  </div>
-                </div>
-              </template>
-            </div>
-            <div x-show="!$store.game.view.actionLog || $store.game.view.actionLog.length === 0" class="ui disabled text" style="text-align: center;">
-              Aucune action pour le moment.
-            </div>
-          </div>
-
-          <h4 class="ui dividing header">Joueurs</h4>
-          <div class="ui segments">
-            <template x-for="p in $store.game.view.players" :key="p.id">
-              <div class="ui segment" :class="p.isCurrentTurn ? 'secondary inverted blue' : ''">
-                <div class="ui grid">
-                  <div class="twelve wide column">
-                    <h5 class="ui header" :style="'color: ' + (p.isCurrentTurn ? 'white' : playerColors[p.id])">
-                      Joueur <span x-text="p.id"></span>
-                    </h5>
-                    
-                    <div x-show="p.activePeople.nb > 0">
-                      <div class="ui small label">
-                        Actif: <strong x-text="getPeopleName(p.activePeople.type)"></strong> 
-                        - <span x-text="getPowerName(p.activePeople.power)"></span>
-                        <div class="detail"><i class="user icon"></i> <span x-text="p.activePeople.nb"></span></div>
-                      </div>
-                    </div>
-                    
-                    <template x-for="(d, idx) in p.declinedPeoples" :key="idx">
-                      <div class="ui small basic label" style="margin-top: 5px;" x-show="d.nb > 0">
-                        Déclin: <span x-text="getPeopleName(d.type)"></span>
-                        <div class="detail"><i class="user outline icon"></i> <span x-text="d.nb"></span></div>
-                      </div>
-                    </template>
-                  </div>
-                  <div class="four wide column right aligned">
-                    <h3 class="ui header" :class="p.isCurrentTurn ? 'inverted' : ''">
-                      <span x-text="p.score"></span> <i class="yellow star icon"></i>
-                    </h3>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-
-          <h4 class="ui dividing header">Pioche disponible</h4>
-          <div class="ui middle aligned selection list">
-            <template x-for="deckItem in $store.game.view.deck" :key="deckItem.index">
-              <div class="item" 
-                   :class="!deckItem.canChoose ? 'disabled' : ''"
-                   @click="deckItem.canChoose ? $store.game.act('choose_deck', deckItem.index) : null"
-                   style="padding: 10px; border: 1px solid #eee; border-radius: 4px; margin-bottom: 5px;">
-                
-                <div class="right floated content">
-                  <button class="ui compact button" :class="deckItem.canChoose ? 'blue' : 'grey'">
-                    <span x-text="deckItem.index"></span> <i class="coins icon yellow"></i>
-                  </button>
-                </div>
-                
-                <div class="content">
-                  <div class="header" x-text="getPeopleName(deckItem.peopleType)"></div>
-                  <div class="description">
-                    <span x-text="getPowerName(deckItem.power)"></span>
-                    <div class="ui horizontal mini label"><span x-text="deckItem.nbPeople"></span> troupes</div>
-                    <span x-show="deckItem.coins > 0" class="ui circular mini yellow label" x-text="deckItem.coins"></span>
-                  </div>
-                </div>
-
-              </div>
-            </template>
-          </div>
-        </div>
-      </div>
-    </template>
-  </div>
+</div>
 
 </body>
 </html>

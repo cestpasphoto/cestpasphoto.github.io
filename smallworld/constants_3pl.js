@@ -1,11 +1,22 @@
-const nb_players = 3;
+const numPlayers = 3;
 const nbAreas = 30;
 const nbTurns = 10;
-const sizeCB = [1, nbAreas + 5*nb_players + 6+1, 8];
+const sizeCB = [1, nbAreas + 5*numPlayers + 6+1, 8];
 const sizeV = [1, 5*nbAreas + 8 + 6 + 2];
 
-const pyConstantsFileName = 'smallworld/SmallworldConstants_3pl.py';
-const pyMapsFileName = 'smallworld/SmallworldMaps_3pl.py';
+const list_of_files = [
+  ['smallworld/Game.py'                , 'Game.py'],
+  ['smallworld/proxy.py'               , 'proxy.py'],
+  ['smallworld/MCTS.py'                , 'MCTS.py'],
+  ['smallworld/SmallworldDisplay.py'   , 'SmallworldDisplay.py'],
+  ['smallworld/SmallworldGame.py'      , 'SmallworldGame.py'],
+  ['smallworld/SmallworldConstants_3pl.py', 'SmallworldConstants.py'],
+  ['smallworld/SmallworldLogicNumba.py', 'SmallworldLogicNumba.py'],
+  ['smallworld/SmallworldMaps.py'      , 'SmallworldMaps.py'],
+  ['smallworld/SmallworldMaps_3pl.py'  , 'SmallworldMaps_3pl.py'],
+];
+
+const numMCTSSims = 200;
 const defaultModelFileName = 'smallworld/model_3pl.onnx';
 
 const mapDimensions = "0 0 140 100";
