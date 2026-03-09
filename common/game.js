@@ -221,7 +221,8 @@ async function check_ai_turn() {
     if (store.gameEnded || store.editMode !== 0) return;
     
     if (!is_nextplayer_human()) {
-        setTimeout(() => execute_ai_move(), 800);
+        let delay = store.arePlayersHuman.every(h => !h) ? 800 : 0;
+        setTimeout(() => execute_ai_move(), delay);
     }
 }
 
