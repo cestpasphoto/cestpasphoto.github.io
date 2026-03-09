@@ -82,7 +82,7 @@
 
   <div class="ui horizontal basic segments">
     <div class="ui center aligned vertically fitted segment">
-      <span class="ui large green text" id="p0title">
+      <span class="ui large green text">
         You
         <span x-show="$store.game.extra.p0_god > 0" x-text="' - ' + gods_name[$store.game.extra.p0_god]">
         </span>
@@ -90,7 +90,7 @@
       <p class="description" x-show="$store.game.extra.p0_god > 0" x-text="gods_descr[$store.game.extra.p0_god]"></p>
     </div>
     <div class="ui center aligned vertically fitted segment">
-      <span class="ui large red text" id="p1title">
+      <span class="ui large red text">
         AI
         <span x-show="$store.game.extra.p1_god > 0" x-text="' - ' + gods_name[$store.game.extra.p1_god]">
         </span>
@@ -147,7 +147,7 @@
     <button class="ui basic teal button" @click="$store.game.act('togglePower', false)" :disabled="!$store.game.extra.canSelectNoPower">Without power</button>
     <button class="ui basic blue button" @click="$store.game.act('togglePower', true)" :disabled="!$store.game.extra.canSelectPower">With power</button>
   </div>
-  <button x-show="$store.game.isLoading" class="ui fluid large active loading button" id="loadingBtn">‌</button>
+  <button x-show="$store.game.isLoading" class="ui fluid large active loading button">‌</button>
   <div x-show="$store.game.editMode" class="ui info message" >
     <div class="header">Info for editing</div>
     <p>Tap on cells to change their heights, then tap again on edit button and tap on cells to toggle worker. Tap on god power to change them and finally tap edit button to validate</p>
@@ -158,24 +158,6 @@
   </div>
 
 </div>
-
-
-<script>
-  const allBtn      = document.getElementById('allBtn');
-  const undoBtn     = document.getElementById('undoBtn');
-  const loadingBtn  = document.getElementById('loadingBtn');
-  const usePowerBtn = document.getElementById('usePowerBtn');
-  const noPowerBtn  = document.getElementById('noPowerBtn');
-  const editBtn     = document.getElementById('editBtn');
-  const moveSgmt    = document.getElementById('moveSgmt');
-  const p0title     = document.getElementById('p0title');
-  const p0details   = document.getElementById('p0details');
-  const p1title     = document.getElementById('p1title');
-  const p1details   = document.getElementById('p1details');
-  const editMsg     = document.getElementById('editMsg');
-
-  // main(usePyodide=true);
-</script>
 
 </div></body>
 </html>

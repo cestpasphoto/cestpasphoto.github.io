@@ -105,7 +105,7 @@
     <div class="ui compact grid">
       <div class="myReactiveCont">
 
-        <div class="item" id="boardArea">
+        <div class="item">
           <div class="ui large horizontal divider">Board</div>
           
           <div class="ui fluid small compact buttons">
@@ -168,7 +168,7 @@
           </div>
         </div>
 
-        <div class="item" id="playersArea">
+        <div class="item">
           <template x-for="(player, pIdx) in $store.game.view.players" :key="'player-'+pIdx">
             <div>
               <div class="ui large horizontal divider" x-html="(pIdx === 0 ? 'You' : 'AI ' + pIdx) + ' - ' + player.score + ' <i class=\'coins icon\'></i>'"></div>
@@ -206,9 +206,9 @@
           </template>
         </div>
 
-        <div class="item" id="deckArea">
+        <div class="item">
           <div class="ui large horizontal divider">Deck</div>
-          <div class="ui circular labels" id="roundP" style="max-width: fit-content; margin-inline: auto;" x-html="ui_roundDisplay()"></div>
+          <div class="ui circular labels"" style="max-width: fit-content; margin-inline: auto;" x-html="ui_roundDisplay()"></div>
           
           <div class="ui middle aligned very compact grid">
             <template x-for="(deckItem, dIdx) in $store.game.view.deck" :key="'deck-'+dIdx">

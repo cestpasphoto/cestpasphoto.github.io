@@ -218,14 +218,13 @@
 
       <div class="ui hidden divider mobile hidden"></div>
       <div class="ui fluid large compact buttons" x-show="!$store.game.isLoading">
-        <button class="ui basic icon button" id="undoBtn" 
+        <button class="ui basic icon button" 
                 @click="$store.game.act('undo')" 
                 :class="{ 'disabled': !$store.game.canUndo || $store.game.isThinking || $store.game.extra.sel_type == 'none'}">
           <i class="undo icon"></i>
         </button>
         <button class="ui button" 
-                id="btn_confirm"
-                :class="{ 
+                                :class="{ 
                     'disabled basic': (!$store.game.extra.can_confirm && $store.game.extra.sel_type !== 'none') || $store.game.isThinking,
                     'green': $store.game.extra.can_confirm,
                     'green basic disabled': $store.game.extra.sel_type === 'none'
@@ -322,7 +321,7 @@
 </div>
 
 
-<div class="ui modal" id="editModal" x-data="splendorEditor()" x-init="initModal()">
+<div class="ui modal" x-data="splendorEditor()" x-init="initModal()">
   <i class="close inside icon"></i>
   <div class="header" x-text="step === 'card' ? 'Edit card - ' + ['1st','2nd','3rd','4th'][c_index] + ' on ' + ['bottom','middle','top'][c_tier] + ' line' : (step === 'noble' ? 'Edit nobles' : 'Edit bank/players')"></div>
   <div class="content">
