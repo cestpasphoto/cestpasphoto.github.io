@@ -125,7 +125,7 @@
 
             <div class="ui middle aligned tiny image">
 
-              <svg width="240" height="240" viewBox="0 0 240 240" x-data="{ colors: {'-1': 'black', '0': '#21BA45', '1': '#DB2828' } }" xml:space="preserve">
+              <svg width="240" height="240" viewBox="0 0 240 240" x-data="{ colors }" xml:space="preserve">
                 <polygon x-show="cell?.level >= 1" :fill="colors[cell?.player]" points="0,240 0,200 240,200 240,240"></polygon>
                 <polygon x-show="cell?.level >= 2" :fill="colors[cell?.player]" points="30,200 30,160 210,160 210,200"></polygon>
                 <polygon x-show="cell?.level >= 3" :fill="colors[cell?.player]" points="60,160 60,120 180,120 180,160"></polygon>

@@ -25,6 +25,8 @@ const sizeV = [1, onnxOutputSize];
 // Adjusted for a balance between speed and strength in the browser.
 const numMCTSSims = 50;
 
+const colors = {'-1': 'black', '0': '#21BA45', '1': '#DB2828' };
+
 /* =================== */
 /* ===== ANALYTICS === */
 /* =================== */

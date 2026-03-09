@@ -26,7 +26,6 @@ const numPlayers = +new URLSearchParams(window.location.search).get('players') |
 const selectedConfig = configs[numPlayers] || configs[2];
 const { sizeV, sizeCB, pyConstantsFileName, defaultModelFileName } = selectedConfig;
 
-
 const colors = [
   ["gainsboro"  , "ghostwhite", "black"], // white
   ["dodgerblue" , "mediumblue", "white"], // blue
@@ -35,24 +34,6 @@ const colors = [
   ["dimgray"    , "black"     , "white"], // black
   ["lightyellow", "yellow"    , "black"], // yellow
   ["darkgray"   , "darkgray"  , "black"]  // For noble
-];
-
-const tokensCoord      = [["20%", "83%"], ["20%", "53%"], ["50%", "83%"], ["50%", "53%"]];
-const tokensCoordSmall = [["20%", "83%"], ["20%", "50%"], ["50%", "83%"], ["50%", "50%"]];
-const tokensCoordNoble = [["25%", "83%"], ["25%", "50%"], ["25%", "16%"]];
-
-const nobles_names = [
-  "Isabelle of Castile", "Anne of Brittany", "Mary Stuart", "Elisabeth of Austria", 
-  "Charles V", "Machiavelli", "Suleiman the Magnificent", "Henry VIII",
-  "Francis I", "Catherine of Medici"
-];
-
-// Note : nobles_req is kept just in case you use it for tooltips, 
-// though the actual requirements checking is fully done in Python now.
-const nobles_req = [
-  "4[W] 4[B] 4[K]", "3[B] 3[G] 3[R]", "3[R] 3[G] 3[B]", "3[W] 3[B] 3[K]",
-  "3[W] 3[R] 3[K]", "4[B] 4[W] 4[R]", "4[B] 4[G] 4[R]", "4[R] 4[B] 4[K]",
-  "3[R] 3[W] 3[G]", "3[G] 3[W] 3[B]"
 ];
 
 const all_nobles = [

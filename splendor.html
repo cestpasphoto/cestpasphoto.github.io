@@ -361,11 +361,13 @@
 <script>
   document.addEventListener('alpine:init', () => {
     Alpine.data('splendorEditor', () => ({
+      // --- State Variables ---
       step: 'card',
       c_tier: 0, c_index: 0, c_color: 0, c_pts: 0,
       n_slot: 0, n_assigns: [-1,-1,-1], n_ids: [-2,-2,-2],
       g_player: -1,
 
+      // --- Initialization ---
       initModal() {
         this.$watch('$store.game.editMode', val => {
             if (val > 0) {
@@ -373,7 +375,9 @@
                 $('#editModal').modal({
                     onHide: () => { 
                         if (Alpine.store('game').editMode !== 0) {
-                            pyodide.runPythonAsync(`proxy.set_edit_mode(0)`).then(j => update_store(j));
+                            // Replaced obsolete runPythonAsync with direct pyProxy call
+                            let json = pyProxy.set_edit_mode(0);
+                            update_store(json);
                         }
                     }
                 }).modal('show');
@@ -383,6 +387,7 @@
         });
       },
       
+      // --- Card Editing Logic ---
       resetToCard(tier, index) {
         this.step = 'card';
         this.c_tier = tier;
@@ -405,6 +410,7 @@
         if (n_tier >= 3) this.gotoNoble(); else this.resetToCard(n_tier, n_index);
       },
 
+      // --- Noble Editing Logic ---
       gotoNoble() {
         this.step = 'noble';
         this.n_slot = 0;
@@ -430,6 +436,7 @@
          if (this.n_slot < ($store.game.view.players.length - 1)) this.n_slot++; else this.gotoGem();
       },
 
+      // --- Gem/Tokens Editing Logic ---
       gotoGem() { this.step = 'gem'; this.g_player = -1; },
       
       commitGem(type, color, delta) {

@@ -15,7 +15,7 @@ document.addEventListener('alpine:init', () => {
         loadingMessage: "Initializing Application...",
         arePlayersHuman: Array.from({ length: numPlayers }, (_, i) => i === 0),
         
-        // --- Données Standard ---
+        // --- Standard Data ---
         statusMessage: "",
         currentPlayer: 0,
         gameEnded: false,
@@ -23,14 +23,14 @@ document.addEventListener('alpine:init', () => {
         canUndo: false,
         numMCTSSims: numMCTSSims,
         
-        // --- Données Spécifiques au Jeu ---
+        // --- Game-Specific Data ---
         view: {}, // Replaced 'cells'. Python injects what it wants here.
         extra: {}, // Generic container for any game-specific metadata (gods, powers, etc.)
 
         // --- Actions ---
         start() { init_infrastructure() },
         
-        // Le routeur d'action générique : remplace clickCell
+        // Generic action router: replaces legacy clickCell
         async act(actionName, ...args) {
             if (this.isLoading || this.isThinking || this.gameEnded) return;
             
@@ -197,7 +197,7 @@ async function handle_reset() {
 async function handle_edit_toggle() {
     if (Alpine.store('game').isLoading || Alpine.store('game').isThinking) return;
     let current = Alpine.store('game').editMode;
-    let next = (current + 1) % 3; // Note: Si certains jeux n'ont qu'un editMode booléen, il faudra adapter côté Python
+    let next = (current + 1) % 3; // Note: If some games only use a boolean editMode, adapt the Python side accordingly.
     try {
         let json = pyProxy.set_edit_mode(next);
         update_store(json);
