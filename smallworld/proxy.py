@@ -150,6 +150,8 @@ def execute_move(action):
             move_type, area = 1, action - 60
         elif 90 <= action < 120:
             move_type, area = 2, action - 90
+        elif 128 <= action < 158:
+            move_type, area = 4, action - 128
         elif 0 <= action < 30:
             move_type, area = 8, action
         elif action == 164:
@@ -486,55 +488,48 @@ def execute_move(action):
 
     game_started = True
 
-    if action == 167: # startBtn (virtuel)
+    if action == 167:
         pass 
-    elif action == 166: # startDplBtn (virtuel)
+    elif action == 166:
         previous_player = player
         gather_current_ppl_but_one()
         can_add_virtual_start_deploy = False
     else:
-        # 1. Évaluer le succès de l'action avant de modifier le board (comme JS)
-        success = True
-        if 30 <= action < 60:
-            area = action - 30
-            area_ppl = getTerritoryInfo2(area)[1]
-            curr_p, curr_id = getCurrentPlayerAndPeople()
-            cur_ppl_type = getPplInfo(curr_p, curr_id)[1]
-            if area_ppl != cur_ppl_type:
-                success = False
+        move_type, area = -1, -1
 
-        # 2. Exécuter le mouvement
+        if 30 <= action < 60:     move_type, area = 0, action - 30
+        elif 60 <= action < 90:   move_type, area = 1, action - 60
+        elif 90 <= action < 120:  move_type, area = 2, action - 90
+        elif 128 <= action < 158: move_type, area = 4, action - 128
+        elif 0 <= action < 30:    move_type, area = 8, action
+        elif action == 164:       move_type, area = 9, -1
+
+        # On mémorise le peuple attaquant AVANT que le tour ne change
+        curr_p, curr_id = getCurrentPlayerAndPeople()
+        cur_ppl_type = getPplInfo(curr_p, curr_id)[1]
+
         history.insert(0, [player, np.copy(board), action])
         board, player = g.getNextState(board, player, action)
 
-        # 3. Mettre à jour l'historique des coups pour l'UI (les points colorés)
+        # On évalue le succès APRÈS l'attaque (comme dans le JS d'origine)
+        success = True
+        if move_type == 0:
+            area_ppl = getTerritoryInfo2(area)[1]
+            if area_ppl != cur_ppl_type:
+                success = False
+
         if previous_player != player:
             previous_moves = []
             previous_player = player
 
-        move_type, area = -1, -1
-        if 30 <= action < 60:
-            move_type, area = 0, action - 30
-        elif 60 <= action < 90:
-            move_type, area = 1, action - 60
-        elif 90 <= action < 120:
-            move_type, area = 2, action - 90
-        elif 0 <= action < 30:
-            move_type, area = 8, action
-        elif action == 164:
-            move_type, area = 9, -1
-
         if move_type >= 0:
             previous_moves.append([area, move_type, success])
 
-        # 4. Gérer le reset du flag de déploiement virtuel
         valids = g.getValidMoves(board, player)
-        if any(valids[30:60]): # Si on peut à nouveau attaquer, c'est un nouveau tour
+        if any(valids[30:60]): 
             can_add_virtual_start_deploy = True
 
-    # Réinitialise le bouton sélectionné pour le prochain tour
     interaction_step = -1
-
 
 def handle_action(action_name, *args):
     global interaction_step

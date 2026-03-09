@@ -162,17 +162,13 @@ function ui_findPlayerFromPpl(pplId) {
 }
 
 function ui_tokenStyle(pplId, pIdx, pplIdx) {
-   if (pplId === 0) return { bg: 'none', txt: 'none', char: '' };
-   if (pplId === -15) return { bg: '#f2f2f2', txt: 'dimgray', char: ppl_short_str[15] };
-   let absId = Math.abs(pplId);
-   let char = ppl_short_str[absId].toUpperCase();
-   if (pplId < 0) char = char.toLowerCase();
+   if (pplId === 0) return { bg: 'none', txt: 'none' };
+   if (pplId === -15) return { bg: '#f2f2f2', txt: 'dimgray' };
    
-   // Nuances de couleur par défaut pour le joueur (2=actif, 1=decline1, 0=spirit)
-   let cIdx = (pplIdx === 2) ? 1 : (pplIdx === 1 ? 0 : 2);
+   let cIdx = (pplIdx === 2) ? 0 : (pplIdx === 1 ? 1 : 2);
    let bg = pplId < 0 ? '#f7f7f7' : (pplColors[pIdx] ? pplColors[pIdx][cIdx] : 'gray');
    let txt = pplId < 0 ? (pplColors[pIdx] ? pplColors[pIdx][cIdx] : 'gray') : 'white';
-   return { bg, txt, char };
+   return { bg, txt };
 }
 
 function ui_toLongString(data, showNumber = true) {
@@ -251,10 +247,10 @@ function ui_areaColor(area) { return terrains_col[area[3]][0]; }
 const strokeColors = ['#016936', '#0E6EB8', '#0E6EB8', '#FF1493', '#FF1493', '#0E6EB8', '#0E6EB8', '#0E6EB8', '#DB2828', '#0E6EB8', '#0E6EB8'];
 function ui_areaStroke(aIdx) { 
   const extra = Alpine.store('game').extra;
-  if (!ui_isAreaClickable(aIdx)) return 'rgba(0,0,0,0.1)';
+  if (!ui_isAreaClickable(aIdx)) return 'transparent'; // <- Transparent au lieu de grisâtre
   return (extra && extra.selectedBtn >= 0) ? strokeColors[extra.selectedBtn] : 'black';
 }
-function ui_areaStrokeWidth(aIdx) { return ui_isAreaClickable(aIdx) ? 1.0 : 0.5; }
+function ui_areaStrokeWidth(aIdx) { return ui_isAreaClickable(aIdx) ? 0.5 : 0; }
 function ui_areaDasharray(aIdx) {
    const extra = Alpine.store('game').extra;
    if (extra && extra.selectedBtn === 0 && extra.needDice && extra.needDice[aIdx]) return "1";
@@ -310,9 +306,17 @@ function ui_previousMoveColor(aIdx) {
   const extra = Alpine.store('game').extra;
   let moves = extra.previousMoves.filter(m => m[0] === aIdx);
   if (moves.length === 0) return 'transparent';
-  let move = moves[moves.length - 1]; 
-  if (!move[2]) return 'gray';
-  return strokeColors[move[1]] || 'white';
+  
+  let mainType = Math.min(...moves.map(m => m[1]));
+  
+  // N'évaluer l'échec que s'il s'agissait d'une attaque (Type 0)
+  if (mainType === 0) {
+      let hasSuccess = moves.some(m => m[1] === mainType && m[2] === true);
+      if (!hasSuccess) mainType = -1;
+  }
+  
+  if (mainType < 0) return 'gray';
+  return strokeColors[mainType] || 'white';
 }
 
 // --- Textes et Boutons UI ---
