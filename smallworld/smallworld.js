@@ -2,7 +2,7 @@
 /* ===== CONFIGURATION                                                 ===== */
 /* ========================================================================= */
 
-// (Constants are natively handled by constants_3pl.js imported before)
+const numMCTSSims = 25;
 
 /* ========================================================================= */
 /* ===== DICTIONNAIRES & TEXTES                                        ===== */
