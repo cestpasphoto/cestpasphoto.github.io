@@ -375,134 +375,76 @@ interaction_step = -1
 previous_player = -1
 previous_moves = [] # Stocke les infos pour l'UI: [area, type, success]
 
-
 # =============================================================================
-# CONSTRUCTION DU RENDU JSON POUR ALPINE.JS
+# GESTION DES ACTIONS UI (Remplace l'ancienne logique JS)
 # =============================================================================
-def get_render_state():
-    global g, board, player, history
-    global game_started, can_add_virtual_start_deploy, interaction_step, previous_player, previous_moves
+def handle_action(action_name, *args):
+    global interaction_step
+    
+    N = NB_AREAS
+    MR = MAX_REDEPLOY
+    DS = DECK_SIZE
 
-    end = g.getGameEnded(board, player)
-    valids = g.getValidMoves(board, player)
+    if action_name == "click_btn":
+        btn_id = int(args[0])
+        interaction_step = btn_id
+        if btn_id == 10: # startBtn
+            execute_move(5*N + MR + DS + 3)
+            
+    elif action_name == "click_area":
+        area = int(args[0])
+        action = -1
+        if interaction_step == 0:   action = N + area
+        elif interaction_step == 1: action = 2*N + area
+        elif interaction_step == 2: action = 3*N + area
+        elif interaction_step == 4: action = 4*N + MR + area
+        elif interaction_step == 8: action = area
+        
+        if action >= 0:
+            execute_move(action)
+            
+    elif action_name == "click_deck":
+        deck_idx = int(args[0])
+        action = 5*N + MR + deck_idx
+        execute_move(action)
+        
+    elif action_name == "confirm":
+        action = -1
+        if interaction_step == 7:   action = 4*N # noDeployBtn
+        elif interaction_step == 9: action = 5*N + MR + DS # declineBtn
+        elif interaction_step == 6: action = 5*N + MR + DS + 1 # endTurnBtn
+        elif interaction_step == 3: action = 5*N + MR + DS + 2 # startDplBtn
+        
+        if action >= 0:
+            execute_move(action)
 
-    # 1. Gestion des mouvements virtuels (Remplace `_addVirtualMoves` du JS)
-    valid_start_deploy = bool(can_add_virtual_start_deploy and any(valids[128:158]))
-    valid_start = not game_started
+    return get_render_state()
 
-    # On étend le tableau des actions valides à 168 éléments pour coller au front
-    valids_ext = np.append(valids, [valid_start_deploy, valid_start])
-
-    # 2. Boutons autorisés (Remplace MoveSelector.update() du JS)
-    allowed_btns = [
-        bool(any(valids_ext[30:60])),   # 0: attackBtn
-        bool(any(valids_ext[60:90])),   # 1: usePplBtn
-        bool(any(valids_ext[90:120])),  # 2: usePwrBtn
-        bool(valids_ext[166]),          # 3: startDplBtn
-        bool(any(valids_ext[128:158])), # 4: deploy1Btn
-        bool(any(valids_ext[158:164])), # 5: choseBtn
-        bool(valids_ext[165]),          # 6: endTurnBtn
-        bool(valids_ext[120]),          # 7: noDeployBtn
-        bool(any(valids_ext[0:30])),    # 8: abandonBtn
-        bool(valids_ext[164]),          # 9: declineBtn
-        bool(valids_ext[167])           # 10: startBtn
-    ]
-
-    # Règles d'inhibition des boutons
-    if allowed_btns[10]: # startBtn inhibe tout le reste
-        allowed_btns = [False] * 11
-        allowed_btns[10] = True
-
-    if allowed_btns[3]: # startDplBtn inhibe deploy1Btn
-        allowed_btns[4] = False
-
-    # Auto-sélection du premier bouton valide si la sélection actuelle est invalide
-    if interaction_step < 0 or not allowed_btns[interaction_step]:
-        try:
-            interaction_step = allowed_btns.index(True)
-        except ValueError:
-            interaction_step = -1
-
-    confirm_needed = interaction_step in [3, 6, 7, 9]
-
-    # 3. Compilation des données pour la vue (viewData)
-    view_board = [getTerritoryInfo2(i) for i in range(NB_AREAS)]
-
-    view_players = []
-    for p in range(NUMBER_PLAYERS):
-        peoples = [getPplInfo(p, ppl).tolist() for ppl in range(3)]
-        view_players.append({
-            "score": int(getScore(p)),
-            "peoples": peoples
-        })
-
-    view_deck = [getDeckInfo(i).tolist() for i in range(DECK_SIZE)]
-    curr_player, curr_id = getCurrentPlayerAndPeople()
-    need_dice = [bool(needDiceToAttack(i)) for i in range(NB_AREAS)]
-
-    # Spécificité du pouvoir Diplomate
-    selecting_diplomacy = False
-    if interaction_step == 2: # usePwrBtn
-        cur_pwr = g.board.peoples[curr_player, curr_id, 2]
-        if cur_pwr == DIPLOMAT:
-            selecting_diplomacy = True
-
-    extra = {
-        "validMoves": [bool(v) for v in valids_ext],
-        "allowedBtns": allowed_btns,
-        "selectedBtn": interaction_step,
-        "confirmNeeded": confirm_needed,
-        "needDice": need_dice,
-        "previousMoves": previous_moves,
-        "selectingDiplomacy": selecting_diplomacy,
-        "gameStarted": game_started
-    }
-
-    viewData = {
-        "board": view_board,
-        "players": view_players,
-        "deck": view_deck,
-        "round": int(getRound()),
-        "currentPlayerInfo": [int(curr_player), int(curr_id)]
-    }
-
-    state_dict = {
-        "statusMessage": "",
-        "currentPlayer": int(player),
-        "gameEnded": bool(end[0] != 0 if isinstance(end, np.ndarray) else end != 0),
-        "editMode": 0,
-        "canUndo": len(history) > 0,
-        "viewData": viewData,
-        "extra": extra
-    }
-
-    return json.dumps(state_dict)
-
-
-# =============================================================================
-# ROUTEUR D'ACTIONS POUR L'INTERFACE (Remplace clickOnButton, etc. du JS)
-# =============================================================================
 def execute_move(action):
     global g, board, player, history
     global game_started, can_add_virtual_start_deploy, previous_player, previous_moves, interaction_step
 
+    N = NB_AREAS
+    MR = MAX_REDEPLOY
+    DS = DECK_SIZE
+    
     game_started = True
 
-    if action == 167:
+    if action == 5*N + MR + DS + 3: # startBtn
         pass 
-    elif action == 166:
+    elif action == 5*N + MR + DS + 2: # startDplBtn
         previous_player = player
         gather_current_ppl_but_one()
         can_add_virtual_start_deploy = False
     else:
         move_type, area = -1, -1
 
-        if 30 <= action < 60:     move_type, area = 0, action - 30
-        elif 60 <= action < 90:   move_type, area = 1, action - 60
-        elif 90 <= action < 120:  move_type, area = 2, action - 90
-        elif 128 <= action < 158: move_type, area = 4, action - 128
-        elif 0 <= action < 30:    move_type, area = 8, action
-        elif action == 164:       move_type, area = 9, -1
+        if N <= action < 2*N:               move_type, area = 0, action - N
+        elif 2*N <= action < 3*N:           move_type, area = 1, action - 2*N
+        elif 3*N <= action < 4*N:           move_type, area = 2, action - 3*N
+        elif 4*N + MR <= action < 5*N + MR: move_type, area = 4, action - (4*N + MR)
+        elif 0 <= action < N:               move_type, area = 8, action
+        elif action == 5*N + MR + DS:       move_type, area = 9, -1
 
         # On mémorise le peuple attaquant AVANT que le tour ne change
         curr_p, curr_id = getCurrentPlayerAndPeople()
@@ -511,7 +453,7 @@ def execute_move(action):
         history.insert(0, [player, np.copy(board), action])
         board, player = g.getNextState(board, player, action)
 
-        # On évalue le succès APRÈS l'attaque (comme dans le JS d'origine)
+        # On évalue le succès APRÈS l'attaque
         success = True
         if move_type == 0:
             area_ppl = getTerritoryInfo2(area)[1]
@@ -526,49 +468,111 @@ def execute_move(action):
             previous_moves.append([area, move_type, success])
 
         valids = g.getValidMoves(board, player)
-        if any(valids[30:60]): 
+        if any(valids[N : 2*N]): 
             can_add_virtual_start_deploy = True
 
     interaction_step = -1
 
-def handle_action(action_name, *args):
-    global interaction_step
+# =============================================================================
+# RENDU JSON POUR ALPINE.JS
+# =============================================================================
+def get_render_state():
+    global g, board, player, history
+    global game_started, can_add_virtual_start_deploy, interaction_step, previous_player, previous_moves
+
+    end = g.getGameEnded(board, player)
+    valids = g.getValidMoves(board, player)
     
-    if action_name == "click_btn":
-        btn_id = int(args[0])
-        interaction_step = btn_id
-        if btn_id == 10: # startBtn
-            execute_move(167)
-            
-    elif action_name == "click_area":
-        area = int(args[0])
-        action = -1
-        if interaction_step == 0:   action = 30 + area
-        elif interaction_step == 1: action = 60 + area
-        elif interaction_step == 2: action = 90 + area
-        elif interaction_step == 4: action = 128 + area
-        elif interaction_step == 8: action = area
-        
-        if action >= 0:
-            execute_move(action)
-            
-    elif action_name == "click_deck":
-        deck_idx = int(args[0])
-        action = 158 + deck_idx
-        execute_move(action)
-        
-    elif action_name == "confirm":
-        action = -1
-        if interaction_step == 7:   action = 120 # noDeployBtn
-        elif interaction_step == 9: action = 164 # declineBtn
-        elif interaction_step == 6: action = 165 # endTurnBtn
-        elif interaction_step == 3: action = 166 # startDplBtn
-        
-        if action >= 0:
-            execute_move(action)
+    N = NB_AREAS
+    MR = MAX_REDEPLOY
+    DS = DECK_SIZE
 
-    return get_render_state()
+    # 1. Virtual moves logic
+    valid_start_deploy = bool(can_add_virtual_start_deploy and any(valids[4*N + MR : 5*N + MR]))
+    valid_start = not game_started
+    valids_ext = np.append(valids, [valid_start_deploy, valid_start])
 
+    # 2. Map buttons to valid subsets
+    allowed_btns = [
+        bool(any(valids_ext[N : 2*N])),             # 0: attackBtn
+        bool(any(valids_ext[2*N : 3*N])),           # 1: usePplBtn
+        bool(any(valids_ext[3*N : 4*N])),           # 2: usePwrBtn
+        bool(valids_ext[5*N + MR + DS + 2]),        # 3: startDplBtn
+        bool(any(valids_ext[4*N + MR : 5*N + MR])), # 4: deploy1Btn
+        bool(any(valids_ext[5*N + MR : 5*N + MR + DS])), # 5: choseBtn
+        bool(valids_ext[5*N + MR + DS + 1]),        # 6: endTurnBtn
+        bool(valids_ext[4*N]),                      # 7: noDeployBtn
+        bool(any(valids_ext[0 : N])),               # 8: abandonBtn
+        bool(valids_ext[5*N + MR + DS]),            # 9: declineBtn
+        bool(valids_ext[5*N + MR + DS + 3])         # 10: startBtn
+    ]
+
+    if allowed_btns[10]: # startBtn overrides all
+        allowed_btns = [False] * 11
+        allowed_btns[10] = True
+
+    if allowed_btns[3]:  # startDplBtn inhibits deploy1Btn
+        allowed_btns[4] = False
+
+    if interaction_step < 0 or not allowed_btns[interaction_step]:
+        try:
+            interaction_step = allowed_btns.index(True)
+        except ValueError:
+            interaction_step = -1
+
+    confirm_needed = interaction_step in [3, 6, 7, 9]
+
+    # ... (Le reste de get_render_state() reste inchangé) ...
+    view_board = [getTerritoryInfo2(i) for i in range(NB_AREAS)]
+
+    view_players = []
+    for p in range(NUMBER_PLAYERS):
+        peoples = [getPplInfo(p, ppl).tolist() for ppl in range(3)]
+        view_players.append({
+            "score": int(getScore(p)),
+            "peoples": peoples
+        })
+
+    view_deck = [getDeckInfo(i).tolist() for i in range(DECK_SIZE)]
+    curr_player, curr_id = getCurrentPlayerAndPeople()
+    need_dice = [bool(needDiceToAttack(i)) for i in range(NB_AREAS)]
+
+    selecting_diplomacy = False
+    if interaction_step == 2:
+        cur_pwr = g.board.peoples[curr_player, curr_id, 2]
+        if cur_pwr == DIPLOMAT:
+            selecting_diplomacy = True
+
+    viewData = {
+        "board": view_board,
+        "players": view_players,
+        "deck": view_deck,
+        "round": int(getRound()),
+        "currentPlayerInfo": [int(curr_player), int(curr_id)]
+    }
+
+    extra = {
+        "validMoves": [bool(v) for v in valids_ext],
+        "allowedBtns": allowed_btns,
+        "selectedBtn": int(interaction_step),
+        "confirmNeeded": bool(confirm_needed),
+        "needDice": need_dice,
+        "previousMoves": [[int(m[0]), int(m[1]), bool(m[2])] for m in previous_moves],
+        "selectingDiplomacy": bool(selecting_diplomacy),
+        "gameStarted": bool(game_started)
+    }
+
+    state_dict = {
+        "statusMessage": "",
+        "currentPlayer": int(player),
+        "gameEnded": bool(end[0] != 0 if isinstance(end, np.ndarray) else end != 0),
+        "editMode": 0,
+        "canUndo": len(history) > 0,
+        "viewData": viewData,
+        "extra": extra
+    }
+
+    return json.dumps(state_dict)
 # =============================================================================
 # MODIFICATIONS DES FONCTIONS D'INITIALISATION
 # =============================================================================
