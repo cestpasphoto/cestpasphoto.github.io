@@ -222,13 +222,13 @@ function ui_displayDiplomacyBtn(pIdx, pplIdx) {
   const store = Alpine.store('game');
   if (!store.extra || !store.extra.selectingDiplomacy) return false;
   const curPlayPpl = store.view.currentPlayerInfo;
-  const relativePly = (pIdx - curPlayPpl[0] + nb_players) % nb_players;
+  const relativePly = (pIdx - curPlayPpl[0] + numPlayers) % numPlayers;
   return (relativePly !== 0) && (pplIdx === 2) && store.extra.validMoves[90 + relativePly];
 }
 
 function ui_diplomacyClick(pIdx) {
   const curPlayPpl = Alpine.store('game').view.currentPlayerInfo;
-  const relativePly = (pIdx - curPlayPpl[0] + nb_players) % nb_players;
+  const relativePly = (pIdx - curPlayPpl[0] + numPlayers) % numPlayers;
   Alpine.store('game').act('click_area', relativePly);
 }
 

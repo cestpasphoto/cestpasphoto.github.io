@@ -195,7 +195,7 @@
                         <span x-html="ui_toLongString(ppl, false)"></span>
                       </template>
                       
-                      <template x-if="pplIdx < 2 && ((pIdx - $store.game.view.currentPlayerInfo[0] + nb_players) % nb_players) === (nb_players - 1) && ui_hasDeclined()">
+                      <template x-if="pplIdx < 2 && ((pIdx - $store.game.view.currentPlayerInfo[0] + numPlayers) % numPlayers) === (numPlayers - 1) && ui_hasDeclined()">
                         <span class="ui blue text">●</span>
                       </template>
                     </span>

@@ -16,7 +16,7 @@ const list_of_files = [
   ['smallworld/SmallworldMaps_3pl.py'  , 'SmallworldMaps_3pl.py'],
 ];
 
-const numMCTSSims = 200;
+const numMCTSSims = 25;
 const defaultModelFileName = 'smallworld/model_3pl.onnx';
 
 const mapDimensions = "0 0 140 100";

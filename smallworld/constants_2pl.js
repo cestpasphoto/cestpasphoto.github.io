@@ -1,7 +1,7 @@
-const nb_players = 2;
+const numPlayers = 2;
 const nbAreas = 23;
 const nbTurns = 10;
-const sizeCB = [1, nbAreas + 5*nb_players + 6+1, 8];
+const sizeCB = [1, nbAreas + 5*numPlayers + 6+1, 8];
 const sizeV = [1, 5*nbAreas + 8 + 6 + 2];
 
 const list_of_files = [
@@ -15,6 +15,8 @@ const list_of_files = [
   ['smallworld/SmallworldMaps.py'      , 'SmallworldMaps.py'],
   ['smallworld/SmallworldMaps_2pl.py'  , 'SmallworldMaps_2pl.py'],
 ];
+
+const numMCTSSims = 25;
 const defaultModelFileName = 'smallworld/model.onnx';
 
 const mapDimensions = "0 0 100 70";

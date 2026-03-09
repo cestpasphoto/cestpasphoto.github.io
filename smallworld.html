@@ -4,20 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
 
-  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png">
-  <link rel="manifest" href="/icons/site.webmanifest">
-  <link rel="mask-icon" href="/icons/safari-pinned-tab.svg" color="#5bbad5">
-  <link rel="shortcut icon" href="/icons/favicon.ico">
-  <meta name="msapplication-TileColor" content="#da532c">
-  <meta name="msapplication-config" content="/icons/browserconfig.xml">
-  <meta name="theme-color" content="#ffffff">
-  
-  <script src="./smallworld/constants_2pl.js"></script>  
+  <script src="./smallworld/constants_2pl.js"></script>
   <script src="./common/game.js"></script>
   <script src="./smallworld/smallworld.js"></script>
 
@@ -53,31 +47,33 @@
       }
   </style>
 </head>
-</head>
-<body>
+<body><div x-data x-init="$store.game.start(); $store.game.showDetails = true;">
 
 <div class="ui borderless menu">
   <div class="ui container">    
     <div class="fitted item">
-      <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
+      <button class="ui icon button" @click="$store.game.reset()"><i class="file outline icon"></i></button>
     </div> 
     <div class="fitted item"> 
-      <button class="ui icon disabled button" id="editBtn"><i class="edit icon"></i></button>
-    </div> 
+      <button class="ui icon disabled button"><i class="edit icon"></i></button>
+    </div>
     <div class="fitted item"> 
       <div class="ui small form">
         <div class="field">
-          <select onchange="game.change_difficulty(this.value)" id="difficultyForm">
+          <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
             <optgroup label="Above optimal">
-            <option value="12800"       >God-like</option>
-            <option value="4800"        >Boosted</option>
+            <option value="12800">God-like</option>
+            <option value="4800">Boosted</option>
+            </optgroup>
             <optgroup label="Level used during training">
-            <option value="1600"        >Native</option>
+            <option value="1600">Native</option>
+            </optgroup>
             <optgroup label="Sub optimal levels">
-            <option value="400"         >Easy</option>
-            <option value="100"         >Easier</option>
-            <option value="25"  selected>Very easy</option>
-            <option value="10"          >Come on</option>
+            <option value="400">Easy</option>
+            <option value="100">Easier</option>
+            <option value="25" selected>Very easy</option>
+            <option value="10">Come on</option>
+            </optgroup>
           </select>
         </div>
       </div>
@@ -85,110 +81,161 @@
     <div class="fitted item"> 
       <div class="ui small form">
         <div class="field">
-          <select onchange="changeGameMode(this.value)">
-            <option value="P0" selected>You vs AI</option>
-            <option value="P1"         >AI vs you</option>
-            <option value="Human"      >No AI</option>
-            <option value="AI"         >WarGames</option>
+          <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
+              <option value="P0" selected>You vs AI</option>
+              <option value="P1">AI vs you</option>
+              <option value="Human">No AI</option>
+              <option value="AI">WarGames</option>
           </select>
         </div>
       </div>
     </div>
     <div class="right menu">
       <div class="fitted item">
-        <i class="circular inverted info small icon link" id="toggleDetailsBtn" onclick="move_sel.toggleDetails()"></i>
+        <i class="circular info small icon link" :class="{'inverted': $store.game.showDetails}" @click="$store.game.showDetails = !$store.game.showDetails"></i>
       </div>
     </div>
   </div>
 </div>
-
 
 <div class="ui container">
-
   <h1 class="ui huge center aligned header">Smallworld with AI</h1> 
 
-  <div class="ui compact grid">
-    <div class="myReactiveCont">
+  <template x-if="!$store.game.isLoading && $store.game.view && $store.game.view.board">
+    <div class="ui compact grid">
+      <div class="myReactiveCont">
 
-      <div class="item" id="boardArea">
-        <div class="ui large horizontal divider">Board</div>
-        <!-- Action buttons -->
-        <div class="ui fluid small compact buttons" id="allBtn" style="display: none">
-          <button class="ui button" id="choseBtn"    onclick="move_sel.clickOnButton(this.id)">Choose <i class="users icon"></i> + <i class="magic icon"></i></button>
-          <button class="ui button" id="abandonBtn"  onclick="move_sel.clickOnButton(this.id)">Abandon</button>
-          <button class="ui button" id="attackBtn"   onclick="move_sel.clickOnButton(this.id)">Attack</button>
-          <button class="ui button" id="usePplBtn"   onclick="move_sel.clickOnButton(this.id)">Use <i class="users icon"></i></button>
-          <button class="ui button" id="usePwrBtn"   onclick="move_sel.clickOnButton(this.id)">Use <i class="magic icon"></i></button>
-          <button class="ui button" id="deploy1Btn"  onclick="move_sel.clickOnButton(this.id)">Redeploy</button>
-          <button class="ui button" id="noDeployBtn" onclick="move_sel.clickOnButton(this.id)">No redeploy</button>    
-          <button class="ui button" id="declineBtn"  onclick="move_sel.clickOnButton(this.id)">Decline</button>    
-          <button class="ui button" id="endTurnBtn"  onclick="move_sel.clickOnButton(this.id)">End turn</button>  
-          <button class="ui button" id="startDplBtn" onclick="move_sel.clickOnButton(this.id)">Start depl</button>
-          <button class="ui button" id="startBtn"    onclick="move_sel.clickOnButton(this.id)">Install lost tribe</button>
-          <button class="ui icon button" id="undoBtn" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
+        <div class="item" id="boardArea">
+          <div class="ui large horizontal divider">Board</div>
+          
+          <div class="ui fluid small compact buttons">
+            <button class="ui button" :class="ui_btnClass(5)" x-show="$store.game.extra.allowedBtns[5]" @click="$store.game.act('click_btn', 5)">Choose <i class="users icon"></i> + <i class="magic icon"></i></button>
+            <button class="ui button" :class="ui_btnClass(8)" x-show="$store.game.extra.allowedBtns[8]" @click="$store.game.act('click_btn', 8)">Abandon</button>
+            <button class="ui button" :class="ui_btnClass(0)" x-show="$store.game.extra.allowedBtns[0]" @click="$store.game.act('click_btn', 0)">Attack</button>
+            <button class="ui button" :class="ui_btnClass(1)" x-show="$store.game.extra.allowedBtns[1]" @click="$store.game.act('click_btn', 1)">Use <i class="users icon"></i></button>
+            <button class="ui button" :class="ui_btnClass(2)" x-show="$store.game.extra.allowedBtns[2]" @click="$store.game.act('click_btn', 2)">Use <i class="magic icon"></i></button>
+            <button class="ui button" :class="ui_btnClass(4)" x-show="$store.game.extra.allowedBtns[4]" @click="$store.game.act('click_btn', 4)">Redeploy</button>
+            <button class="ui button" :class="ui_btnClass(7)" x-show="$store.game.extra.allowedBtns[7]" @click="$store.game.act('click_btn', 7)">No redeploy</button>    
+            <button class="ui button" :class="ui_btnClass(9)" x-show="$store.game.extra.allowedBtns[9]" @click="$store.game.act('click_btn', 9)">Decline</button>    
+            <button class="ui button" :class="ui_btnClass(6)" x-show="$store.game.extra.allowedBtns[6]" @click="$store.game.act('click_btn', 6)">End turn</button>  
+            <button class="ui button" :class="ui_btnClass(3)" x-show="$store.game.extra.allowedBtns[3]" @click="$store.game.act('click_btn', 3)">Start depl</button>
+            <button class="ui button" :class="ui_btnClass(10)" x-show="$store.game.extra.allowedBtns[10]" @click="$store.game.act('click_btn', 10)">Install lost tribe</button>
+            
+            <button class="ui icon button" @click="$store.game.undo()" :disabled="!$store.game.canUndo"><i class="undo icon"></i></button>
+          </div>
+          
+          <button x-show="$store.game.isThinking" class="ui fluid active loading button">‌</button>
+
+          <span class="ui small text" x-text="ui_actionDescr()"></span>
+          <button class="ui fluid compact secondary button" x-show="$store.game.extra.confirmNeeded" @click="$store.game.act('confirm')">Confirm</button>    
+
+          <div style="position: relative; width: 100%; margin-top: 5px;">
+            <svg viewBox="0 0 140 100" style="width: 100%; height: auto; visibility: hidden; display: block;"></svg>
+            
+            <template x-for="(area, aIdx) in $store.game.view.board" :key="'area-'+aIdx">
+              <svg viewBox="0 0 140 100" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                <g style="pointer-events: auto; cursor: pointer;" 
+                   @click="ui_isAreaClickable(aIdx) ? $store.game.act('click_area', aIdx) : null">
+                  
+                  <polygon :points="ui_polyStr(aIdx)" 
+                           :fill="ui_areaColor(area)"
+                           :stroke="ui_areaStroke(aIdx)"
+                           :stroke-width="ui_areaStrokeWidth(aIdx)"
+                           :stroke-dasharray="ui_areaDasharray(aIdx)"></polygon>
+                  
+                  <text x-show="ui_territoryPos(aIdx).x > 0"
+                        :x="ui_territoryPos(aIdx).x" :y="ui_territoryPos(aIdx).y"
+                        text-anchor="middle" dominant-baseline="central" font-size="3" font-weight="bolder" fill="black"
+                        x-html="ui_terrainSymbols(area)"></text>
+
+                  <g x-show="ui_defensePos(aIdx).x > 0 && (area[2] > 0 || area[3] == 4)">
+                     <g :transform="'translate(' + (ui_defensePos(aIdx).x - 3) + ',' + (ui_defensePos(aIdx).y - 3) + ')'"
+                        x-html="ui_defenseSvg(area)"></g>
+                  </g>
+
+                  <g x-show="area[0] > 0 && $store.game.extra.gameStarted" :transform="'translate(' + (ui_tokenPos(aIdx).x - 3) + ',' + (ui_tokenPos(aIdx).y - 3) + ')'">
+                      <rect width="6" height="6" x="0" y="0" :fill="ui_tokenStyle(area[1], ui_findPlayerFromPpl(area[1]).pIdx, ui_findPlayerFromPpl(area[1]).pplIdx).bg" />
+                      
+                      <text x="3" y="3" text-anchor="middle" dominant-baseline="central" font-size="5" font-weight="bolder" 
+                            :fill="ui_tokenStyle(area[1], ui_findPlayerFromPpl(area[1]).pIdx, ui_findPlayerFromPpl(area[1]).pplIdx).txt" 
+                            x-text="ui_tokenStyle(area[1], ui_findPlayerFromPpl(area[1]).pIdx, ui_findPlayerFromPpl(area[1]).pplIdx).char"></text>
+                      
+                      <text x="0.5" y="2" font-size="1.5" font-weight="bolder" 
+                            :fill="ui_tokenStyle(area[1], ui_findPlayerFromPpl(area[1]).pIdx, ui_findPlayerFromPpl(area[1]).pplIdx).txt" 
+                            x-text="area[0]"></text>
+                  </g>
+                  <circle x-show="ui_hasPreviousMove(aIdx)" :cx="ui_tokenPos(aIdx).x" :cy="ui_tokenPos(aIdx).y - 3" r="1" :fill="ui_previousMoveColor(aIdx)" stroke="white" stroke-width="0.2"/>
+
+                </g>
+              </svg>
+            </template>
+          </div>
         </div>
-        <button class="ui fluid active loading button" id="loadingBtn">‌</button>
 
-        <span class="ui small text" id="actionDescr"></span>
-        <button class="ui fluid compact secondary button" id="confirmBtn" onclick="move_sel.confirm()" style="display: none">Confirm</button>    
+        <div class="item" id="playersArea">
+          <template x-for="(player, pIdx) in $store.game.view.players" :key="'player-'+pIdx">
+            <div>
+              <div class="ui large horizontal divider" x-html="(pIdx === 0 ? 'You' : 'AI ' + pIdx) + ' - ' + player.score + ' <i class=\'coins icon\'></i>'"></div>
+              
+              <template x-for="(ppl, pplIdx) in player.peoples" :key="'p'+pIdx+'-ppl'+pplIdx">
+                <div x-show="ppl[1] !== 0">
+                  <div :style="ui_isCurrentPpl(pIdx, pplIdx) ? 'border: 0.2rem solid dodgerblue; padding: 0.2rem;' : ''">
+                    
+                    <svg width="3em" height="3em" viewBox="0 0 6 6" style="vertical-align: bottom;">
+                      <rect width="6" height="6" x="0" y="0" :fill="ui_tokenStyle(ppl[1], pIdx, pplIdx).bg" />
+                      <text x="3" y="3" text-anchor="middle" dominant-baseline="central" font-size="5" font-weight="bolder" :fill="ui_tokenStyle(ppl[1], pIdx, pplIdx).txt" x-text="ui_tokenStyle(ppl[1], pIdx, pplIdx).char"></text>
+                      <text x="0.5" y="2" font-size="1.5" font-weight="bolder" :fill="ui_tokenStyle(ppl[1], pIdx, pplIdx).txt" x-text="ppl[0]"></text>
+                    </svg>
 
-        <!-- Board -->
-        <svg viewBox="0 0 1 1" id="boardSvg"></svg>
-      </div>
+                    <span class="ui large text">
+                      <template x-if="ui_displayDiplomacyBtn(pIdx, pplIdx)">
+                        <div class="ui big compact primary button" @click="ui_diplomacyClick(pIdx)" x-html="ui_toLongString(ppl, false)"></div>
+                      </template>
+                      <template x-if="!ui_displayDiplomacyBtn(pIdx, pplIdx)">
+                        <span x-html="ui_toLongString(ppl, false)"></span>
+                      </template>
+                      
+                      <template x-if="pplIdx < 2 && ((pIdx - $store.game.view.currentPlayerInfo[0] + numPlayers) % numPlayers) === (numPlayers - 1) && ui_hasDeclined()">
+                        <span class="ui blue text">●</span>
+                      </template>
+                    </span>
 
-      <div class="item" id="playersArea">
-        <!-- Current players -->
-        <div class="ui large horizontal divider" id="p0Score">You</i></div>
-        <div id="p0Ppl"></div>
-
-        <div class="ui large horizontal divider" id="p1Score">AI</div>
-        <div id="p1Ppl"></div>
-      </div>
-
-      <div class="item" id="deckArea">
-        <div class="ui large horizontal divider">Deck</div>
-        <!-- Round -->
-        <div class="ui circular labels" id="roundP" style="max-width: fit-content; margin-inline: auto;"></div>
-        <!-- Deck -->  
-        <div class="ui middle aligned very compact grid">
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(0)" id="deck0Btn">0 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck0Descr">-</div>
-
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(1)" id="deck1Btn">1 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck1Descr">-</div>
-
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(2)" id="deck2Btn">2 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck2Descr">-</div>
-
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(3)" id="deck3Btn">3 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck3Descr">-</div>
-
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(4)" id="deck4Btn">4 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck4Descr">-</div>
-
-          <div class="three wide column"><button class="ui fluid compact large disabled icon button" onclick="move_sel.clickOnDeck(5)" id="deck5Btn">5 <i class="coins icon"></i></button></div>
-          <div class="thirteen wide column" id="deck5Descr">-</div>
+                    <span class="ui grey text" x-html="ui_toDetailString(ppl)"></span>
+                    
+                    <br x-show="$store.game.showDetails" />
+                    <span class="ui small text" x-show="$store.game.showDetails" x-html="ui_toDescr(ppl[0], ppl[1], ppl[2]) + '. ' + ppl[5] + ' <i class=\'user icon\'></i> total'"></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
         </div>
-      </div>
 
+        <div class="item" id="deckArea">
+          <div class="ui large horizontal divider">Deck</div>
+          <div class="ui circular labels" id="roundP" style="max-width: fit-content; margin-inline: auto;" x-html="ui_roundDisplay()"></div>
+          
+          <div class="ui middle aligned very compact grid">
+            <template x-for="(deckItem, dIdx) in $store.game.view.deck" :key="'deck-'+dIdx">
+              <div class="row" style="padding: 0;">
+                <div class="three wide column">
+                  <button class="ui fluid compact large icon button" 
+                          :class="ui_isDeckDisabled() ? 'disabled' : 'primary'"
+                          @click="!ui_isDeckDisabled() ? $store.game.act('click_deck', dIdx) : null"
+                          x-html="dIdx + ' <i class=\'coins icon\'></i>'"></button>
+                </div>
+                <div class="thirteen wide column" x-html="ui_deckDescrLong(deckItem)"></div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+      </div>
     </div>
-  </div>
+  </template>
+
+  <button x-show="$store.game.isLoading" class="ui fluid large active loading button">Loading...</button>
 </div>
 
-<script>
-  const allBtn      = document.getElementById('allBtn');
-  const undoBtn     = document.getElementById('undoBtn');
-  const loadingBtn  = document.getElementById('loadingBtn');
-  const editBtn     = document.getElementById('editBtn');
-  const moveSgmt    = document.getElementById('moveSgmt');
-
-  const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
-  const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
-  window.onload = () =>
-    [ `${counterAPI_base}/overall`, `${counterAPI_base}/overall_${counterAPI_suffix}`,`${counterAPI_base}/smallworld_${counterAPI_suffix}`]
-    .forEach(u => fetch(u).catch(() => {}));
-
-  main(usePyodide=true);
-</script>
-</body>
+</div></body>
 </html>
