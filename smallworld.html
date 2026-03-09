@@ -49,6 +49,14 @@
 </head>
 <body><div x-data x-init="$store.game.start(); $store.game.showDetails = true;">
 
+<svg style="display: none;" aria-hidden="true">
+  <defs>
+    <path id="defense-mountain" d="M13 14L17 9L22 18H2.84444C2.46441 18 2.2233 17.5928 2.40603 17.2596L10.0509 3.31896C10.2429 2.96885 10.7476 2.97394 10.9325 3.32786L15.122 11.3476" stroke="black" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <path id="defense-shield" d="M20 6C20 6 19.1843 6 19.0001 6C16.2681 6 13.8871 4.93485 11.9999 3C10.1128 4.93478 7.73199 6 5.00009 6C4.81589 6 4.00009 6 4.00009 6C4.00009 6 4 8 4 9.16611C4 14.8596 7.3994 19.6436 12 21C16.6006 19.6436 20 14.8596 20 9.16611C20 8 20 6 20 6Z" stroke="black" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+  </defs>
+</svg>
+
 <div class="ui borderless menu">
   <div class="ui container">    
     <div class="fitted item">
