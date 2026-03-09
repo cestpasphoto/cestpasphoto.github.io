@@ -4,6 +4,7 @@
 
 let pyodide = null;
 let onnxSession = null;
+let pyProxy = null;
 
 // The Global Store acting as the Single Source of Truth for the UI (Alpine.js)
 document.addEventListener('alpine:init', () => {
@@ -33,15 +34,8 @@ document.addEventListener('alpine:init', () => {
         async act(actionName, ...args) {
             if (this.isLoading || this.isThinking || this.gameEnded) return;
             
-            // Clean serialization of arguments for Python
-            // Boolean values must be converted to Python's capitalized 'True'/'False'
-            let argsStr = args.map(a => {
-                if (typeof a === 'boolean') return a ? 'True' : 'False';
-                return JSON.stringify(a);
-            }).join(', ');
-            
             try {
-                let json = await pyodide.runPythonAsync(`proxy.handle_action("${actionName}", ${argsStr})`);
+                let json = pyProxy.handle_action(actionName, ...args);
                 update_store(json);
             } catch (e) {
                 console.error("Action Error:", e);
@@ -52,7 +46,7 @@ document.addEventListener('alpine:init', () => {
         toggleEdit() { handle_edit_toggle() },
         reset() { handle_reset() },
         trigger_ai_check() { check_ai_turn(); },
-        changeDifficulty() { pyodide.runPythonAsync(`proxy.changeDifficulty(${this.numMCTSSims})`); },
+        changeDifficulty() { pyProxy.changeDifficulty(this.numMCTSSims); },
         setGameMode(value) {
             const modes = {
                 'P0':    Array.from({ length: numPlayers }, (_, i) => i === 0),
@@ -135,9 +129,10 @@ for filename_in, filename_out in files:
 
         Alpine.store('game').loadingMessage = "Starting Game...";
         await pyodide.runPythonAsync(`import proxy`);
+        pyProxy = pyodide.pyimport("proxy");
         
         const sims = (typeof numMCTSSims !== 'undefined') ? numMCTSSims : 50;
-        let initialStateJson = await pyodide.runPythonAsync(`proxy.init_game(${sims})`);
+        let initialStateJson = pyProxy.init_game(sims);
         
         Alpine.store('game').isLoading = false;
         update_store(initialStateJson);
@@ -181,8 +176,7 @@ function is_nextplayer_human() {
 async function handle_undo(arePlayersHuman) {
     if (Alpine.store('game').isLoading || Alpine.store('game').isThinking) return;
     try {
-        let pyArgs = JSON.stringify(arePlayersHuman).replace(/true/g, 'True').replace(/false/g, 'False');
-        let json = await pyodide.runPythonAsync(`proxy.undo(${pyArgs})`);
+        let json = pyProxy.undo(arePlayersHuman);
         update_store(json);
     } catch (e) {
         console.error("Undo Error:", e);
@@ -193,7 +187,7 @@ async function handle_reset() {
     if (Alpine.store('game').isLoading || Alpine.store('game').isThinking) return;
     try {
         const sims = (typeof numMCTSSims !== 'undefined') ? numMCTSSims : 50;
-        let json = await pyodide.runPythonAsync(`proxy.init_game(${sims})`);
+        let json = pyProxy.init_game(sims);
         update_store(json);
     } catch (e) {
         console.error("Reset Error:", e);
@@ -205,7 +199,7 @@ async function handle_edit_toggle() {
     let current = Alpine.store('game').editMode;
     let next = (current + 1) % 3; // Note: Si certains jeux n'ont qu'un editMode booléen, il faudra adapter côté Python
     try {
-        let json = await pyodide.runPythonAsync(`proxy.set_edit_mode(${next})`);
+        let json = pyProxy.set_edit_mode(next);
         update_store(json);
     } catch (e) {
         console.error("Edit Mode Error:", e);
