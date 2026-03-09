@@ -15,50 +15,132 @@ const list_of_files = [
 // Configuration de l'IA et du jeu (attendue par game.js)
 const numMCTSSims = 25;
 
-/* =================== */
-/* =====  CONST  ===== */
-/* =================== */
 
-const colors = [
-  ["gainsboro"  , "ghostwhite", "black"], // white
-  ["dodgerblue" , "mediumblue", "white"], // blue
-  ["lightgreen" , "green"     , "white"], // green
-  ["tomato"     , "red"       , "white"], // red
-  ["dimgray"    , "black"     , "white"], // black
-  ["lightyellow", "yellow"    , "black"], // yellow
-  ["darkgray"   , "darkgray"  , "black"]  // For noble
-];
+function ui_renderCard(card, isSelected, isLastAction, cssClass = 'svgL') {
+    // Si la carte est vide (-1)
+    if (!card || card[0] < 0) {
+        return `<svg class="${cssClass}" viewBox="0 0 60 60"></svg>`;
+    }
 
-const tokensCoord      = [["20%", "83%"], ["20%", "53%"], ["50%", "83%"], ["50%", "53%"]];
-const tokensCoordSmall = [["20%", "83%"], ["20%", "50%"], ["50%", "83%"], ["50%", "50%"]];
-const tokensCoordNoble = [["25%", "83%"], ["25%", "50%"], ["25%", "16%"]];
+    const colorIdx = card[0];
+    const points = card[1];
+    const costs = card[2];
 
-const nobles_names = [
-  "Isabelle of Castile", "Anne of Brittany", "Mary Stuart", "Elisabeth of Austria", 
-  "Charles V", "Machiavelli", "Suleiman the Magnificent", "Henry VIII",
-  "Francis I", "Catherine of Medici"
-];
+    const bgColor = colors[colorIdx][0];
+    const headerColor = colors[colorIdx][1];
+    const textColor = colors[colorIdx][2];
 
-// Note : nobles_req is kept just in case you use it for tooltips, 
-// though the actual requirements checking is fully done in Python now.
-const nobles_req = [
-  "4[W] 4[B] 4[K]", "3[B] 3[G] 3[R]", "3[R] 3[G] 3[B]", "3[W] 3[B] 3[K]",
-  "3[W] 3[R] 3[K]", "4[B] 4[W] 4[R]", "4[B] 4[G] 4[R]", "4[R] 4[B] 4[K]",
-  "3[R] 3[W] 3[G]", "3[G] 3[W] 3[B]"
-];
+    // Coordonnées absolues sur une grille 60x60
+    const tCenters = [ [12, 50], [12, 32], [30, 50], [30, 32] ];
 
-const all_nobles = [
-  [[2,4], [3,4]],
-  [[3,4], [4,4]],
-  [[1,4], [2,4]],
-  [[0,4], [4,4]],
-  [[0,4], [1,4]],
-  [[0,3], [3,3], [4,3]],
-  [[0,3], [1,3], [2,3]],
-  [[2,3], [3,3], [4,3]],
-  [[1,3], [2,3], [3,3]],
-  [[0,3], [1,3], [4,3]],
-];
+    let costsHtml = '';
+    if (costs) {
+        for (let i = 0; i < costs.length; i++) {
+            const costColorIdx = costs[i][0];
+            const costAmount = costs[i][1];
+            costsHtml += `
+                <circle cx="${tCenters[i][0]}" cy="${tCenters[i][1]}" r="6" fill="${colors[costColorIdx][1]}" />
+                <text x="${tCenters[i][0]}" y="${tCenters[i][1]}" text-anchor="middle" dominant-baseline="central" font-size="10" font-weight="bolder" fill="${colors[costColorIdx][2]}">${costAmount}</text>
+            `;
+        }
+    }
+
+    const selectionHtml = isSelected 
+        ? '<rect width="100%" height="100%" style="fill:none;stroke-width:6;stroke:aquamarine" />' 
+        : '';
+        
+    const lastActionHtml = isLastAction
+        ? '<circle cx="51" cy="9" r="5" fill="tan" />'
+        : '';
+
+    return `
+        <svg class="${cssClass}" viewBox="0 0 60 60">
+            <rect width="100%" height="100%" fill="${bgColor}"/>
+            <rect width="100%" height="30%" fill="white" fill-opacity="50%"/>
+            <rect width="13" height="13" x="39" y="3" fill="${headerColor}"/> 
+            ${points > 0 ? `<text x="15" y="10.2" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="bolder" fill="${textColor}">${points}</text>` : ''}
+            ${costsHtml}
+            ${selectionHtml}
+            ${lastActionHtml}
+        </svg>
+    `;
+}
+
+function ui_renderCardToken(colorIdx, count, cssClass = 'svgS') {
+    if (count <= 0) return `<svg class="${cssClass}" viewBox="0 0 32 32"></svg>`;
+    
+    return `
+        <svg class="${cssClass}" viewBox="0 0 32 32">
+            <rect width="100%" height="100%" fill="${colors[colorIdx][1]}" />
+            <text x="16" y="16" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="bolder" fill="${colors[colorIdx][2]}">${count}</text>
+        </svg>
+    `;
+}
+
+function ui_renderNoble(noble, isSelected, cssClass = 'svgS') {
+    if (!noble || noble.length === 0) {
+        return `<svg class="${cssClass}" viewBox="0 0 32 32"></svg>`;
+    }
+
+    let costsHtml = '';
+    // Coordonnées absolues sur une grille 32x32 (anciennement 25%/75% etc.)
+    const coords = [[8, 24], [24, 24], [16, 8]];
+
+    for (let i = 0; i < noble.length; i++) {
+        const cIdx = noble[i][0];
+        const cAmt = noble[i][1];
+        costsHtml += `
+            <rect x="${coords[i][0] - 3.5}" y="${coords[i][1] - 3.5}" width="7" height="7" fill="${colors[cIdx][1]}" />
+            <text x="${coords[i][0]}" y="${coords[i][1]}" text-anchor="middle" dominant-baseline="central" font-size="6" font-weight="bolder" fill="${colors[cIdx][2]}">${cAmt}</text>
+        `;
+    }
+
+    const selectionHtml = isSelected 
+        ? '<rect width="100%" height="100%" style="fill:none;stroke-width:3;stroke:aquamarine" />' 
+        : '';
+
+    // colors[6][0] correspond à ton fond darkgray pour les nobles
+    return `
+        <svg class="${cssClass}" viewBox="0 0 32 32">
+            <rect width="100%" height="100%" fill="${colors[6][0]}"/>
+            <rect width="50%" height="100%" fill="white" fill-opacity="50%"/>
+            ${costsHtml}
+            ${selectionHtml}
+        </svg>
+    `;
+}
+
+function ui_renderGem(colorIdx, count, selectionType = 'none', isLastAction = false, cssClass = 'svgM') {
+    // selectionType peut être: 'none', 'select_1' (aquamarine), 'select_2' (tan)
+    
+    // Si la gemme est vide et non sélectionnée, on retourne un SVG transparent pour garder l'alignement
+    if (count === 0 && colorIdx < 5 && selectionType === 'none') {
+        return `<svg class="${cssClass}" viewBox="0 0 32 32"></svg>`;
+    }
+
+    let contentHtml = '';
+    // On dessine le contenu si le compte > 0 ou si c'est l'or (index 5)
+    if (count > 0 || colorIdx === 5) {
+        contentHtml = `
+            <circle cx="16" cy="16" r="16" fill="${colors[colorIdx][1]}" />
+            <text x="16" y="16" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="bolder" fill="${colors[colorIdx][2]}">${count}</text>
+        `;
+    }
+
+    let strokeHtml = '';
+    if (selectionType === 'select_1') strokeHtml = `<circle cx="16" cy="16" r="14" style="fill:none;stroke-width:3;stroke:aquamarine" />`;
+    if (selectionType === 'select_2') strokeHtml = `<circle cx="16" cy="16" r="14" style="fill:none;stroke-width:3;stroke:tan" />`;
+
+    let lastActionHtml = isLastAction ? `<circle cx="27" cy="5" r="3" fill="tan" />` : '';
+
+    return `
+        <svg class="${cssClass}" viewBox="0 0 32 32">
+            ${contentHtml}
+            ${strokeHtml}
+            ${lastActionHtml}
+        </svg>
+    `;
+}
 
 /* =================== */
 /* ===== ANALYTICS === */
