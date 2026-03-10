@@ -42,10 +42,8 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
-        undo() { handle_undo(this.arePlayersHuman) },
         toggleEdit() { handle_edit_toggle() },
         reset() { handle_reset() },
-        trigger_ai_check() { check_ai_turn(); },
         changeDifficulty() { pyProxy.changeDifficulty(this.numMCTSSims); },
         setGameMode(value) {
             const modes = {
@@ -171,16 +169,6 @@ function update_store(jsonString) {
 function is_nextplayer_human() {
     const store = Alpine.store('game');
     return store.arePlayersHuman[store.currentPlayer];
-}
-
-async function handle_undo(arePlayersHuman) {
-    if (Alpine.store('game').isLoading || Alpine.store('game').isThinking) return;
-    try {
-        let json = pyProxy.undo(arePlayersHuman);
-        update_store(json);
-    } catch (e) {
-        console.error("Undo Error:", e);
-    }
 }
 
 async function handle_reset() {

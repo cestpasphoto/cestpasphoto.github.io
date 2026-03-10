@@ -1,13 +1,7 @@
-/* ========================================================================= */
-/* ===== CONFIGURATION                                                 ===== */
-/* ========================================================================= */
-
+// Default number of Monte Carlo Tree Search simulations for the AI
 const numMCTSSims = 25;
 
-/* ========================================================================= */
-/* ===== DICTIONNAIRES & TEXTES                                        ===== */
-/* ========================================================================= */
-
+// Mappings for UI text descriptors based on internal action indices
 const actionsDescr = [
   'Attack one of the highlighted areas (dash means dice needed)', // "attackBtn" 0
   'Chose one area on which apply the ability of your people', // "usePplBtn" 1
@@ -22,10 +16,11 @@ const actionsDescr = [
   'Install lost tribe and start game',                        // "startBtn" 10
 ];
 
-const ppl_str       = [' ', 'amazon','dwarf','elf','ghoul','giant','halfling','human','orc','ratman','skeleton','sorcerer','triton','troll','wizard', 'lost_tribe'];
-const ppl_short_str = [' ', 'a'     ,'d'    ,'e'  ,'g'    ,'i'    ,'h'       ,'u'    ,'c'  ,'r'     ,'k'       ,'s'       ,'t'     ,'l'    ,'w'     , '古'];
+// String representations for the different races (people) and their powers
+const ppl_str = [' ', 'amazon','dwarf','elf','ghoul','giant','halfling','human','orc','ratman','skeleton','sorcerer','triton','troll','wizard', 'lost_tribe'];
 const pwr_str = [' ','alchemist','berserk','bivouacking','commando','diplomat','dragonmaster','flying','forest','fortified','heroic','hill','merchant','mounted','pillaging','seafaring','spirit','stout','swamp','underworld','wealthy'];
 
+// Colors for the map terrain types [fill color, text highlight color]
 const terrains_col = [
   ['#99e69c'  ,  '#2db931' ],  // FORESTT
   ['#f6e5ac'  ,  '#e9c03a' ],  // FARMLAND
@@ -35,8 +30,10 @@ const terrains_col = [
   ['#acedf6'  ,  '#3ad5e9' ],  // WATER
 ];
 
+// Symbols used on the map for special terrain features
 const terrains_symb = ['⌘', '☆', '⏚'];
 
+// Wraps terrain names in HTML with their corresponding highlight colors
 function formatArea(areaName) {
   if (areaName == 'forest') return '<span style="color: ' + terrains_col[0][1] + '"><b>forest</b></span>';
   if (areaName == 'farmland') return '<span style="color: ' + terrains_col[1][1] + '"><b>farmland</b></span>';
@@ -49,6 +46,7 @@ function formatArea(areaName) {
   if (areaName == 'mine') return '<span>' + terrains_symb[2] + '</span>';
 }
 
+// Detailed descriptions for each people's inherent ability
 const pplDescr = [
   'No people',
   '+4 <i class="user icon"></i> during attack',
@@ -67,6 +65,7 @@ const pplDescr = [
   '+1 <i class="coins icon"></i> for each ' + formatArea('magic') + ' occupied', 
 ]
 
+// Detailed descriptions for each assigned special power
 const pwrDescr = [
   'No power',                                                               
   '+2 <i class="coins icon"></i> at each round',                            
@@ -91,18 +90,17 @@ const pwrDescr = [
   '+7 <i class="coins icon"></i> after first turn',                         
 ];
 
+// Color palettes for player tokens: [decline2, active, decline1]
 const pplColors = [
-  ['#8caef2', '#477eeb', '#bacff7'], // Player 0 (Blue) -> [decline2, active, decline1]
+  ['#8caef2', '#477eeb', '#bacff7'], // Player 0 (Blue)
   ['#b580ff', '#83f'   , '#d2b3ff'], // Player 1 (Purple)
   ['darkorange', 'orangered', 'lightsalmon'], // Player 2 (Orange)
   ['#f186f9', '#e93df5', '#f7b6fb'], // Extra (Pink)
 ];
 
 
-/* ========================================================================= */
-/* ===== ALGORITHME GÉOMÉTRIQUE (Ton code original pour la carte)      ===== */
-/* ========================================================================= */
-
+// Calculates the visual center (barycenter) and slightly erodes a polygon
+// to ensure borders don't overlap when drawn on the SVG map.
 function _miscPolygonComputations(points) {
   let sumX = 0, sumY = 0, totalArea = 0;
   let maxX = 0, maxY = 0, minX = 999, minY = 999;
@@ -137,17 +135,14 @@ function _miscPolygonComputations(points) {
   return areas;
 }
 
+// Helpers to unpack bitfield data (used for tracking targeted players or remaining elements)
 function _bitfieldToBits(n) { return Array.from({ length: 8 }, (_, i) => !!(n & (1 << (7 - i)))); }
 function _bitfieldToTrue(n) {
   const bitsArray = _bitfieldToBits(n);
   return bitsArray.reduce((out, bool, index) => bool ? out.concat(index) : out, []);
 }
 
-/* ========================================================================= */
-/* ===== HELPERS ALPINE.JS (Interface Vue <-> Python)                  ===== */
-/* ========================================================================= */
-
-// --- Conversion de données ---
+// Looks through the state payload to match an absolute people ID to a player index and slot index
 function ui_findPlayerFromPpl(pplId) {
     if (pplId === 0 || pplId === -15) return {pIdx: -1, pplIdx: -1};
     const absId = Math.abs(pplId);
@@ -161,9 +156,10 @@ function ui_findPlayerFromPpl(pplId) {
     return {pIdx: -1, pplIdx: -1};
 }
 
+// Determines the token background and text color based on ownership and decline status
 function ui_tokenStyle(pplId, pIdx, pplIdx) {
    if (pplId === 0) return { bg: 'none', txt: 'none' };
-   if (pplId === -15) return { bg: '#f2f2f2', txt: 'dimgray' };
+   if (pplId === -15) return { bg: '#f2f2f2', txt: 'dimgray' }; // Lost tribe styling
    
    let cIdx = (pplIdx === 2) ? 0 : (pplIdx === 1 ? 1 : 2);
    let bg = pplId < 0 ? '#f7f7f7' : (pplColors[pIdx] ? pplColors[pIdx][cIdx] : 'gray');
@@ -171,6 +167,7 @@ function ui_tokenStyle(pplId, pIdx, pplIdx) {
    return { bg, txt };
 }
 
+// Formats the people/power combination into a readable HTML string (e.g., for the sidebar)
 function ui_toLongString(data, showNumber = true) {
   let nb = data[0], ppl = data[1], power = data[2];
   if (ppl == 0) return '';
@@ -178,9 +175,11 @@ function ui_toLongString(data, showNumber = true) {
   else return (showNumber ? nb + ' ' : '') + ppl_str[-ppl] + ' <i class="skull crossbones icon"></i>';
 }
 
+// Extracts and formats conditional details like active diplomacy, remaining defenses, or sorcery status
 function ui_toDetailString(data) {
   let ppl = data[1], power = data[2], pplDetails = data[3], pwrDetails = data[4];
   let result = '';
+  
   if (ppl == 1 && pplDetails > 0) result += pplDetails + ' <i class="users icon"></i> loaned. ';
   else if (ppl == 6 && pplDetails > 0) result += pplDetails + ' ⛨ remaining. ';
   else if (ppl == 11) {
@@ -202,18 +201,20 @@ function ui_toDetailString(data) {
   return result;
 }
 
+// Combines the people and power descriptors for full text display
 function ui_toDescr(nb, ppl, power) {
   let result = pplDescr[Math.abs(ppl)] + ' ; ';
   result += ppl > 0 ? pwrDescr[power] : pwrDescr[0];
   return result;
 }
 
-// --- Player State Info ---
+// Checks if the evaluated people matches the current active player and active people slot
 function ui_isCurrentPpl(pIdx, pplIdx) {
   const info = Alpine.store('game').view.currentPlayerInfo;
   return info[0] === pIdx && info[1] === pplIdx;
 }
 
+// Checks if the Diplomat power button should be rendered for targeting other players
 function ui_displayDiplomacyBtn(pIdx, pplIdx) {
   const store = Alpine.store('game');
   if (!store.extra || !store.extra.selectingDiplomacy) return false;
@@ -222,18 +223,20 @@ function ui_displayDiplomacyBtn(pIdx, pplIdx) {
   return (relativePly !== 0) && (pplIdx === 2) && store.extra.validMoves[90 + relativePly];
 }
 
+// Submits a diplomatic action targeting a specific player
 function ui_diplomacyClick(pIdx) {
   const curPlayPpl = Alpine.store('game').view.currentPlayerInfo;
   const relativePly = (pIdx - curPlayPpl[0] + numPlayers) % numPlayers;
   Alpine.store('game').act('click_area', relativePly);
 }
 
+// Checks if the current game state history indicates a decline action was taken
 function ui_hasDeclined() {
   const extra = Alpine.store('game').extra;
   return extra?.previousMoves?.some(m => m[0] === -1) || false;
 }
 
-// --- Carte et Formes ---
+// Generates the SVG string of coordinates to draw a specific map area polygon
 function ui_polyStr(aIdx) {
   if (typeof mapAreas === 'undefined' || !mapAreas[aIdx]) return '';
   let pts = mapAreas[aIdx].map(pIdx => mapPoints[pIdx]);
@@ -243,24 +246,34 @@ function ui_polyStr(aIdx) {
   return str;
 }
 
+// Returns the terrain fill color for a given map area
 function ui_areaColor(area) { return terrains_col[area[3]][0]; }
+
 const strokeColors = ['#016936', '#0E6EB8', '#0E6EB8', '#FF1493', '#FF1493', '#0E6EB8', '#0E6EB8', '#0E6EB8', '#DB2828', '#0E6EB8', '#0E6EB8'];
+
+// Determines border color (transparent unless selected for an action)
 function ui_areaStroke(aIdx) { 
   const extra = Alpine.store('game').extra;
-  if (!ui_isAreaClickable(aIdx)) return 'transparent'; // <- Transparent au lieu de grisâtre
+  if (!ui_isAreaClickable(aIdx)) return 'transparent'; 
   return (extra && extra.selectedBtn >= 0) ? strokeColors[extra.selectedBtn] : 'black';
 }
+
+// Highlights clickable areas by giving them a border stroke width
 function ui_areaStrokeWidth(aIdx) { return ui_isAreaClickable(aIdx) ? 0.5 : 0; }
+
+// Applies dashed borders if the area attack requires a dice roll
 function ui_areaDasharray(aIdx) {
    const extra = Alpine.store('game').extra;
    if (extra && extra.selectedBtn === 0 && extra.needDice && extra.needDice[aIdx]) return "1";
    return "none";
 }
 
+// SVG coordinate getters mapping internal definitions to the rendering layers
 function ui_tokenPos(aIdx) { return {x: elementsCoord[aIdx][0], y: elementsCoord[aIdx][1]}; }
 function ui_defensePos(aIdx) { return {x: elementsCoord[aIdx][2], y: elementsCoord[aIdx][3]}; }
 function ui_territoryPos(aIdx) { return {x: elementsCoord[aIdx][4], y: elementsCoord[aIdx][5]}; }
 
+// Renders inherent terrain feature icons (e.g. mines, magic sources)
 function ui_terrainSymbols(area) {
    let pow = area[4];
    let res = '';
@@ -270,6 +283,7 @@ function ui_terrainSymbols(area) {
    return res;
 }
 
+// Renders SVG icons for map defenses (Mountains, Fortresses, etc.)
 function ui_defenseSvg(area) {
     let defense = area[2], terrain = area[3];
     if (defense <= 0 && terrain !== 4) return '';
@@ -277,19 +291,17 @@ function ui_defenseSvg(area) {
     let result = '';
     
     if (defense === 1 && terrain === 4) {
-        // Use mountain graphic
         result = '<use href="#defense-mountain" />';
     } else if (defense >= 20) {
         result = '<text x="12" y="12" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="bolder" fill="black">⦸</text>';
     } else {
-        // Use shield graphic
         result = '<use href="#defense-shield" />' + 
                  '<text x="12" y="12" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="bolder" fill="black">' + defense + '</text>';
     }
     return '<svg width="6" height="6" viewBox="0 0 24 24" fill="none">' + result + '</svg>';
 }
 
-// --- Clics et Historique ---
+// Validates if a territory click is an authorized move under the currently selected action context
 function ui_isAreaClickable(aIdx) {
   const extra = Alpine.store('game').extra;
   if (!extra || !extra.validMoves) return false;
@@ -302,11 +314,13 @@ function ui_isAreaClickable(aIdx) {
   return false;
 }
 
+// Checks if the specific map area was targeted in the immediate previous move history
 function ui_hasPreviousMove(aIdx) {
   const extra = Alpine.store('game').extra;
   return extra?.previousMoves?.some(m => m[0] === aIdx) || false;
 }
 
+// Colors the history dots on the map based on success/failure of the previous attack or action
 function ui_previousMoveColor(aIdx) {
   const extra = Alpine.store('game').extra;
   let moves = extra.previousMoves.filter(m => m[0] === aIdx);
@@ -314,7 +328,6 @@ function ui_previousMoveColor(aIdx) {
   
   let mainType = Math.min(...moves.map(m => m[1]));
   
-  // N'évaluer l'échec que s'il s'agissait d'une attaque (Type 0)
   if (mainType === 0) {
       let hasSuccess = moves.some(m => m[1] === mainType && m[2] === true);
       if (!hasSuccess) mainType = -1;
@@ -324,13 +337,14 @@ function ui_previousMoveColor(aIdx) {
   return strokeColors[mainType] || 'white';
 }
 
-// --- Textes et Boutons UI ---
+// Gets the UI instruction label for the current interaction step
 function ui_actionDescr() {
   const extra = Alpine.store('game').extra;
   if (!extra || extra.selectedBtn < 0) return '';
   return actionsDescr[extra.selectedBtn] || '';
 }
 
+// Renders the turn counter indicator
 function ui_roundDisplay() {
   const view = Alpine.store('game').view;
   if (!view || !view.round) return '';
@@ -344,6 +358,7 @@ function ui_roundDisplay() {
   return html;
 }
 
+// Determines the Semantic UI color class applied to action buttons based on selection
 const btnColors = ['green', 'blue', 'blue', 'pink', 'pink', 'blue', 'blue', 'blue', 'red', 'blue', 'blue'];
 function ui_btnClass(btnIdx) {
   const extra = Alpine.store('game').extra;
@@ -351,6 +366,7 @@ function ui_btnClass(btnIdx) {
   return extra.selectedBtn === btnIdx ? btnColors[btnIdx] : '';
 }
 
+// Toggles deck button accessibility; prevents changing deck choices during unrelated action steps
 function ui_isDeckDisabled() {
   const extra = Alpine.store('game').extra;
   if (!extra) return true;
@@ -358,6 +374,7 @@ function ui_isDeckDisabled() {
   return false;
 }
 
+// Formats a row in the visible deck, adding cost data and optionally showing detailed descriptors
 function ui_deckDescrLong(deckInfo) {
   if (!deckInfo || deckInfo[0] === 0) return "-";
   let descr = ui_toLongString(deckInfo);
@@ -370,16 +387,12 @@ function ui_deckDescrLong(deckInfo) {
   return descr;
 }
 
-/* =================== */
-/* ===== ANALYTICS === */
-/* =================== */
-
-// Preserved logic from original file: Simple hit counter.
+// Basic usage tracking configuration to log generic visits and game initializations
 const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
 const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
 
 window.addEventListener('load', () => {
-    // Fire and forget fetch for analytics
+    // Sends anonymous requests to increment simple page/app counters
     const urls = [ 
         `${counterAPI_base}/overall`, 
         `${counterAPI_base}/overall_${counterAPI_suffix}`,
@@ -388,7 +401,6 @@ window.addEventListener('load', () => {
     
     urls.forEach(url => {
         fetch(url, { mode: 'no-cors' }).catch(e => {
-            // Silently fail if analytics are blocked
             console.debug("Analytics blocked or failed");
         });
     });

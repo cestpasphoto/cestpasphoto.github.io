@@ -250,7 +250,7 @@
 </div>
 
 
-<div class="ui modal" x-data="splendorEditor()" x-init="initModal()">
+<div class="ui modal" id="editModal" x-data="splendorEditor()" x-init="initModal()">
   <i class="close inside icon"></i>
   <div class="header" x-text="step === 'card' ? 'Edit card - ' + ['1st','2nd','3rd','4th'][c_index] + ' on ' + ['bottom','middle','top'][c_tier] + ' line' : (step === 'noble' ? 'Edit nobles' : 'Edit bank/players')"></div>
   <div class="content">
@@ -279,7 +279,7 @@
 
           <div class="ui hidden divider"></div>
           <div class="ui text container"><div class="ui four column compact centered grid">
-            <template x-for="(card, matchIdx) in $store.game.extra.matching_cards">
+            <template x-for="(card, matchIdx) in $store.game.extra.matching_cards" :key="matchIdx + '-' + card.toString()">
               <div class="column">
                 <a href="#" @click.prevent="commitCard(matchIdx)" x-html="ui_renderCard(card, card.toString() === $store.game.view.tiers[c_tier][c_index].toString(), false, 'svgL')"></a>
               </div>
@@ -375,7 +375,6 @@
                 $('#editModal').modal({
                     onHide: () => { 
                         if (Alpine.store('game').editMode !== 0) {
-                            // Replaced obsolete runPythonAsync with direct pyProxy call
                             let json = pyProxy.set_edit_mode(0);
                             update_store(json);
                         }

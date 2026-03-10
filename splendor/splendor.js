@@ -1,23 +1,19 @@
-/* =================== */
-/* =====  CONFIG ===== */
-/* =================== */
-
-// Fichiers Python à charger dans Pyodide
+// Defines the Python environment dependencies to be fetched and mounted by Pyodide during initialization.
 const list_of_files = [
   ['splendor/Game.py', 'Game.py'],
   ['splendor/proxy.py', 'proxy.py'],
   ['splendor/MCTS.py', 'MCTS.py'],
   ['splendor/SplendorLogic.py', 'SplendorLogic.py'],
   ['splendor/SplendorLogicNumba.py', 'SplendorLogicNumba.py'],
-  [pyConstantsFileName, 'SplendorGame.py'], // Récupère le SplendorGame_3pl.py
+  [pyConstantsFileName, 'SplendorGame.py'],
 ];
 
-// Configuration de l'IA et du jeu (attendue par game.js)
+// Default number of Monte Carlo Tree Search simulations determining the AI's base calculation depth.
 const numMCTSSims = 25;
 
-
+// Generates the SVG markup for a standard development card.
+// Handles point values, cost distribution, and visual overlays for selection states or previous actions.
 function ui_renderCard(card, isSelected, isLastAction, cssClass = 'svgL') {
-    // Si la carte est vide (-1)
     if (!card || card[0] < 0) {
         return `<svg class="${cssClass}" viewBox="0 0 60 60"></svg>`;
     }
@@ -30,7 +26,6 @@ function ui_renderCard(card, isSelected, isLastAction, cssClass = 'svgL') {
     const headerColor = colors[colorIdx][1];
     const textColor = colors[colorIdx][2];
 
-    // Coordonnées absolues sur une grille 60x60
     const tCenters = [ [12, 50], [12, 32], [30, 50], [30, 32] ];
 
     let costsHtml = '';
@@ -66,6 +61,7 @@ function ui_renderCard(card, isSelected, isLastAction, cssClass = 'svgL') {
     `;
 }
 
+// Generates the SVG markup for a miniature card token, representing accumulated permanent gem bonuses.
 function ui_renderCardToken(colorIdx, count, cssClass = 'svgS') {
     if (count <= 0) return `<svg class="${cssClass}" viewBox="0 0 32 32"></svg>`;
     
@@ -77,13 +73,13 @@ function ui_renderCardToken(colorIdx, count, cssClass = 'svgS') {
     `;
 }
 
+// Generates the SVG markup for a noble tile, displaying the specific card bonuses required to acquire it.
 function ui_renderNoble(noble, isSelected, cssClass = 'svgS') {
     if (!noble || noble.length === 0) {
         return `<svg class="${cssClass}" viewBox="0 0 32 32"></svg>`;
     }
 
     let costsHtml = '';
-    // Coordonnées absolues sur une grille 32x32 (anciennement 25%/75% etc.)
     const coords = [[8, 24], [24, 24], [16, 8]];
 
     for (let i = 0; i < noble.length; i++) {
@@ -99,7 +95,6 @@ function ui_renderNoble(noble, isSelected, cssClass = 'svgS') {
         ? '<rect width="100%" height="100%" style="fill:none;stroke-width:3;stroke:aquamarine" />' 
         : '';
 
-    // colors[6][0] correspond à ton fond darkgray pour les nobles
     return `
         <svg class="${cssClass}" viewBox="0 0 32 32">
             <rect width="100%" height="100%" fill="${colors[6][0]}"/>
@@ -110,16 +105,14 @@ function ui_renderNoble(noble, isSelected, cssClass = 'svgS') {
     `;
 }
 
+// Generates the SVG markup for a standard gem token.
+// Handles quantity display and dynamic stroke outlines based on the active selection type.
 function ui_renderGem(colorIdx, count, selectionType = 'none', isLastAction = false, cssClass = 'svgM') {
-    // selectionType peut être: 'none', 'select_1' (aquamarine), 'select_2' (tan)
-    
-    // Si la gemme est vide et non sélectionnée, on retourne un SVG transparent pour garder l'alignement
     if (count === 0 && colorIdx < 5 && selectionType === 'none') {
         return `<svg class="${cssClass}" viewBox="0 0 32 32"></svg>`;
     }
 
     let contentHtml = '';
-    // On dessine le contenu si le compte > 0 ou si c'est l'or (index 5)
     if (count > 0 || colorIdx === 5) {
         contentHtml = `
             <circle cx="16" cy="16" r="16" fill="${colors[colorIdx][1]}" />
@@ -142,16 +135,11 @@ function ui_renderGem(colorIdx, count, selectionType = 'none', isLastAction = fa
     `;
 }
 
-/* =================== */
-/* ===== ANALYTICS === */
-/* =================== */
-
-// Preserved logic from original file: Simple hit counter.
+// Executes a non-blocking telemetry ping for basic traffic analytics on page load.
 const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
 const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
 
 window.addEventListener('load', () => {
-    // Fire and forget fetch for analytics
     const urls = [ 
         `${counterAPI_base}/overall`, 
         `${counterAPI_base}/overall_${counterAPI_suffix}`,
@@ -160,7 +148,6 @@ window.addEventListener('load', () => {
     
     urls.forEach(url => {
         fetch(url, { mode: 'no-cors' }).catch(e => {
-            // Silently fail if analytics are blocked
             console.debug("Analytics blocked or failed");
         });
     });

@@ -47,16 +47,3 @@ const numPlayers = 2;
 const NB_GODS = +new URLSearchParams(window.location.search).get('gods') || 1;
 const selectedConfig = (NB_GODS === 1) ? configs.noGods : configs.withGods;
 const { gods_name, gods_descr, gods_instructions, onnxOutputSize, pyConstantsFileName, defaultModelFileName } = selectedConfig;
-
-// Gods description
-const NO_GOD = 0;
-const APOLLO     = 1;
-const MINOTAUR   = 2;
-const ATLAS      = 3;
-const HEPHAESTUS = 4;
-const ARTEMIS    = 5;
-const DEMETER    = 6;
-const HERMES     = 7;
-const PAN        = 8;
-const ATHENA     = 9;
-const PROMETHEUS = 10;
