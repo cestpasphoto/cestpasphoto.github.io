@@ -334,6 +334,7 @@ def get_render_state():
         'statusMessage': status,
         'currentPlayer': player,
         'gameEnded': _end_game(),
+        'winners': winners if _end_game() else [],
         'editMode': edit_mode,
         'canUndo': (len(history) > 0 or interaction_step > 0),
         'extra': {

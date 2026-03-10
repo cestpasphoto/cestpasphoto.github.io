@@ -168,19 +168,28 @@
       <div class="ui hidden divider mobile hidden"></div>
       <div class="ui fluid large compact buttons" x-show="!$store.game.isLoading">
         <button class="ui basic icon button" 
-                @click="$store.game.act('undo')" 
-                :class="{ 'disabled': !$store.game.canUndo || $store.game.isThinking || $store.game.extra.sel_type == 'none'}">
+                @click="$store.game.act('undo', $store.game.arePlayersHuman)" 
+                :class="{ 'disabled': !$store.game.canUndo || $store.game.isThinking }">
           <i class="undo icon"></i>
         </button>
         <button class="ui button" 
-               
+                :disabled="$store.game.gameEnded || (!$store.game.extra.can_confirm && $store.game.extra.sel_type !== 'none') || $store.game.isThinking || $store.game.extra.sel_type === 'none'"
                 :class="{ 
-                    'disabled basic': (!$store.game.extra.can_confirm && $store.game.extra.sel_type !== 'none') || $store.game.isThinking,
-                    'green': $store.game.extra.can_confirm,
-                    'green basic disabled': $store.game.extra.sel_type === 'none'
+                    'basic': !$store.game.gameEnded && ($store.game.extra.sel_type === 'none' || !$store.game.extra.can_confirm),
+                    'green': ($store.game.gameEnded && $store.game.winners.includes(0)) || (!$store.game.gameEnded && ($store.game.extra.sel_type === 'none' || $store.game.extra.can_confirm)),
+                    'red': $store.game.gameEnded && $store.game.winners.includes(1),
+                    'blue': $store.game.gameEnded && !$store.game.winners.includes(0) && !$store.game.winners.includes(1)
                 }"
                 @click="$store.game.act('confirm_action')"
-                x-text="$store.game.extra.sel_type === 'none' ? 'CLICK ON A CARD OR A GEM' : ($store.game.extra.can_confirm ? 'Confirm to ' + $store.game.extra.move_desc : 'Cannot ' + $store.game.extra.move_desc)">
+                x-text="
+                    $store.game.gameEnded 
+                        ? 'P' + $store.game.winners.join(' & P') + ' wins!' 
+                        : ($store.game.extra.sel_type === 'none' 
+                            ? 'CLICK ON A CARD OR A GEM' 
+                            : ($store.game.extra.can_confirm 
+                                ? 'Confirm to ' + $store.game.extra.move_desc 
+                                : 'Cannot ' + $store.game.extra.move_desc))
+                ">
         </button>
       </div>
 
@@ -224,7 +233,7 @@
               </div>
             </template>
 
-            <template x-for="(rCard, rIdx) in player.reserved" :key="'p'+pIdx+'-res-'+rIdx">
+            <template x-for="(rCard, rIdx) in player.reserved" :key="'p'+pIdx+'-res-'+rIdx+rCard.toString()">
               <div class="column">
                 <a href="#" 
                    @click.prevent="($store.game.currentPlayer === pIdx && pIdx === 0) ? $store.game.act('click_and_render', 'reserved', rIdx) : null"

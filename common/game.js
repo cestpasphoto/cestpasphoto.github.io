@@ -19,6 +19,7 @@ document.addEventListener('alpine:init', () => {
         statusMessage: "",
         currentPlayer: 0,
         gameEnded: false,
+        winners: [],
         editMode: 0,
         canUndo: false,
         numMCTSSims: numMCTSSims,
@@ -156,6 +157,7 @@ function update_store(jsonString) {
     store.statusMessage = newState.statusMessage;
     store.currentPlayer = newState.currentPlayer;
     store.gameEnded = newState.gameEnded;
+    store.winners = newState.winners || [];
     store.editMode = newState.editMode;
     store.canUndo = newState.canUndo;
     

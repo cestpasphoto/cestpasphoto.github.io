@@ -212,6 +212,9 @@ def handle_action(action_name, *args):
     elif action_name == "confirm_action":
         return confirm_action()
     elif action_name == "undo":
+        if len(args) > 0:
+            humans = args[0].to_py() if hasattr(args[0], 'to_py') else args[0]
+            return undo(humans)
         return undo()
     elif action_name == "filter_cards":
         global editor_matching_cards
@@ -429,12 +432,14 @@ def get_render_state():
     }
 
     end_status = g.getGameEnded(board, player)
+    winners = [i for i, x in enumerate(end_status) if x > 0]
     
     response = {
         "viewData": view,
         "extra": extra,
         "currentPlayer": int(player),
         "gameEnded": bool(end_status[0] != 0),
+        "winners": winners if end_status[0] != 0 else [],
         "canUndo": len(history) > 0,
         "editMode": int(edit_mode),
     }
