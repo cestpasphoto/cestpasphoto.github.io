@@ -1,107 +1,306 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
-  
-  <!-- <script src="./minivilles/constants.js"></script> -->
-  <script src="./common/game.js"></script>
-  <script src="./minivilles/main.js"></script>
-</head>
-</head>
-<body>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minivilles - AI Board Game</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
 
-<div class="ui borderless menu">
-  <div class="ui container">    
-    <div class="fitted item">
-      <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
-    </div> 
-    <div class="fitted item"> 
-      <button class="ui icon disabled button" id="editBtn"><i class="edit icon"></i></button>
-    </div> 
-    <div class="fitted item"> 
-      <div class="ui small form">
-        <div class="field">
-          <select onchange="game.change_difficulty(this.value)" id="difficultyForm">
-            <optgroup label="Above optimal">
-            <option value="3200"       >God-like</option>
-            <option value="800"        >Boosted</option>
-            <optgroup label="Level used during training">
-            <option value="200"        >Native</option>
-            <optgroup label="Sub optimal levels">
-            <option value="50" selected>Easy</option>
-            <option value="12"         >Easier</option>
-            <option value="3"          >Come on</option>
-          </select>
+    <script src="minivilles/main.js"></script>
+    <script src="common/game.js"></script>
+
+    <style>
+        /* On garde uniquement les styles de nos zones de jeu (cartes, inventaire) */
+        body { background-color: #f4f4f9; touch-action: manipulation; }
+        [x-cloak] { display: none !important; }
+        #minivilles-app { display: flex; flex-direction: column; height: calc(100vh - 50px); max-width: 1024px; margin: 0 auto; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .opponents-zone { display: flex; flex-direction: column; gap: 10px; padding: 10px; max-height: 40vh; overflow-y: auto; background: #e2e8f0; flex-shrink: 0; }
+        .opponent-section { background: #cbd5e1; border-radius: 8px; padding: 10px; }
+        .market-zone { flex-grow: 1; overflow-y: auto; padding: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 12px; background-color: #f8fafc; }
+        .game-card { border-radius: 8px; padding: 8px; display: flex; flex-direction: column; align-items: center; text-align: center; position: relative; box-shadow: 0 3px 6px rgba(0,0,0,0.1); cursor: pointer; transition: transform 0.1s; user-select: none; }
+        .game-card:active { transform: scale(0.95); }
+        .game-card.disabled { opacity: 0.4; filter: grayscale(100%); cursor: not-allowed; }
+        .bg-blue { background-color: #e0f2fe; border: 2px solid #0284c7; }
+        .bg-green { background-color: #dcfce7; border: 2px solid #16a34a; }
+        .bg-red { background-color: #fee2e2; border: 2px solid #dc2626; }
+        .bg-purple { background-color: #f3e8ff; border: 2px solid #9333ea; }
+        .card-dice { font-weight: 900; font-size: 1.1em; background: rgba(255,255,255,0.8); border-radius: 12px; padding: 2px 8px; margin-bottom: 6px; }
+        .card-name { font-size: 0.75em; font-weight: bold; margin-bottom: 4px; flex-grow: 1; }
+        .card-cost { font-size: 0.9em; font-weight: bold; color: #b45309; }
+        .card-count-badge { position: absolute; top: -6px; right: -6px; background: #1e293b; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; justify-content: center; align-items: center; font-size: 0.8em; font-weight: bold; }
+        .player-zone { background: #ffffff; padding: 15px; border-top: 2px solid #cbd5e1; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+        .player-inventory { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; -webkit-overflow-scrolling: touch; }
+        .inventory-item { position: relative; min-width: 60px; height: 80px; border-radius: 6px; display: flex; justify-content: center; align-items: center; flex-direction: column; font-size: 0.7em; text-align: center; }
+        .inventory-badge { position: absolute; bottom: -5px; right: -5px; background: #0f172a; color: white; border-radius: 10px; padding: 2px 6px; font-size: 0.9em; font-weight: bold; }
+        .monuments-container { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 5px; }
+        .monument-card { padding: 8px; border: 2px dashed #94a3b8; border-radius: 8px; text-align: center; font-size: 0.75em; cursor: pointer; min-width: 90px; user-select: none; }
+        .monument-card.built { border-style: solid; border-color: #eab308; background-color: #fef9c3; }
+        .monument-card.disabled:not(.built) { opacity: 0.5; cursor: not-allowed; }
+        .action-bar { background: #1e293b; color: white; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+        .dice-display { font-size: 1.5em; font-weight: bold; background: white; color: #1e293b; padding: 4px 16px; border-radius: 8px; }
+        .btn { padding: 10px 16px; border: none; border-radius: 6px; background: #3b82f6; color: white; font-weight: bold; cursor: pointer; font-size: 0.9em; }
+        .btn:disabled { background: #64748b; cursor: not-allowed; opacity: 0.7; }
+        .btn-pass { background: #ef4444; }
+        .opponent-section .monument-card:not(.built) { background: rgba(255,255,255,0.3); border: 1px dashed #94a3b8; color: #64748b; }
+    </style>
+</head>
+<body x-data="minivillesUI()" x-init="$store.game.start()">
+
+    <div class="ui borderless menu">
+      <div class="ui container">    
+        <div class="fitted item">
+          <button class="ui icon button" @click="$store.game.reset()"><i class="file outline icon"></i></button>
+        </div> 
+        <div class="fitted item"> 
+          <button class="ui icon disabled button"><i class="edit icon"></i></button>
+        </div>
+        <div class="fitted item"> 
+          <div class="ui small form">
+            <div class="field">
+              <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
+                <optgroup label="Above optimal">
+                <option value="6400">God-like</option>
+                <option value="1600">Boosted</option>
+                </optgroup>
+                <optgroup label="Level used during training">
+                <option value="400">Native</option>
+                </optgroup>
+                <optgroup label="Sub optimal levels">
+                <option value="100">Medium</option>
+                <option value="25" selected>Easy</option>
+                <option value="12">Easier</option>
+                <option value="3">Come on</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="fitted item"> 
+          <div class="ui small form">
+            <div class="field">
+              <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
+                  <option value="P0" selected>You vs AI</option>
+                  <option value="P1">AI vs you</option>
+                  <option value="Human">No AI</option>
+                  <option value="AI">WarGames</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="fitted item"> 
-      <div class="ui small form">
-        <div class="field">
-          <select onchange="changeGameMode(this.value)">
-            <option value="P0" selected>You vs AI</option>
-            <option value="P1"         >AI vs you</option>
-            <option value="Human"      >No AI</option>
-            <option value="AI"         >WarGames</option>
-          </select>
-        </div>
-      </div>
+    <button x-show="$store.game.isLoading || $store.game.isThinking" class="ui fluid large active loading button" style="border-radius: 0;">‌</button>
+
+    <div x-show="!$store.game.view || !$store.game.view.players" style="padding: 40px; text-align: center; font-family: sans-serif;">
+        <h2 x-text="$store.game.loadingMessage || 'Initializing Application...'"></h2>
     </div>
-  </div>
-</div>
 
+    <div id="minivilles-app" x-show="$store.game.view && $store.game.view.players" x-cloak>
 
-<div class="ui main container">
+        <div class="opponents-zone" style="flex-direction: column; max-height: 40vh; overflow-y: auto;">
+            <template x-for="(player, idx) in Object.values($store.game.view.players || {})" :key="idx">
+                <div class="opponent-section" x-show="idx !== $store.game.currentPlayer" 
+                     style="background: #cbd5e1; margin-bottom: 10px; border-radius: 8px; padding: 10px;">
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: bold;">Adversaire <span x-text="idx"></span></span>
+                        <span style="font-weight: bold; color: #b45309;">💰 <span x-text="player.money"></span></span>
+                    </div>
 
-  <h1 class="ui huge center aligned header">Machi Koro game with AI</h1> 
-  <div class="ui hidden divider"></div>
+                    <div class="player-inventory" style="margin-bottom: 8px;">
+                        <template x-for="(count, cIdx) in player.cards" :key="cIdx">
+                            <div class="inventory-item" :class="CARD_DB[cIdx].colorClass" x-show="count > 0" 
+                                 style="min-width: 50px; height: 65px; font-size: 0.6em;">
+                                <div style="font-weight:900" x-text="CARD_DB[cIdx].dice"></div>
+                                <div x-text="CARD_DB[cIdx].shortName"></div>
+                                <div class="inventory-badge" x-text="'x' + count"></div>
+                            </div>
+                        </template>
+                    </div>
 
+                    <div class="monuments-container">
+                        <template x-for="(built, mIdx) in player.monuments" :key="mIdx">
+                            <div class="monument-card" :class="{ 'built': built > 0 }" 
+                                 style="min-width: 70px; font-size: 0.65em; padding: 4px; cursor: default;">
+                                <div x-text="MONUMENT_DB[mIdx].name"></div>
+                                <div x-text="built > 0 ? '✓' : '—'"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
 
-<!-- Players name and power -->
+        <div class="market-zone">
+            <template x-for="(card, idx) in getMarketData()" :key="idx">
+                <div class="game-card" 
+                     :class="[card.colorClass, { 'disabled': !isValidMarketMove(idx) }]"
+                     @click="buyCard(idx)">
+                    <div class="card-count-badge" x-text="card.remaining" x-show="card.remaining > 0"></div>
+                    <div class="card-dice" x-text="card.dice"></div>
+                    <div class="card-name" x-text="card.name"></div>
+                    <div class="card-cost">💰<span x-text="card.cost"></span></div>
+                </div>
+            </template>
+        </div>
 
+        <div class="player-zone">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: bold; font-size: 1.1em;">My City</span>
+                <span style="color: #b45309; font-size: 1.2em; font-weight: bold;">💰 <span x-text="getCurrentPlayerMoney()"></span></span>
+            </div>
+            
+            <div class="player-inventory">
+                <template x-for="(card, idx) in getPlayerInventory()" :key="idx">
+                    <div class="inventory-item" :class="card.colorClass" x-show="card.count > 0">
+                        <div style="font-weight:900" x-text="card.dice"></div>
+                        <div style="font-size: 0.9em; padding: 0 2px;" x-text="card.shortName"></div>
+                        <div class="inventory-badge" x-text="'x' + card.count"></div>
+                    </div>
+                </template>
+            </div>
 
-<!-- Table -->
-  <div class="ui basic segment">
-    <p id="boardSgmt"></p>
-  </div>
+            <div class="monuments-container">
+                <template x-for="(monument, idx) in getMonumentsData()" :key="idx">
+                    <div class="monument-card" 
+                         :class="{ 'built': monument.built, 'disabled': !monument.built && !isValidMonumentMove(idx) }"
+                         @click="buyMonument(idx)">
+                        <div style="font-weight: bold;" x-text="monument.name"></div>
+                        <div x-show="!monument.built" style="color: #b45309; margin-top: 4px;">
+                            💰<span x-text="monument.cost"></span>
+                        </div>
+                        <div x-show="monument.built" style="color: #16a34a; font-weight:bold; margin-top: 4px;">
+                            ✓ Built
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
 
-  <div class="ui action input">
-    <input type="number" placeholder="ID of your move" id="userMoveID">
-    <button class="ui button" onclick="userMove()">Move</button>
-  </div>
+        <div class="action-bar">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="font-size: 0.8em; text-transform: uppercase; letter-spacing: 1px;">Dice Roll</div>
+                <div class="dice-display" x-text="$store.game.view.lastDice > 0 ? $store.game.view.lastDice : '-'"></div>
+            </div>
+            
+            <div style="display: flex; gap: 8px;">
+                <button class="btn" 
+                        x-show="$store.game.extra.validMoves && $store.game.extra.validMoves[19]" 
+                        @click="act('reroll_dice')">
+                    Re-Roll
+                </button>
+                <button class="btn btn-pass" 
+                        :disabled="!$store.game.extra.validMoves || !$store.game.extra.validMoves[20]" 
+                        @click="act('do_nothing')">
+                    End Turn
+                </button>
+            </div>
+        </div>
 
-<!-- Button -->
+    </div>
 
+    <script>
+        // Database arrays mapping indexes 0-14 for cards, and 0-3 for monuments
+        // Matches the MinivillesLogicNumba.py arrays exactly.
+        const CARD_DB = [
+            { name: 'Wheat Field', shortName: 'Wheat', dice: '1', cost: 1, colorClass: 'bg-blue' },     // 0
+            { name: 'Ranch', shortName: 'Ranch', dice: '2', cost: 1, colorClass: 'bg-blue' },           // 1
+            { name: 'Bakery', shortName: 'Bakery', dice: '2-3', cost: 1, colorClass: 'bg-green' },      // 2
+            { name: 'Cafe', shortName: 'Cafe', dice: '3', cost: 2, colorClass: 'bg-red' },              // 3
+            { name: 'Conv. Store', shortName: 'Store', dice: '4', cost: 2, colorClass: 'bg-green' },    // 4
+            { name: 'Forest', shortName: 'Forest', dice: '5', cost: 3, colorClass: 'bg-blue' },         // 5
+            { name: 'Stadium', shortName: 'Stadium', dice: '6', cost: 6, colorClass: 'bg-purple' },     // 6
+            { name: 'Business Ctr', shortName: 'Business', dice: '6', cost: 8, colorClass: 'bg-purple' },// 7
+            { name: 'TV Station', shortName: 'TV', dice: '6', cost: 7, colorClass: 'bg-purple' },       // 8
+            { name: 'Cheese Fact.', shortName: 'Cheese', dice: '7', cost: 5, colorClass: 'bg-green' },  // 9
+            { name: 'Furniture Fact.', shortName: 'Furniture', dice: '8', cost: 3, colorClass: 'bg-green' },// 10
+            { name: 'Mine', shortName: 'Mine', dice: '9', cost: 6, colorClass: 'bg-blue' },             // 11
+            { name: 'Family Rest.', shortName: 'Rest.', dice: '9-10', cost: 3, colorClass: 'bg-red' },  // 12
+            { name: 'Apple Orchard', shortName: 'Orchard', dice: '10', cost: 3, colorClass: 'bg-blue' },// 13
+            { name: 'Fruit Market', shortName: 'Market', dice: '11-12', cost: 2, colorClass: 'bg-green' }// 14
+        ];
 
-  <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
-    <button class="ui icon button" id="undoBtn" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
-  </div>
-  <button class="ui fluid large active loading button" id="loadingBtn">‌</button>
+        const MONUMENT_DB = [
+            { name: 'Train Station', cost: 4 },
+            { name: 'Shopping Mall', cost: 10 },
+            { name: 'Radio Tower', cost: 16 },
+            { name: 'Amusement Park', cost: 22 }
+        ];
 
-  <div class="ui basic segment">
-    <p id="moveSgmt">Loading pyodide, numpy, onnx; please wait...</p>
-  </div>
-</div>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('minivillesUI', () => ({
+                
+                getMarketData() {
+                    const market = Alpine.store('game').view.market;
+                    if (!market) return [];
+                    return CARD_DB.map((card, idx) => ({
+                        ...card,
+                        remaining: market[idx]
+                    }));
+                },
+                
+                isValidMarketMove(idx) {
+                    const valids = Alpine.store('game').extra.validMoves;
+                    return valids && valids[idx];
+                },
+                
+                buyCard(idx) {
+                    if (this.isValidMarketMove(idx)) {
+                        Alpine.store('game').act('buy_card', idx);
+                    }
+                },
 
+                getCurrentPlayerMoney() {
+                    const p = Alpine.store('game').currentPlayer;
+                    const players = Alpine.store('game').view.players;
+                    return (players && players[p]) ? players[p].money : 0;
+                },
 
-<script>
-  const allBtn      = document.getElementById('allBtn');
-  const undoBtn     = document.getElementById('undoBtn');
-  const loadingBtn  = document.getElementById('loadingBtn');
-  const editBtn     = document.getElementById('editBtn');
-  const moveSgmt    = document.getElementById('moveSgmt');
+                getPlayerInventory() {
+                    const p = Alpine.store('game').currentPlayer;
+                    const players = Alpine.store('game').view.players;
+                    if (!players || !players[p]) return [];
+                    
+                    return CARD_DB.map((card, idx) => ({
+                        ...card,
+                        count: players[p].cards[idx]
+                    }));
+                },
 
-  const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
-  const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
-  window.onload = () =>
-    [ `${counterAPI_base}/overall`, `${counterAPI_base}/overall_${counterAPI_suffix}`]
-    .forEach(u => fetch(u).catch(() => {}));
+                getMonumentsData() {
+                    const p = Alpine.store('game').currentPlayer;
+                    const players = Alpine.store('game').view.players;
+                    if (!players || !players[p]) return [];
+                    
+                    return MONUMENT_DB.map((monument, idx) => ({
+                        ...monument,
+                        built: players[p].monuments[idx] > 0
+                    }));
+                },
 
-  main(usePyodide=true);
-</script>
+                isValidMonumentMove(idx) {
+                    const valids = Alpine.store('game').extra.validMoves;
+                    // In logic, monuments are actions 15 to 18
+                    return valids && valids[15 + idx];
+                },
+
+                buyMonument(idx) {
+                    if (this.isValidMonumentMove(idx)) {
+                        Alpine.store('game').act('buy_monument', idx);
+                    }
+                },
+
+                act(actionName) {
+                    Alpine.store('game').act(actionName);
+                }
+            }));
+        });
+    </script>
 </body>
 </html>
