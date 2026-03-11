@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+  
+  <script src="./common/game.js"></script>
+  <script src="./akropolis/constants.js"></script>
+  <script src="./akropolis/akropolis.js"></script>
+  
+  <style>
+    /* Responsive SVG sizes from your framework */
+    @media only screen and (min-width: 992px) {
+      [class*="mobile only"]:not(.computer), [class*="tablet only"]:not(.computer), [class*="computer hidden"] { display: none !important; }
+      [class*="svgS"] { width: 3.5rem; max-width: 100%; }
+      [class*="svgM"] { width: 6.0rem; max-width: 100%; }
+      [class*="svgL"] { width: 9.0rem; max-width: 100%; }
+    }
+    @media only screen and (min-width: 768px) and (max-width: 991px) {
+      [class*="mobile only"]:not(.tablet), [class*="tablet hidden"], [class*="computer only"]:not(.tablet) { display: none !important; }
+      [class*="svgS"] { width: 2.6rem; max-width: 100%; }
+      [class*="svgM"] { width: 5.0rem; max-width: 100%; }
+      [class*="svgL"] { width: 7.0rem; max-width: 100%; }
+    }
+    @media only screen and (max-width: 767px) {
+      [class*="mobile hidden"], [class*="tablet only"]:not(.mobile), [class*="computer only"]:not(.mobile) { display: none !important; }
+      [class*="svgS"] { width: 2.2rem; max-width: 100%; }
+      [class*="svgM"] { width: 4.0rem; max-width: 100%; }
+      [class*="svgL"] { width: 6.0rem; max-width: 100%; }
+    }
+    
+    /* Specific styles for the hexagonal city view */
+    .city-container {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      touch-action: pan-x pan-y;
+      text-align: center;
+    }
+    .city-svg {
+      width: 100%;
+      max-width: 600px; /* Limits size on large screens */
+      height: auto;
+    }
+  </style>
+</head>
+
+<body>
+<div x-data x-init="$store.game.start()">
+
+  <div class="ui borderless menu">
+    <div class="ui container">    
+      <div class="fitted item">
+        <button class="ui icon button" @click="$store.game.reset()">
+          <i class="file outline icon"></i>
+        </button>  
+      </div> 
+      <div class="fitted item"> 
+        <div class="ui small form">
+          <div class="field">
+            <select 
+              x-model.number="$store.game.numMCTSSims" 
+              @change="$store.game.changeDifficulty()" 
+              class="ui dropdown">
+              <optgroup label="Sub optimal levels">
+              <option value="100">Medium</option>
+              <option value="25" selected>Easy</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="fitted item"> 
+        <div class="ui small form">
+          <div class="field">
+            <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
+                <option value="P0" selected>You vs AI</option>
+                <option value="P1">AI vs you</option>
+                <option value="Human">No AI</option>
+                <option value="AI">WarGames</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ui main text container">
+
+    <h1 class="ui huge center aligned header">Akropolis with AI</h1> 
+    <div class="ui hidden divider"></div>
+
+    <button x-show="$store.game.isLoading || $store.game.isThinking" class="ui fluid large active loading button">‌</button>
+
+    <template x-if="!$store.game.isLoading && $store.game.view && $store.game.view.construction_site">
+      <div>
+        
+        <h4 class="ui dividing header">Construction Site</h4>
+        <div class="ui very compact equal width center aligned grid">
+          <template x-for="(tile, idx) in $store.game.view.construction_site" :key="'market-'+idx">
+            <div class="column">
+              <a href="#" @click.prevent="$store.game.act('select_tile', idx)">
+                  <div x-html="ui_renderTile(
+                      tile, 
+                      $store.game.extra.selected_tile === idx,
+                      'svgM'
+                  )"></div>
+              </a>
+              <div class="ui tiny label" :class="idx === 0 ? 'green' : ''" style="margin-top: 5px;">
+                <span x-text="idx"></span> <i class="gem outline icon" style="margin:0;"></i>
+              </div>
+            </div>
+          </template>
+
+          <div class="column middle aligned">
+              <div class="ui tiny statistic">
+                  <div class="value" x-text="$store.game.view.stacks_remaining"></div>
+                  <div class="label">Stacks</div>
+              </div>
+          </div>
+        </div>
+
+        <div class="ui hidden divider"></div>
+
+        <div class="ui fluid large compact buttons" x-show="!$store.game.isLoading">
+          <button class="ui basic icon button" 
+                  @click="$store.game.act('undo', $store.game.arePlayersHuman)" 
+                  :class="{ 'disabled': !$store.game.canUndo || $store.game.isThinking }">
+            <i class="undo icon"></i>
+          </button>
+          
+          <button class="ui basic icon button" 
+                  @click="$store.game.act('rotate_left')" 
+                  :class="{ 'disabled': $store.game.extra.selected_tile < 0 || $store.game.isThinking }">
+            <i class="undo alternate icon"></i>
+          </button>
+          
+          <button class="ui button" 
+                  :disabled="$store.game.gameEnded || !$store.game.extra.can_confirm || $store.game.isThinking"
+                  :class="{ 
+                      'basic': !$store.game.gameEnded && !$store.game.extra.can_confirm,
+                      'green': ($store.game.gameEnded && $store.game.winners.includes(0)) || (!$store.game.gameEnded && $store.game.extra.can_confirm),
+                      'red': $store.game.gameEnded && $store.game.winners.includes(1),
+                      'blue': $store.game.gameEnded && !$store.game.winners.includes(0) && !$store.game.winners.includes(1)
+                  }"
+                  @click="$store.game.act('confirm_action')"
+                  x-text="
+                      $store.game.gameEnded 
+                          ? 'P' + $store.game.winners.join(' & P') + ' wins!' 
+                          : $store.game.extra.action_message
+                  ">
+          </button>
+
+          <button class="ui basic icon button" 
+                  @click="$store.game.act('rotate_right')" 
+                  :class="{ 'disabled': $store.game.extra.selected_tile < 0 || $store.game.isThinking }">
+            <i class="redo alternate icon"></i>
+          </button>
+        </div>
+
+        <div class="ui hidden divider"></div>
+
+        <template x-for="(player, pIdx) in $store.game.view.players" :key="'player-'+pIdx">
+          <div> 
+            <div class="ui hidden divider computer only"></div>
+            
+            <div class="ui horizontal divider" 
+                 x-html="(pIdx === 0 ? 'You' : ($store.game.arePlayersHuman[pIdx] ? 'Player '+pIdx : 'AI '+pIdx)) + ' - ' + player.points + ' pts - ' + player.stones + ' <i class=\'gem outline icon\'></i>'">
+            </div>
+            
+            <div class="city-container">
+
+                <svg class="city-svg" :viewBox="ui_getCityViewBox(player.city_state)" style="transition: all 0.5s ease-in-out;" preserveAspectRatio="xMidYMid meet">                  
+                  <g x-html="ui_renderCity(player.city_state)"></g>
+                  
+                  <template x-if="pIdx === $store.game.currentPlayer && $store.game.extra.selected_tile >= 0">
+                      <g x-html="ui_renderValidMoves(
+                          $store.game.extra.valid_placements, 
+                          $store.game.extra.ghost_hexes, 
+                          $store.game.extra.selected_site
+                      )"></g>
+                  </template>
+                  
+              </svg>
+            </div>
+          </div>
+        </template>
+
+      </div>
+    </template>
+
+  </div>
+</div>
+</body>
+</html>
