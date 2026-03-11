@@ -156,14 +156,49 @@ function ui_findPlayerFromPpl(pplId) {
     return {pIdx: -1, pplIdx: -1};
 }
 
+// Cache to persistently map a specific people ID to a color index for a given player
+// This ensures a people keeps its assigned color even when shifting to a decline slot
+const colorAssignmentCache = {};
+
 // Determines the token background and text color based on ownership and decline status
 function ui_tokenStyle(pplId, pIdx, pplIdx) {
    if (pplId === 0) return { bg: 'none', txt: 'none' };
    if (pplId === -15) return { bg: '#f2f2f2', txt: 'dimgray' }; // Lost tribe styling
    
-   let cIdx = (pplIdx === 2) ? 0 : (pplIdx === 1 ? 1 : 2);
-   let bg = pplId < 0 ? '#f7f7f7' : (pplColors[pIdx] ? pplColors[pIdx][cIdx] : 'gray');
-   let txt = pplId < 0 ? (pplColors[pIdx] ? pplColors[pIdx][cIdx] : 'gray') : 'white';
+   const absId = Math.abs(pplId);
+   const key = `${pIdx}-${absId}`;
+   let cIdx;
+
+   if (colorAssignmentCache[key] !== undefined) {
+       // Retrieve previously assigned color for this specific race/player combination
+       cIdx = colorAssignmentCache[key];
+   } else {
+       // Find colors currently in use by this player's other peoples on the board
+       let usedColors = [];
+       const store = Alpine.store('game');
+       if (store && store.view && store.view.players && store.view.players[pIdx]) {
+           const playerPeoples = store.view.players[pIdx].peoples;
+           for (const ppl of playerPeoples) {
+               const otherId = Math.abs(ppl[1]);
+               if (otherId !== 0 && otherId !== absId) {
+                   const otherKey = `${pIdx}-${otherId}`;
+                   if (colorAssignmentCache[otherKey] !== undefined) {
+                       usedColors.push(colorAssignmentCache[otherKey]);
+                   }
+               }
+           }
+       }
+       
+       // Assign an available color index (prefer 1 for main active, then 2, then 0)
+       const preferences = [1, 2, 0];
+       cIdx = preferences.find(c => !usedColors.includes(c));
+       if (cIdx === undefined) cIdx = 1; // Fallback
+       
+       colorAssignmentCache[key] = cIdx;
+   }
+   
+   const bg = pplId < 0 ? '#f7f7f7' : (pplColors[pIdx] ? pplColors[pIdx][cIdx] : 'gray');
+   const txt = pplId < 0 ? (pplColors[pIdx] ? pplColors[pIdx][cIdx] : 'gray') : 'white';
    return { bg, txt };
 }
 

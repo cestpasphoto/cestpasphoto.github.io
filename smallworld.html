@@ -116,7 +116,7 @@
         <div class="item" id="boardArea">
           <div class="ui large horizontal divider">Board</div>
           
-          <div class="ui fluid small compact buttons">
+          <div class="ui fluid small compact buttons" x-show="!$store.game.isThinking">
             <button class="ui button" :class="ui_btnClass(5)" x-show="$store.game.extra.allowedBtns[5]" @click="$store.game.act('click_btn', 5)">Choose <i class="users icon"></i> + <i class="magic icon"></i></button>
             <button class="ui button" :class="ui_btnClass(8)" x-show="$store.game.extra.allowedBtns[8]" @click="$store.game.act('click_btn', 8)">Abandon</button>
             <button class="ui button" :class="ui_btnClass(0)" x-show="$store.game.extra.allowedBtns[0]" @click="$store.game.act('click_btn', 0)">Attack</button>
@@ -135,7 +135,7 @@
           <button x-show="$store.game.isThinking" class="ui fluid active loading button">‌</button>
 
           <span class="ui small text" x-text="ui_actionDescr()"></span>
-          <button class="ui fluid compact secondary button" x-show="$store.game.extra.confirmNeeded" @click="$store.game.act('confirm')">Confirm</button>    
+          <button class="ui fluid compact secondary button" x-show="$store.game.extra.confirmNeeded && !$store.game.isThinking" @click="$store.game.act('confirm')">Confirm</button>    
 
           <div style="position: relative; width: 100%; margin-top: 5px;">
             <svg :view-box.camel="mapDimensions" style="width: 100%; height: auto; visibility: hidden; display: block;"></svg>
@@ -220,14 +220,16 @@
           
           <div class="ui middle aligned very compact grid">
             <template x-for="(deckItem, dIdx) in $store.game.view.deck" :key="'deck-'+dIdx">
-              <div class="row" style="padding: 0;">
+              <div class="row">
                 <div class="three wide column">
                   <button class="ui fluid compact large icon button" 
                           :class="ui_isDeckDisabled() ? 'disabled' : 'primary'"
                           @click="!ui_isDeckDisabled() ? $store.game.act('click_deck', dIdx) : null"
-                          x-html="dIdx + ' <i class=\'coins icon\'></i>'"></button>
+                          x-html="dIdx + ' <i class=\'coins icon\'></i>'"> 
+                  </button>
                 </div>
-                <div class="thirteen wide column" x-html="ui_deckDescrLong(deckItem)"></div>
+                <div class="thirteen wide column" x-html="ui_deckDescrLong(deckItem)">
+                </div>
               </div>
             </template>
           </div>

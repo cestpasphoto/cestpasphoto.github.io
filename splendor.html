@@ -132,7 +132,7 @@
                    @click.prevent="card[0] >= 0 ? $store.game.act('click_and_render', 'card', tierIdx, cardIdx) : null"
                    x-html="ui_renderCard(
                      card, 
-                     $store.game.extra.sel_type === 'card' && $store.game.extra.sel_items[0] && $store.game.extra.sel_items[0][0] === tierIdx && $store.game.extra.sel_items[0][1] === cardIdx,
+                     (['card', 'rsv'].includes($store.game.extra.sel_type) && $store.game.extra.sel_items[0] && $store.game.extra.sel_items[0][0] === tierIdx && $store.game.extra.sel_items[0][1] === cardIdx) ? ($store.game.extra.sel_type === 'rsv' ? 'reserve' : 'buy') : 'none',
                      ['card', 'rsv'].includes($store.game.extra?.last_action?.[0]) && $store.game.extra?.last_action?.[1] === (tierIdx * 4 + cardIdx),
                      'svgL'
                    )">
@@ -239,7 +239,7 @@
                    @click.prevent="($store.game.currentPlayer === pIdx && pIdx === 0) ? $store.game.act('click_and_render', 'reserved', rIdx) : null"
                    x-html="ui_renderCard(
                      rCard,
-                     $store.game.extra.sel_type === 'card' && $store.game.extra.sel_items[0] && $store.game.extra.sel_items[0][0] === -1 && $store.game.extra.sel_items[0][1] === rIdx,
+                     ($store.game.extra.sel_type === 'card' && $store.game.extra.sel_items[0] && $store.game.extra.sel_items[0][0] === -1 && $store.game.extra.sel_items[0][1] === rIdx) ? 'buy' : 'none',
                      $store.game.extra?.last_action?.[0] === 'buyrsv' && $store.game.extra?.last_action?.[1] === rIdx && pIdx === $store.game.extra?.previous_player,
                      'svgS'
                    )">
