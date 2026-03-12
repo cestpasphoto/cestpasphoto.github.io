@@ -9,7 +9,8 @@
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
-  
+  <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+
   <script src="./common/game.js"></script>
   <script src="./akropolis/constants.js"></script>
   <script src="./akropolis/akropolis.js"></script>
@@ -42,28 +43,24 @@
     .city-container {
       width: 100%; background-color: #f8fafc; overflow: hidden;
       touch-action: none; user-select: none; -webkit-user-select: none;
-      position: relative; /* Indispensable pour les boutons flottants */
+      position: relative; 
     }
-    .city-svg { width: 100%; height: 100%; }
+    .city-svg { width: 100%; height: 100%; touch-action: none; display: block; }
     
-    /* Boutons Flottants (Floating Action Buttons) */
     .fab-confirm { position: absolute; bottom: 15px; right: 15px; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
     .fab-undo { position: absolute; bottom: 15px; left: 15px; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-    .floating-score { position: absolute; top: 10px; left: 10px; z-index: 5; opacity: 0.85; }
+    .floating-score { position: absolute; top: 10px; left: 10px; z-index: 5; opacity: 0.85; pointer-events: none; }
     
-    /* MOBILE & TABLETTE */
     @media only screen and (max-width: 991px) {
       .desktop-city-header { display: none; }
       .city-wrapper { display: none; }
       .city-wrapper.active-tab { display: block; }
-      .city-container {
-        /* Hauteur maximale incroyable permise par l'UI compacte ! */
-        height: 75vh; 
-        border-radius: 0 0 8px 8px; border: 1px solid #d4d4d5; border-top: none;
+      .city-container { 
+          height: 65vh; max-height: 600px; /* Sécurité anti-scroll vertical */
+          border-radius: 0 0 8px 8px; border: 1px solid #d4d4d5; border-top: none; 
       }
     }
 
-    /* ORDINATEUR / DESKTOP */
     @media only screen and (min-width: 992px) {
       .player-tabs-menu { display: none !important; }
       .cities-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -153,74 +150,78 @@
               
               <div class="city-container" 
                    x-data="{ 
-                       viewBoxStr: '0 0 1000 1000',
-                       vb: {x: 0, y: 0, w: 1000, h: 1000},
-                       isDragging: false, startX: 0, startY: 0,
+                       pz: null,
+                       
                        resetCam() {
-                           let rect = this.$el.getBoundingClientRect();
-                           let cw = rect.width || window.innerWidth;
-                           let ch = rect.height || (window.innerHeight * 0.7);
-                           this.vb = ui_getCityBounds(player.city_state, cw, ch);
-                           this.updateVB();
-                       },
-                       updateVB() { this.viewBoxStr = `${this.vb.x} ${this.vb.y} ${this.vb.w} ${this.vb.h}`; },
-                       startDrag(e) {
-                           if(e.target.closest('button')) return; // Ne pas bloquer les boutons cliqués
-                           this.isDragging = true; window.__isDraggingMap = false;
-                           this.startX = e.clientX; this.startY = e.clientY;
-                           if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
-                       },
-                       doDrag(e) {
-                           if (!this.isDragging) return;
-                           let dx = e.clientX - this.startX;
-                           let dy = e.clientY - this.startY;
-                           if (Math.abs(dx) > 3 || Math.abs(dy) > 3) window.__isDraggingMap = true;
+                           // Get container dimensions in pixels
+                           let cw = this.$el.clientWidth;
+                           let ch = this.$el.clientHeight;
                            
-                           let rect = this.$el.getBoundingClientRect();
-                           let scaleX = this.vb.w / rect.width;
-                           let scaleY = this.vb.h / rect.height;
-                           
-                           this.vb.x -= dx * scaleX; 
-                           this.vb.y -= dy * scaleY; 
-                           this.updateVB();
-                           this.startX = e.clientX; this.startY = e.clientY;
-                       },
-                       endDrag(e) {
-                           this.isDragging = false;
-                           if (e.target.releasePointerCapture && e.target.hasPointerCapture && e.target.hasPointerCapture(e.pointerId)) {
-                               e.target.releasePointerCapture(e.pointerId);
+                           // Protection against hidden mobile tabs (dimensions = 0)
+                           if (cw === 0 || ch === 0) {
+                               setTimeout(() => this.resetCam(), 50);
+                               return;
                            }
-                           setTimeout(() => { window.__isDraggingMap = false; }, 50);
+                           
+                           // Calculate city bounds and mathematical center
+                           let bounds = ui_getCityBounds(player.city_state);
+                           let cx = bounds.x + bounds.w / 2;
+                           let cy = bounds.y + bounds.h / 2;
+                           
+                           // Calculate optimal scale to fit screen with a 5% margin
+                           let scale = Math.min(cw / bounds.w, ch / bounds.h) * 0.95;
+                           
+                           // Clamp scale to prevent extreme zoom-in (early game) or zoom-out
+                           scale = Math.min(scale, 1.2); 
+                           scale = Math.max(scale, 0.2);
+
+                           // Calculate translation to place the city center exactly in the middle of the container
+                           let tx = (cw / 2) - (cx * scale);
+                           let ty = (ch / 2) - (cy * scale);
+                           
+                           // Apply Panzoom transformations
+                           if (this.pz) {
+                               this.pz.zoom(scale, { animate: true });
+                               this.pz.pan(tx, ty, { animate: true });
+                           }
                        },
-                       doZoom(e) {
-                           let zoomFactor = e.deltaY > 0 ? 1.15 : 0.85;
-                           let rect = this.$el.getBoundingClientRect();
-                           let mouseX = e.clientX - rect.left; let mouseY = e.clientY - rect.top;
+                       
+                       initPanzoom() {
+                           // Apply Panzoom to the inner <g> layer, NOT the <svg>
+                           this.pz = Panzoom(this.$refs.panzoomLayer, {
+                               maxScale: 3,
+                               minScale: 0.1
+                           });
                            
-                           let svgX = this.vb.x + (mouseX / rect.width) * this.vb.w;
-                           let svgY = this.vb.y + (mouseY / rect.height) * this.vb.h;
+                           // Bind wheel zoom to the container element
+                           this.$el.addEventListener('wheel', this.pz.zoomWithWheel);
                            
-                           this.vb.w *= zoomFactor; this.vb.h *= zoomFactor;
-                           this.vb.x = svgX - (mouseX / rect.width) * this.vb.w;
-                           this.vb.y = svgY - (mouseY / rect.height) * this.vb.h;
-                           this.updateVB();
+                           // Disable map interactions while dragging
+                           this.$refs.panzoomLayer.addEventListener('panzoompan', () => { 
+                               window.__isDraggingMap = true; 
+                           });
+                           this.$refs.panzoomLayer.addEventListener('panzoomend', () => { 
+                               setTimeout(() => { window.__isDraggingMap = false; }, 50); 
+                           });
                        }
                    }"
                    x-init="
+                       initPanzoom();
                        setTimeout(() => resetCam(), 100);
                        $watch('activeTab', val => { if(val === pIdx) setTimeout(() => resetCam(), 50); });
                        $watch('player.city_state', () => { setTimeout(() => resetCam(), 50); });
                    "
-                   @resize.window="resetCam()"
-                   @pointerdown="startDrag($event)" @pointermove="doDrag($event)"
-                   @pointerup="endDrag($event)" @pointercancel="endDrag($event)"
-                   @wheel.prevent="doZoom($event)"
-                   :style="isDragging ? 'cursor: grabbing;' : 'cursor: grab;'">
+                   @resize.window="resetCam()">
                 
-                <svg class="city-svg" :viewBox="viewBoxStr" preserveAspectRatio="xMidYMid meet">
-                    <g x-html="ui_renderCity3D(player.city_state)"></g>
-                    <g x-show="pIdx === $store.game.currentPlayer && $store.game.extra.selected_tile >= 0"
-                       x-html="ui_renderInteractions3D($store.game.extra.valid_placements, $store.game.extra.ghost_hexes, $store.game.extra.selected_site)"></g>
+                <svg class="city-svg">
+                    <g x-ref="panzoomLayer">
+                        <rect x="-50000" y="-50000" width="100000" height="100000" fill="transparent" />
+                        
+                        <g x-html="ui_renderCity3D(player.city_state)"></g>
+                        
+                        <g x-show="pIdx === $store.game.currentPlayer && $store.game.extra.selected_tile >= 0"
+                           x-html="ui_renderInteractions3D($store.game.extra.valid_placements, $store.game.extra.ghost_hexes, $store.game.extra.selected_site)"></g>
+                    </g>
                 </svg>
 
                 <div class="floating-score">
@@ -243,7 +244,7 @@
                                 :disabled="!$store.game.extra.can_confirm || $store.game.isThinking"
                                 :class="$store.game.extra.can_confirm ? 'green' : 'black'"
                                 @click.stop="$store.game.act('confirm_action')"
-                                x-html="$store.game.extra.can_confirm ? 'Confirm <i class=\\'check icon\\'></i>' : 'Waiting...'">
+                                x-html="$store.game.extra.can_confirm ? 'Confirm <i></i>' : 'Waiting...'">
                         </button>
                     </div>
                 </template>

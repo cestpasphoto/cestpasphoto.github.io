@@ -145,7 +145,7 @@ globalThis.ui_renderInteractions3D = function(validPlacements, ghostHexes, selec
             let isSelected = (siteIdx === selectedSite);
             let actionCode = `if(!window.__isDraggingMap) Alpine.store('game').act('select_position', ${siteIdx});`;
             
-            svgs.push(`<circle cx="${coords.x}" cy="${cy}" r="25" fill="transparent" style="cursor: pointer; touch-action: manipulation;" onclick="${actionCode}" />`);
+            svgs.push(`<circle cx="${coords.x}" cy="${cy}" r="25" fill="transparent" style="cursor: pointer;" onclick="${actionCode}" />`);
             let dotColor = isSelected ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.6)';
             svgs.push(`<circle cx="${coords.x}" cy="${cy}" r="6" fill="${dotColor}" stroke="#000" stroke-width="1.5" pointer-events="none" />`);
         });
@@ -153,43 +153,34 @@ globalThis.ui_renderInteractions3D = function(validPlacements, ghostHexes, selec
     return svgs.join('');
 };
 
-// Calcule la vue initiale en respectant EXACTEMENT les proportions de l'écran
-globalThis.ui_getCityBounds = function(cityState, containerWidth, containerHeight) {
+// Calcule uniquement la "Boîte Englobante" brute de la ville.
+globalThis.ui_getCityBounds = function(cityState) {
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     
+    // Le centre exact mathématique d'Akropolis (r=6, q=6)
+    let gridCenterX = HEX_W * (6 + 0.5 * (6 & 1)); // ~374
+    let gridCenterY = 1.5 * HEX_R * 6 * ISO_RATIO; // ~243
+
     if (!cityState || cityState.length === 0) {
-        minX = -50; maxX = 50; minY = -50; maxY = 50;
-    } else {
-        cityState.forEach(hex => {
-            let coords = getHexCoords(hex.r, hex.q);
-            let cy = coords.y - (hex.h - 1) * TILE_THICKNESS;
-            if (coords.x < minX) minX = coords.x;
-            if (coords.x > maxX) maxX = coords.x;
-            if (cy < minY) minY = cy;
-            if (cy > maxY) maxY = cy;
-        });
+        return { x: gridCenterX - 50, y: gridCenterY - 50, w: 100, h: 100 };
     }
 
-    let paddingX = HEX_W * 2;
-    let paddingY = HEX_R * 3;
-    let w = (maxX - minX) + paddingX * 2;
-    let h = (maxY - minY) + paddingY * 2;
-    let cx = (minX + maxX) / 2;
-    let cy = (minY + maxY) / 2;
+    cityState.forEach(hex => {
+        let coords = getHexCoords(hex.r, hex.q);
+        let cy = coords.y - (hex.h - 1) * TILE_THICKNESS;
+        if (coords.x < minX) minX = coords.x;
+        if (coords.x > maxX) maxX = coords.x;
+        if (cy < minY) minY = cy;
+        if (cy > maxY) maxY = cy;
+    });
 
-    // Ajustement de la boîte pour qu'elle ait le même format (ratio) que l'écran
-    // C'est le secret pour éviter les décentrages sur mobile !
-    let screenRatio = containerWidth / containerHeight;
-    let boundsRatio = w / h;
-
-    if (boundsRatio < screenRatio) {
-        w = h * screenRatio; // Élargit la vue pour remplir l'écran
-    } else {
-        h = w / screenRatio; // Allonge la vue pour remplir l'écran
-    }
-
-    // Minimum garanti
-    if (w < 400 && h < 400) { w = 400 * screenRatio; h = 400; }
-
-    return { x: cx - w/2, y: cy - h/2, w: w, h: h };
+    let paddingX = HEX_W * 2.5;
+    let paddingY = HEX_R * 3.5;
+    
+    return { 
+        x: minX - paddingX, 
+        y: minY - paddingY, 
+        w: (maxX - minX) + paddingX * 2, 
+        h: (maxY - minY) + paddingY * 2 
+    };
 };
