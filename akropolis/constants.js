@@ -2,20 +2,16 @@
 /* ===== ENGINE CONFIGURATION (REQUIRED BY GAME.JS) === */
 /* ==================================================== */
 
-const numPlayers = 2;
 const numMCTSSims = 25;
 
-// ONNX Model Configuration
 const defaultModelFileName = './akropolis/model.onnx';
-
-// Tensor dimensions for Akropolis (2 Players)
-// Canonical Board: [1, CITY_SIZE, CITY_SIZE, 3 * N_PLAYERS + 2] -> [1, 13, 13, 8]
 const sizeCB = [1, 13, 13, 8];
-
-// Valid Actions: [CONSTR_SITE_SIZE * CITY_AREA * N_ORIENTS] -> [4 * 169 * 6] -> [4056]
 const sizeV = [1, 4056];
 
-// Python files required by Pyodide to run the engine in the browser
+const numPlayers = +new URLSearchParams(window.location.search).get('players') || 2;
+// const selectedConfig = configs[numPlayers] || configs[2];
+
+
 const list_of_files = [
     ['./akropolis/Game.py', 'Game.py'],
     ['./akropolis/MCTS.py', 'MCTS.py'],
@@ -26,63 +22,52 @@ const list_of_files = [
 ];
 
 /* ==================================================== */
-/* ===== GAME SPECIFIC CONSTANTS BELOW...           === */
+/* ===== 3D GEOMETRIC CONSTANTS                     === */
 /* ==================================================== */
 
-// (The rest of the constants provided in the previous message: HEX_R, COLORS, etc.)
+const HEX_R = 36;                     // Base radius of the hexagon
+const HEX_W = Math.sqrt(3) * HEX_R;   // True width
+const ISO_RATIO = 0.75;               // Y-axis squash ratio for fake 3D
+const TILE_THICKNESS = 5;            // T: Thickness of the tile in pixels
 
-// --- Geometric Constants for Pointy-Topped Hexagons ---
-const HEX_R = 30; // Outer radius of the hexagon
-const HEX_W = Math.sqrt(3) * HEX_R; // Width
-const HEX_H = 2 * HEX_R;            // Height
-const HEX_X_STEP = HEX_W;           // Horizontal distance between centers
-const HEX_Y_STEP = 1.5 * HEX_R;     // Vertical distance between centers
-const HEIGHT_Z_SHIFT = 10;          // Y-offset in pixels to simulate 3D elevation
+// Spacing constants (before isometric projection)
+const HEX_X_STEP = HEX_W;
+const HEX_Y_STEP = 1.5 * HEX_R;
 
-// --- Tiles & Colors ---
+/* ==================================================== */
+/* ===== COLORS & LABELS                            === */
+/* ==================================================== */
+
 const TILE_EMPTY = 0;
 const TILE_QUARRY = 1;
 
 const COLORS = {
     0: 'transparent',
-    1: '#e0e0e0', // QUARRY (Light Grey)
-    2: '#80bfff', // DISTRICT BLUE
-    3: '#ffdd66', // DISTRICT YELLOW
-    4: '#ff8080', // DISTRICT RED
-    5: '#df80ff', // DISTRICT PURPLE
-    6: '#80df80', // DISTRICT GREEN
-    7: '#1a75ff', // PLAZA BLUE
-    8: '#e6b800', // PLAZA YELLOW
-    9: '#e60000', // PLAZA RED
-    10: '#9900cc',// PLAZA PURPLE
-    11: '#009900' // PLAZA GREEN
+    1: '#e2e8f0', // QUARRY (Light Grey)
+    2: '#3b82f6', // DISTRICT BLUE
+    3: '#facc15', // DISTRICT YELLOW
+    4: '#ef4444', // DISTRICT RED
+    5: '#a855f7', // DISTRICT PURPLE
+    6: '#22c55e', // DISTRICT GREEN
+    7: '#1d4ed8', // PLAZA BLUE
+    8: '#ca8a04', // PLAZA YELLOW
+    9: '#b91c1c', // PLAZA RED
+    10: '#7e22ce',// PLAZA PURPLE
+    11: '#166534' // PLAZA GREEN
 };
 
-// Map description IDs to their respective text/icons
 function getTileLabel(desc) {
     if (desc === 1) return 'Q';
-    if (desc >= 2 && desc <= 6) return '⌂'; // Districts
-    if (desc === 7) return '★';            // Plaza Blue (1 star)
-    if ([8, 9, 10].includes(desc)) return '★★'; // Plaza Yellow, Red, Purple (2 stars)
-    if (desc === 11) return '★★★';          // Plaza Green (3 stars)
+    if (desc >= 2 && desc <= 6) return '⌂'; 
+    if (desc === 7) return '★';            
+    if ([8, 9, 10].includes(desc)) return '★★'; 
+    if (desc === 11) return '★★★';          
     return '';
 }
 
-// Convert axial odd-r coordinates to Cartesian SVG coordinates
+// Computes the flat 2D center coordinate, but squashed on Y
 function getHexCoords(r, q) {
-    let x = HEX_W * (q + 0.5 * (r & 1));
-    let y = HEX_Y_STEP * r;
+    let x = HEX_X_STEP * (q + 0.5 * (r & 1));
+    let y = HEX_Y_STEP * r * ISO_RATIO;
     return { x, y };
-}
-
-// Generate the SVG polygon points string for a hexagon centered at (cx, cy)
-function getHexPolygon(cx, cy) {
-    return [
-        [cx, cy - HEX_R],
-        [cx + HEX_W/2, cy - HEX_R/2],
-        [cx + HEX_W/2, cy + HEX_R/2],
-        [cx, cy + HEX_R],
-        [cx - HEX_W/2, cy + HEX_R/2],
-        [cx - HEX_W/2, cy - HEX_R/2]
-    ].map(p => p.join(',')).join(' ');
 }

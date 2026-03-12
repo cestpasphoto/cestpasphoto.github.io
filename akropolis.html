@@ -10,12 +10,14 @@
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
   
+  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+  
   <script src="./common/game.js"></script>
   <script src="./akropolis/constants.js"></script>
   <script src="./akropolis/akropolis.js"></script>
   
   <style>
-    /* Responsive SVG sizes from your framework */
+    /* Responsive SVG sizes from the framework */
     @media only screen and (min-width: 992px) {
       [class*="mobile only"]:not(.computer), [class*="tablet only"]:not(.computer), [class*="computer hidden"] { display: none !important; }
       [class*="svgS"] { width: 3.5rem; max-width: 100%; }
@@ -35,18 +37,23 @@
       [class*="svgL"] { width: 6.0rem; max-width: 100%; }
     }
     
-    /* Specific styles for the hexagonal city view */
+    /* Specific styles for the 3D isometric city view */
     .city-container {
       width: 100%;
-      overflow-x: auto;
-      overflow-y: hidden;
-      touch-action: pan-x pan-y;
-      text-align: center;
+      height: 60vh; /* Hauteur fixe pour permettre le pan/zoom */
+      min-height: 400px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background-color: #f9fafb; /* Fond clair pour faire ressortir la 3D */
+      overflow: hidden;
+      cursor: grab;
+    }
+    .city-container:active {
+      cursor: grabbing;
     }
     .city-svg {
       width: 100%;
-      max-width: 600px; /* Limits size on large screens */
-      height: auto;
+      height: 100%;
     }
   </style>
 </head>
@@ -64,10 +71,7 @@
       <div class="fitted item"> 
         <div class="ui small form">
           <div class="field">
-            <select 
-              x-model.number="$store.game.numMCTSSims" 
-              @change="$store.game.changeDifficulty()" 
-              class="ui dropdown">
+            <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
               <optgroup label="Sub optimal levels">
               <option value="100">Medium</option>
               <option value="25" selected>Easy</option>
@@ -93,7 +97,7 @@
 
   <div class="ui main text container">
 
-    <h1 class="ui huge center aligned header">Akropolis with AI</h1> 
+    <h1 class="ui huge center aligned header">Akropolis 3D with AI</h1> 
     <div class="ui hidden divider"></div>
 
     <button x-show="$store.game.isLoading || $store.game.isThinking" class="ui fluid large active loading button">‌</button>
@@ -106,11 +110,7 @@
           <template x-for="(tile, idx) in $store.game.view.construction_site" :key="'market-'+idx">
             <div class="column">
               <a href="#" @click.prevent="$store.game.act('select_tile', idx)">
-                  <div x-html="ui_renderTile(
-                      tile, 
-                      $store.game.extra.selected_tile === idx,
-                      'svgM'
-                  )"></div>
+                  <div x-html="ui_renderTile3D(tile, $store.game.extra.selected_tile === idx, 'svgM')"></div>
               </a>
               <div class="ui tiny label" :class="idx === 0 ? 'green' : ''" style="margin-top: 5px;">
                 <span x-text="idx"></span> <i class="gem outline icon" style="margin:0;"></i>
@@ -129,15 +129,11 @@
         <div class="ui hidden divider"></div>
 
         <div class="ui fluid large compact buttons" x-show="!$store.game.isLoading">
-          <button class="ui basic icon button" 
-                  @click="$store.game.act('undo', $store.game.arePlayersHuman)" 
-                  :class="{ 'disabled': !$store.game.canUndo || $store.game.isThinking }">
+          <button class="ui basic icon button" @click="$store.game.act('undo', $store.game.arePlayersHuman)" :class="{ 'disabled': !$store.game.canUndo || $store.game.isThinking }">
             <i class="undo icon"></i>
           </button>
           
-          <button class="ui basic icon button" 
-                  @click="$store.game.act('rotate_left')" 
-                  :class="{ 'disabled': $store.game.extra.selected_tile < 0 || $store.game.isThinking }">
+          <button class="ui basic icon button" @click="$store.game.act('rotate_left')" :class="{ 'disabled': $store.game.extra.selected_tile < 0 || $store.game.isThinking }">
             <i class="undo alternate icon"></i>
           </button>
           
@@ -150,16 +146,10 @@
                       'blue': $store.game.gameEnded && !$store.game.winners.includes(0) && !$store.game.winners.includes(1)
                   }"
                   @click="$store.game.act('confirm_action')"
-                  x-text="
-                      $store.game.gameEnded 
-                          ? 'P' + $store.game.winners.join(' & P') + ' wins!' 
-                          : $store.game.extra.action_message
-                  ">
+                  x-text="$store.game.gameEnded ? 'P' + $store.game.winners.join(' & P') + ' wins!' : $store.game.extra.action_message">
           </button>
 
-          <button class="ui basic icon button" 
-                  @click="$store.game.act('rotate_right')" 
-                  :class="{ 'disabled': $store.game.extra.selected_tile < 0 || $store.game.isThinking }">
+          <button class="ui basic icon button" @click="$store.game.act('rotate_right')" :class="{ 'disabled': $store.game.extra.selected_tile < 0 || $store.game.isThinking }">
             <i class="redo alternate icon"></i>
           </button>
         </div>
@@ -170,23 +160,20 @@
           <div> 
             <div class="ui hidden divider computer only"></div>
             
-            <div class="ui horizontal divider" 
-                 x-html="(pIdx === 0 ? 'You' : ($store.game.arePlayersHuman[pIdx] ? 'Player '+pIdx : 'AI '+pIdx)) + ' - ' + player.points + ' pts - ' + player.stones + ' <i class=\'gem outline icon\'></i>'">
-            </div>
+            <div class="ui horizontal divider" x-html="(pIdx === 0 ? 'You' : ($store.game.arePlayersHuman[pIdx] ? 'Player '+pIdx : 'AI '+pIdx)) + ' - ' + player.points + ' pts - ' + player.stones + ' <i class=\'gem outline icon\'></i>'"></div>
             
             <div class="city-container">
-
-                <svg class="city-svg" :viewBox="ui_getCityViewBox(player.city_state)" style="transition: all 0.5s ease-in-out;" preserveAspectRatio="xMidYMid meet">                  
-                  <g x-html="ui_renderCity(player.city_state)"></g>
-                  
-                  <template x-if="pIdx === $store.game.currentPlayer && $store.game.extra.selected_tile >= 0">
-                      <g x-html="ui_renderValidMoves(
-                          $store.game.extra.valid_placements, 
-                          $store.game.extra.ghost_hexes, 
-                          $store.game.extra.selected_site
-                      )"></g>
-                  </template>
-                  
+              <svg :id="'city-svg-' + pIdx" class="city-svg" x-init="initPanZoom('city-svg-' + pIdx)">
+                  <g class="svg-pan-zoom_viewport">
+                      <g x-html="ui_renderCity3D(player.city_state)"></g>
+                      
+                      <g x-show="pIdx === $store.game.currentPlayer && $store.game.extra.selected_tile >= 0"
+                         x-html="ui_renderValidMoves3D(
+                              $store.game.extra.valid_placements, 
+                              $store.game.extra.ghost_hexes, 
+                              $store.game.extra.selected_site
+                         )"></g>
+                  </g>
               </svg>
             </div>
           </div>
@@ -197,5 +184,25 @@
 
   </div>
 </div>
+
+<script>
+  function initPanZoom(svgId) {
+    setTimeout(() => {
+        let element = document.getElementById(svgId);
+        if (element && !element.__panZoomEnabled) {
+            svgPanZoom(element, {
+                zoomEnabled: true,
+                controlIconsEnabled: true,
+                fit: false,
+                center: true,
+                minZoom: 0.2,
+                maxZoom: 5
+            });
+            element.__panZoomEnabled = true;
+        }
+    }, 100);
+  }
+</script>
+
 </body>
 </html>
