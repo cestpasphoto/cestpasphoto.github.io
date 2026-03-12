@@ -116,7 +116,6 @@ globalThis.ui_renderTile3D = function(tileData, isSelected, svgClass) {
     return `<svg class="${svgClass}" viewBox="-60 -60 120 120" ${stroke} style="overflow: visible; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3));">${svgs.join('')}</svg>`;
 };
 
-// Dessine le fantôme ET les cibles de placement avec événements natifs
 globalThis.ui_renderInteractions3D = function(validPlacements, ghostHexes, selectedSite) {
     let svgs = [];
     const store = Alpine.store('game');
@@ -129,7 +128,6 @@ globalThis.ui_renderInteractions3D = function(validPlacements, ghostHexes, selec
             let baseHeight = 0;
             let existing = cityState.find(h => h.r === hex.r && h.q === hex.q);
             if (existing) baseHeight = existing.h;
-            
             svgs.push(renderSingleHex3D(coords.x, coords.y, hex.desc, baseHeight + 1, true));
         });
     }
@@ -139,32 +137,28 @@ globalThis.ui_renderInteractions3D = function(validPlacements, ghostHexes, selec
             let r = Math.floor(siteIdx / 13);
             let q = siteIdx % 13;
             let coords = getHexCoords(r, q);
-            
             let baseHeight = 0;
             let existing = cityState.find(h => h.r === r && h.q === q);
             if (existing) baseHeight = existing.h;
 
             let cy = coords.y - (baseHeight * TILE_THICKNESS);
             let isSelected = (siteIdx === selectedSite);
-            
-            // CORRECTION ICI : Utilisation de Alpine.$data() pour lire le state du container
-            let actionCode = `let container = this.closest('.city-container'); if(container && !Alpine.$data(container).hasDragged) Alpine.store('game').act('select_position', ${siteIdx});`;
+            let actionCode = `if(!window.__isDraggingMap) Alpine.store('game').act('select_position', ${siteIdx});`;
             
             svgs.push(`<circle cx="${coords.x}" cy="${cy}" r="25" fill="transparent" style="cursor: pointer; touch-action: manipulation;" onclick="${actionCode}" />`);
-            
             let dotColor = isSelected ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.6)';
             svgs.push(`<circle cx="${coords.x}" cy="${cy}" r="6" fill="${dotColor}" stroke="#000" stroke-width="1.5" pointer-events="none" />`);
         });
     }
-    
     return svgs.join('');
 };
 
-globalThis.ui_getCityViewBox = function(cityState, panX = 0, panY = 0, zoom = 1) {
+// Calcule la vue initiale en respectant EXACTEMENT les proportions de l'écran
+globalThis.ui_getCityBounds = function(cityState, containerWidth, containerHeight) {
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     
     if (!cityState || cityState.length === 0) {
-        minX = -100; maxX = 100; minY = -100; maxY = 100;
+        minX = -50; maxX = 50; minY = -50; maxY = 50;
     } else {
         cityState.forEach(hex => {
             let coords = getHexCoords(hex.r, hex.q);
@@ -175,24 +169,27 @@ globalThis.ui_getCityViewBox = function(cityState, panX = 0, panY = 0, zoom = 1)
             if (cy > maxY) maxY = cy;
         });
     }
-    
-    let paddingX = HEX_W * 2.0;
-    let paddingY = HEX_R * 3.0;
-    
+
+    let paddingX = HEX_W * 2;
+    let paddingY = HEX_R * 3;
+    let w = (maxX - minX) + paddingX * 2;
+    let h = (maxY - minY) + paddingY * 2;
     let cx = (minX + maxX) / 2;
     let cy = (minY + maxY) / 2;
-    
-    let width = (maxX - minX) + paddingX * 2;
-    let height = (maxY - minY) + paddingY * 2;
-    
-    if (width < 400) width = 400;
-    if (height < 400) height = 400;
-    
-    // Application de la caméra
-    width /= zoom;
-    height /= zoom;
-    cx += panX;
-    cy += panY;
-    
-    return `${cx - width/2} ${cy - height/2} ${width} ${height}`;
+
+    // Ajustement de la boîte pour qu'elle ait le même format (ratio) que l'écran
+    // C'est le secret pour éviter les décentrages sur mobile !
+    let screenRatio = containerWidth / containerHeight;
+    let boundsRatio = w / h;
+
+    if (boundsRatio < screenRatio) {
+        w = h * screenRatio; // Élargit la vue pour remplir l'écran
+    } else {
+        h = w / screenRatio; // Allonge la vue pour remplir l'écran
+    }
+
+    // Minimum garanti
+    if (w < 400 && h < 400) { w = 400 * screenRatio; h = 400; }
+
+    return { x: cx - w/2, y: cy - h/2, w: w, h: h };
 };

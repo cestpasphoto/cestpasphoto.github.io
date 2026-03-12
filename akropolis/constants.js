@@ -2,7 +2,7 @@
 /* ===== ENGINE CONFIGURATION (REQUIRED BY GAME.JS) === */
 /* ==================================================== */
 
-const numPlayers = +new URLSearchParams(window.location.search).get('players') || 2;
+globalThis.numPlayers = +new URLSearchParams(window.location.search).get('players') || 2;
 const numMCTSSims = 25;
 
 // Charge dynamiquement model_3pl.onnx, model_4pl.onnx, etc.
@@ -28,7 +28,7 @@ const list_of_files = [
 const HEX_R = 36;                     
 const HEX_W = Math.sqrt(3) * HEX_R;   
 const ISO_RATIO = 0.75;               
-const TILE_THICKNESS = 5;            
+const TILE_THICKNESS = 8;            
 
 const HEX_X_STEP = HEX_W;
 const HEX_Y_STEP = 1.5 * HEX_R;

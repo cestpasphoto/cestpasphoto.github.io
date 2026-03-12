@@ -35,33 +35,21 @@
     }
     
     .score-badge {
-      display: inline-block;
-      padding: 0.2em 0.3em;
-      border-radius: 4px;
-      color: white;
-      font-weight: bold;
-      text-shadow: 1px 1px 1px rgba(0,0,0,0.3);
-      margin: 0 2px;
-      font-size: 0.9em;
-    }
-    .score-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 10px;
+      display: inline-block; padding: 0.1em 0.3em; border-radius: 3px;
+      color: white; font-weight: bold; font-size: 0.8em; text-shadow: 1px 1px 1px rgba(0,0,0,0.3); margin-right: 2px;
     }
 
     .city-container {
-      width: 100%;
-      background-color: #f8fafc;
-      overflow: hidden;
-      touch-action: none; /* Crucial for custom mobile dragging */
+      width: 100%; background-color: #f8fafc; overflow: hidden;
+      touch-action: none; user-select: none; -webkit-user-select: none;
+      position: relative; /* Indispensable pour les boutons flottants */
     }
-    .city-svg {
-      width: 100%;
-      height: 100%;
-    }
+    .city-svg { width: 100%; height: 100%; }
+    
+    /* Boutons Flottants (Floating Action Buttons) */
+    .fab-confirm { position: absolute; bottom: 15px; right: 15px; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .fab-undo { position: absolute; bottom: 15px; left: 15px; z-index: 10; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .floating-score { position: absolute; top: 10px; left: 10px; z-index: 5; opacity: 0.85; }
     
     /* MOBILE & TABLETTE */
     @media only screen and (max-width: 991px) {
@@ -69,35 +57,19 @@
       .city-wrapper { display: none; }
       .city-wrapper.active-tab { display: block; }
       .city-container {
-        height: 65vh;
-        border-radius: 0 0 8px 8px;
-        border: 1px solid #d4d4d5;
-        border-top: none;
+        /* Hauteur maximale incroyable permise par l'UI compacte ! */
+        height: 75vh; 
+        border-radius: 0 0 8px 8px; border: 1px solid #d4d4d5; border-top: none;
       }
     }
 
-    /* ORDINATEUR / DESKTOP (Grille) */
+    /* ORDINATEUR / DESKTOP */
     @media only screen and (min-width: 992px) {
       .player-tabs-menu { display: none !important; }
-      .cities-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-      }
+      .cities-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
       .city-wrapper { display: block !important; }
-      .city-container {
-        height: 55vh; 
-        border-radius: 8px;
-        border: 1px solid #d4d4d5;
-      }
-      .desktop-city-header {
-        display: block;
-        text-align: center;
-        font-weight: bold;
-        font-size: 1.1em;
-        margin-bottom: 5px;
-        color: #333;
-      }
+      .city-container { height: 60vh; border-radius: 8px; border: 1px solid #d4d4d5; }
+      .desktop-city-header { display: block; text-align: center; font-weight: bold; margin-bottom: 5px; color: #333; }
     }
   </style>
 </head>
@@ -106,145 +78,181 @@
 <div x-data="{ activeTab: 0 }" 
      x-init="$store.game.start(); $watch('$store.game.currentPlayer', val => activeTab = val)">
 
-  <div class="ui borderless menu">
+  <div class="ui borderless compact menu" style="margin-bottom: 0;">
     <div class="ui container">    
-      <div class="fitted item">
-        <button class="ui icon button" @click="$store.game.reset()"><i class="file outline icon"></i></button>  
-      </div> 
-      <div class="fitted item"> 
-        <div class="ui small form">
-          <div class="field">
+      <div class="header item" style="font-size: 1.2em; padding: 0.5em;">Akropolis</div>
+      <div class="right menu">
+        <div class="fitted item">
+          <button class="ui icon basic button" @click="$store.game.reset()"><i class="file outline icon"></i></button>  
+        </div> 
+        <div class="fitted item"> 
+          <div class="ui small form"><div class="field">
             <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
-              <option value="6400">God level</option>
-              <optgroup label="Sub optimal levels">
-              <option value="100">Medium</option>
+              <option value="100">Med</option>
               <option value="25" selected>Easy</option>
-              </optgroup>
             </select>
-          </div>
+          </div></div>
         </div>
-      </div>
-      <div class="fitted item"> 
-        <div class="ui small form">
-          <div class="field">
+        <div class="fitted item"> 
+          <div class="ui small form"><div class="field">
             <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
-                <option value="P0" selected>You vs AI</option>
-                <option value="P1">AI vs you</option>
+                <option value="P0" selected>P vs AI</option>
+                <option value="P1">AI vs P</option>
                 <option value="Human">No AI</option>
-                <option value="AI">WarGames</option>
             </select>
-          </div>
+          </div></div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="ui main text container" style="padding-top: 10px;">
-
-    <h2 class="ui center aligned header" style="margin-bottom: 5px;">Akropolis</h2> 
-
-    <button x-show="$store.game.isLoading || $store.game.isThinking" class="ui fluid large active loading button" style="margin-top: 10px;">‌</button>
+  <div class="ui main text container" style="padding-top: 5px;">
+    <button x-show="$store.game.isLoading || $store.game.isThinking" class="ui fluid large active loading button" style="margin-top: 5px;">‌</button>
 
     <template x-if="!$store.game.isLoading && $store.game.view && $store.game.view.construction_site">
-      <div>
-        
-        <div class="ui very compact equal width center aligned grid" style="margin-top: 10px;">
-          <template x-for="(tile, idx) in $store.game.view.construction_site" :key="'market-'+idx">
-            <div class="column" style="padding: 5px;">
-              <a href="#" @click.prevent="$store.game.act('select_tile', idx)">
-                  <div x-html="ui_renderTile3D(tile, $store.game.extra.selected_tile === idx, 'svgM')"></div>
-              </a>
-              <div class="ui tiny label" :class="idx <= $store.game.view.players[$store.game.currentPlayer].stones ? 'green' : ''" style="margin-top: 2px;">
-                <span x-text="idx"></span> <i class="gem outline icon" style="margin:0;"></i>
-              </div>
+      <div class="ui very compact equal width center aligned grid" style="margin: 5px 0;">
+        <template x-for="(tile, idx) in $store.game.view.construction_site" :key="'market-'+idx">
+          <div class="column" style="padding: 2px;">
+            <a href="#" @click.prevent="$store.game.act('select_tile', idx)">
+                <div x-html="ui_renderTile3D(tile, $store.game.extra.selected_tile === idx, 'svgM')"></div>
+            </a>
+            <div class="ui mini label" :class="idx <= $store.game.view.players[$store.game.currentPlayer].stones ? 'green' : ''" style="margin-top: 0; padding: 0.3em;">
+              <span x-text="idx"></span><i class="gem outline icon" style="margin:0 0 0 2px;"></i>
             </div>
-          </template>
-
-          <div class="column middle aligned" style="padding: 5px;">
-              <div class="ui tiny statistic">
-                  <div class="value" x-text="$store.game.view.stacks_remaining"></div>
-                  <div class="label">Stacks</div>
-              </div>
           </div>
+        </template>
+        <div class="column middle aligned" style="padding: 2px;">
+            <div class="ui mini statistic"><div class="value" x-text="$store.game.view.stacks_remaining"></div><div class="label">Stacks</div></div>
         </div>
-
-        <div class="ui fluid large compact buttons" x-show="!$store.game.isLoading" style="margin: 10px 0;">
-          <button class="ui basic icon button" @click="$store.game.act('undo', $store.game.arePlayersHuman)" :class="{ 'disabled': !$store.game.canUndo || $store.game.isThinking }">
-            <i class="undo icon"></i>
-          </button>
-          
-          <button class="ui button" 
-                  :disabled="$store.game.gameEnded || !$store.game.extra.can_confirm || $store.game.isThinking"
-                  :class="{ 
-                      'basic': !$store.game.gameEnded && !$store.game.extra.can_confirm,
-                      'green': ($store.game.gameEnded && $store.game.winners.includes(0)) || (!$store.game.gameEnded && $store.game.extra.can_confirm),
-                      'red': $store.game.gameEnded && $store.game.winners.includes(1)
-                  }"
-                  @click="$store.game.act('confirm_action')"
-                  x-text="$store.game.gameEnded ? 'P' + $store.game.winners.join(' & P') + ' wins!' : ($store.game.extra.selected_site >= 0 ? 'Click placement again to rotate, or click here to Confirm' : $store.game.extra.action_message)">
-          </button>
-        </div>
-
-        <div class="ui segment" style="padding: 10px;">
-          <div class="ui relaxed divided list">
-            <template x-for="(player, pIdx) in $store.game.view.players" :key="'score-'+pIdx">
-              <div class="item" style="padding: 0.3em 0;">
-                <div class="content score-row">
-                  <strong x-text="(pIdx === 0 ? 'You' : ($store.game.arePlayersHuman[pIdx] ? 'P'+pIdx : 'AI '+pIdx)) + ':'"></strong>
-                  <div>
-                    <span class="score-badge" style="background-color: #3b82f6;" x-text="player.details[0]"></span> +
-                    <span class="score-badge" style="background-color: #facc15; color: black;" x-text="player.details[1]"></span> +
-                    <span class="score-badge" style="background-color: #ef4444;" x-text="player.details[2]"></span> +
-                    <span class="score-badge" style="background-color: #a855f7;" x-text="player.details[3]"></span> +
-                    <span class="score-badge" style="background-color: #22c55e;" x-text="player.details[4]"></span> +
-                    <span class="score-badge" style="background-color: #94a3b8;" x-text="player.details[5]"></span>
-                    = <strong style="margin-left: 5px; font-size: 1.1em;" x-text="player.points + ' pts'"></strong>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </div>
-        </div>
-
       </div>
     </template>
   </div>
 
-  <div class="ui fluid container" style="padding: 0 2vw 20px 2vw;">
+  <div class="ui fluid container" style="padding: 0 2vw 10px 2vw;">
     <template x-if="!$store.game.isLoading && $store.game.view && $store.game.view.construction_site">
       <div>
         
-        <div class="ui top attached tabular menu player-tabs-menu">
+        <div class="ui top attached tabular compact menu player-tabs-menu">
           <template x-for="(player, pIdx) in $store.game.view.players" :key="'tab-'+pIdx">
-            <a class="item" :class="{ 'active': activeTab === pIdx }" @click.prevent="activeTab = pIdx" 
-               x-html="'City P' + pIdx + (pIdx === $store.game.currentPlayer ? ' <i class=\'asterisk icon small red\' style=\'margin-left:5px\'></i>' : '')"></a>
+            <a class="item" style="padding: 0.8em 1em;" :class="{ 'active': activeTab === pIdx }" @click.prevent="activeTab = pIdx">
+               <span x-text="pIdx === 0 ? 'You' : 'P' + pIdx"></span>
+               <span style="margin-left: 5px; font-weight: bold; color: #d97706;">👑<span x-text="player.points"></span></span>
+               <span style="margin-left: 5px; font-weight: bold; color: #64748b;">💎<span x-text="player.stones"></span></span>
+               <i x-show="pIdx === $store.game.currentPlayer" class="asterisk icon small red" style="margin-left:5px"></i>
+            </a>
           </template>
         </div>
 
         <div class="cities-grid">
           <template x-for="(player, pIdx) in $store.game.view.players" :key="'city-'+pIdx">
             <div class="city-wrapper" :class="{ 'active-tab': activeTab === pIdx }">
-              <div class="desktop-city-header" x-html="(pIdx === 0 ? 'Your City' : ($store.game.arePlayersHuman[pIdx] ? 'City P'+pIdx : 'City AI '+pIdx)) + (pIdx === $store.game.currentPlayer ? ' <i class=\'asterisk icon small red\'></i>' : '')"></div>
+              <div class="desktop-city-header">
+                <span x-text="pIdx === 0 ? 'Your City' : 'City P' + pIdx"></span> - 👑 <span x-text="player.points"></span> - 💎 <span x-text="player.stones"></span>
+                <i x-show="pIdx === $store.game.currentPlayer" class="asterisk icon small red"></i>
+              </div>
               
               <div class="city-container" 
-                   x-data="{ panX: 0, panY: 0, zoom: 1, isDragging: false, startX: 0, startY: 0, hasDragged: false }"
-                   @pointerdown="isDragging = true; hasDragged = false; startX = $event.clientX; startY = $event.clientY;"
-                   @pointermove="if(isDragging) { 
-                      let dx = $event.clientX - startX; let dy = $event.clientY - startY;
-                      if(Math.abs(dx) > 3 || Math.abs(dy) > 3) hasDragged = true;
-                      panX -= dx * 1.5 / zoom; panY -= dy * 1.5 / zoom; 
-                      startX = $event.clientX; startY = $event.clientY; 
+                   x-data="{ 
+                       viewBoxStr: '0 0 1000 1000',
+                       vb: {x: 0, y: 0, w: 1000, h: 1000},
+                       isDragging: false, startX: 0, startY: 0,
+                       resetCam() {
+                           let rect = this.$el.getBoundingClientRect();
+                           let cw = rect.width || window.innerWidth;
+                           let ch = rect.height || (window.innerHeight * 0.7);
+                           this.vb = ui_getCityBounds(player.city_state, cw, ch);
+                           this.updateVB();
+                       },
+                       updateVB() { this.viewBoxStr = `${this.vb.x} ${this.vb.y} ${this.vb.w} ${this.vb.h}`; },
+                       startDrag(e) {
+                           if(e.target.closest('button')) return; // Ne pas bloquer les boutons cliqués
+                           this.isDragging = true; window.__isDraggingMap = false;
+                           this.startX = e.clientX; this.startY = e.clientY;
+                           if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
+                       },
+                       doDrag(e) {
+                           if (!this.isDragging) return;
+                           let dx = e.clientX - this.startX;
+                           let dy = e.clientY - this.startY;
+                           if (Math.abs(dx) > 3 || Math.abs(dy) > 3) window.__isDraggingMap = true;
+                           
+                           let rect = this.$el.getBoundingClientRect();
+                           let scaleX = this.vb.w / rect.width;
+                           let scaleY = this.vb.h / rect.height;
+                           
+                           this.vb.x -= dx * scaleX; 
+                           this.vb.y -= dy * scaleY; 
+                           this.updateVB();
+                           this.startX = e.clientX; this.startY = e.clientY;
+                       },
+                       endDrag(e) {
+                           this.isDragging = false;
+                           if (e.target.releasePointerCapture && e.target.hasPointerCapture && e.target.hasPointerCapture(e.pointerId)) {
+                               e.target.releasePointerCapture(e.pointerId);
+                           }
+                           setTimeout(() => { window.__isDraggingMap = false; }, 50);
+                       },
+                       doZoom(e) {
+                           let zoomFactor = e.deltaY > 0 ? 1.15 : 0.85;
+                           let rect = this.$el.getBoundingClientRect();
+                           let mouseX = e.clientX - rect.left; let mouseY = e.clientY - rect.top;
+                           
+                           let svgX = this.vb.x + (mouseX / rect.width) * this.vb.w;
+                           let svgY = this.vb.y + (mouseY / rect.height) * this.vb.h;
+                           
+                           this.vb.w *= zoomFactor; this.vb.h *= zoomFactor;
+                           this.vb.x = svgX - (mouseX / rect.width) * this.vb.w;
+                           this.vb.y = svgY - (mouseY / rect.height) * this.vb.h;
+                           this.updateVB();
+                       }
                    }"
-                   @pointerup="isDragging = false"
-                   @pointerleave="isDragging = false"
-                   @wheel.prevent="let z = $event.deltaY > 0 ? 0.9 : 1.1; zoom *= z;"
+                   x-init="
+                       setTimeout(() => resetCam(), 100);
+                       $watch('activeTab', val => { if(val === pIdx) setTimeout(() => resetCam(), 50); });
+                       $watch('player.city_state', () => { setTimeout(() => resetCam(), 50); });
+                   "
+                   @resize.window="resetCam()"
+                   @pointerdown="startDrag($event)" @pointermove="doDrag($event)"
+                   @pointerup="endDrag($event)" @pointercancel="endDrag($event)"
+                   @wheel.prevent="doZoom($event)"
                    :style="isDragging ? 'cursor: grabbing;' : 'cursor: grab;'">
                 
-                <svg class="city-svg" :viewBox="ui_getCityViewBox(player.city_state, panX, panY, zoom)" style="transition: viewBox 0.1s ease;" preserveAspectRatio="xMidYMid meet">
+                <svg class="city-svg" :viewBox="viewBoxStr" preserveAspectRatio="xMidYMid meet">
                     <g x-html="ui_renderCity3D(player.city_state)"></g>
                     <g x-show="pIdx === $store.game.currentPlayer && $store.game.extra.selected_tile >= 0"
                        x-html="ui_renderInteractions3D($store.game.extra.valid_placements, $store.game.extra.ghost_hexes, $store.game.extra.selected_site)"></g>
                 </svg>
+
+                <div class="floating-score">
+                    <span class="score-badge" style="background-color: #3b82f6;" x-text="player.details[0]"></span>
+                    <span class="score-badge" style="background-color: #facc15; color: black;" x-text="player.details[1]"></span>
+                    <span class="score-badge" style="background-color: #ef4444;" x-text="player.details[2]"></span>
+                    <span class="score-badge" style="background-color: #a855f7;" x-text="player.details[3]"></span>
+                    <span class="score-badge" style="background-color: #22c55e;" x-text="player.details[4]"></span>
+                </div>
+
+                <template x-if="pIdx === $store.game.currentPlayer && !$store.game.gameEnded && !$store.game.isLoading">
+                    <div>
+                        <button class="ui circular icon large button fab-undo" 
+                                @click.stop="$store.game.act('undo', $store.game.arePlayersHuman)" 
+                                :class="{ 'disabled': !$store.game.canUndo || $store.game.isThinking }">
+                            <i class="undo icon"></i>
+                        </button>
+                        
+                        <button class="ui large button fab-confirm" 
+                                :disabled="!$store.game.extra.can_confirm || $store.game.isThinking"
+                                :class="$store.game.extra.can_confirm ? 'green' : 'black'"
+                                @click.stop="$store.game.act('confirm_action')"
+                                x-html="$store.game.extra.can_confirm ? 'Confirm <i class=\\'check icon\\'></i>' : 'Waiting...'">
+                        </button>
+                    </div>
+                </template>
+
+                <button class="ui mini circular icon basic button"
+                        style="position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(255,255,255,0.9);"
+                        @click.stop="resetCam()" title="Recentrer">
+                    <i class="crosshairs icon"></i>
+                </button>
 
               </div>
             </div>
