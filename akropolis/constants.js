@@ -58,8 +58,8 @@ const COLORS = {
 };
 
 function getTileLabel(desc) {
-    if (desc === 1) return 'Q';
-    if (desc >= 2 && desc <= 6) return '⌂'; 
+    // if (desc === 1) return 'Q';
+    // if (desc >= 2 && desc <= 6) return '⌂'; 
     if (desc === 7) return '★';            
     if ([8, 9, 10].includes(desc)) return '★★'; 
     if (desc === 11) return '★★★';          

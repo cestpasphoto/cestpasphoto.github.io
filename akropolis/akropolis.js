@@ -57,7 +57,7 @@ function renderSingleHex3D(x, y, desc, h, isGhost = false) {
 
     // Icon / Label
     if (label) {
-         elements.push(`<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="bold" fill="white" opacity="${opacity}" style="text-shadow: 1px 1px 2px black;">${label}</text>`);
+         elements.push(`<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="18" font-weight="bold" fill="white" opacity="${opacity}" style="text-shadow: 1px 1px 2px black;">${label}</text>`);
     }
 
     // Height Badge (Optional, but useful if stack is hard to read)
@@ -116,38 +116,14 @@ globalThis.ui_renderTile3D = function(tileData, isSelected, svgClass) {
     return `<svg class="${svgClass}" viewBox="-60 -60 120 120" ${stroke} style="overflow: visible; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3));">${svgs.join('')}</svg>`;
 };
 
-globalThis.ui_renderValidMoves3D = function(validPlacements, ghostHexes, selectedSite) {
+// Dessine le fantôme ET les cibles de placement avec événements natifs
+globalThis.ui_renderInteractions3D = function(validPlacements, ghostHexes, selectedSite) {
     let svgs = [];
-    
-    // Draw targets
-    if (validPlacements && validPlacements.length > 0) {
-        validPlacements.forEach(siteIdx => {
-            let r = Math.floor(siteIdx / 13);
-            let q = siteIdx % 13;
-            let coords = getHexCoords(r, q);
-            
-            // Find current height to place the target exactly on top of the stack
-            const store = Alpine.store('game');
-            let cityState = store.view.players[store.currentPlayer].city_state;
-            let baseHeight = 0;
-            let existing = cityState.find(h => h.r === r && h.q === q);
-            if (existing) baseHeight = existing.h;
+    const store = Alpine.store('game');
+    let cityState = store.view.players[store.currentPlayer].city_state;
 
-            let cy = coords.y - (baseHeight * TILE_THICKNESS); // Shift UP based on height
-            
-            let isSelected = (siteIdx === selectedSite);
-            let color = isSelected ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.4)';
-            let cursor = isSelected ? 'default' : 'pointer';
-            
-            svgs.push(`<circle cx="${coords.x}" cy="${cy}" r="10" fill="${color}" stroke="#000" stroke-width="2" style="cursor: ${cursor}" @click="$store.game.act('select_position', ${siteIdx})" />`);
-        });
-    }
-    
-    // Draw Ghost Tile
+    // 1. Dessin du fantôme
     if (selectedSite >= 0 && ghostHexes && ghostHexes.length > 0) {
-        const store = Alpine.store('game');
-        let cityState = store.view.players[store.currentPlayer].city_state;
-        
         let sortedGhost = sortCityHexes(ghostHexes);
         sortedGhost.forEach(hex => {
             let coords = getHexCoords(hex.r, hex.q);
@@ -155,10 +131,64 @@ globalThis.ui_renderValidMoves3D = function(validPlacements, ghostHexes, selecte
             let existing = cityState.find(h => h.r === hex.r && h.q === hex.q);
             if (existing) baseHeight = existing.h;
             
-            // Ghost is placed at baseHeight + 1
             svgs.push(renderSingleHex3D(coords.x, coords.y, hex.desc, baseHeight + 1, true));
+        });
+    }
+
+    // 2. Dessin des cibles cliquables
+    if (validPlacements && validPlacements.length > 0) {
+        validPlacements.forEach(siteIdx => {
+            let r = Math.floor(siteIdx / 13);
+            let q = siteIdx % 13;
+            let coords = getHexCoords(r, q);
+            
+            let baseHeight = 0;
+            let existing = cityState.find(h => h.r === r && h.q === q);
+            if (existing) baseHeight = existing.h;
+
+            let cy = coords.y - (baseHeight * TILE_THICKNESS);
+            let isSelected = (siteIdx === selectedSite);
+            
+            // ACTION NATIVE : On appelle directement le store Alpine en JS pur
+            let actionCode = `Alpine.store('game').act('select_position', ${siteIdx})`;
+            
+            // Grand cercle invisible pour le clic/tap mobile
+            svgs.push(`<circle cx="${coords.x}" cy="${cy}" r="25" fill="transparent" style="cursor: pointer; touch-action: manipulation;" onclick="${actionCode}" />`);
+            
+            // Petit point visuel de la cible
+            let dotColor = isSelected ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.6)';
+            svgs.push(`<circle cx="${coords.x}" cy="${cy}" r="6" fill="${dotColor}" stroke="#000" stroke-width="1.5" pointer-events="none" />`);
         });
     }
     
     return svgs.join('');
+};
+
+globalThis.ui_getCityViewBox = function(cityState) {
+    if (!cityState || cityState.length === 0) return "-120 -120 240 240"; // Vue par défaut plus large
+    
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    
+    cityState.forEach(hex => {
+        let coords = getHexCoords(hex.r, hex.q);
+        let cy = coords.y - (hex.h - 1) * TILE_THICKNESS;
+        
+        if (coords.x < minX) minX = coords.x;
+        if (coords.x > maxX) maxX = coords.x;
+        if (cy < minY) minY = cy;
+        if (cy > maxY) maxY = cy;
+    });
+    
+    // Marges généreuses pour que la ville respire (équivalent d'un zoom-out naturel)
+    let paddingX = HEX_W * 2.0;
+    let paddingY = HEX_R * 3.0;
+    
+    let width = (maxX - minX) + paddingX * 2;
+    let height = (maxY - minY) + paddingY * 2;
+    
+    // Évite de trop zoomer quand il y a peu de tuiles (1 ou 2)
+    if (width < 350) width = 350;
+    if (height < 350) height = 350;
+    
+    return `${minX - paddingX} ${minY - paddingY} ${width} ${height}`;
 };

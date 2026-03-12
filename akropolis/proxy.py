@@ -188,18 +188,22 @@ def handle_action(action_name, *args):
             
     elif action_name == "select_position":
         site_idx = int(args[0])
-        sel_site_idx = site_idx
         
-        # Auto-rotate to the first valid orientation if current is invalid
-        if not _is_selection_valid() and sel_tile_idx >= 0:
-            valids = g.getValidMoves(board, player)
-            n_patt = get_n_patterns()
-            n_ori = get_n_orientations()
-            base_offset = sel_tile_idx * n_patt + site_idx * n_ori
-            for o in range(n_ori):
-                if valids[base_offset + o]:
-                    sel_orient = o
-                    break
+        if sel_site_idx == site_idx:
+            # Le joueur a cliqué sur le même emplacement -> on pivote de 60° !
+            sel_orient = (sel_orient + 1) % 6
+        else:
+            sel_site_idx = site_idx
+            # Si la nouvelle position est invalide avec l'orientation actuelle, on auto-pivote
+            if not _is_selection_valid() and sel_tile_idx >= 0:
+                valids = g.getValidMoves(board, player)
+                n_patt = get_n_patterns()
+                n_ori = get_n_orientations()
+                base_offset = sel_tile_idx * n_patt + site_idx * n_ori
+                for o in range(n_ori):
+                    if valids[base_offset + o]:
+                        sel_orient = o
+                        break
 
     elif action_name == "rotate_left":
         sel_orient = (sel_orient - 1) % 6
@@ -278,13 +282,24 @@ def get_render_state():
                         "desc": desc
                     })
         
-        # Calculate scores through the engine rather than reading int8 estimation
         score = int(g.getScore(board, p))
         stones = int(g.board.stones[p])
+        
+        d = g.board.districts[p, :]
+        pl = g.board.plazas[p, :]
+        score_details = [
+            int(d[0] * pl[0] * 1),
+            int(d[1] * pl[1] * 2),
+            int(d[2] * pl[2] * 2),
+            int(d[3] * pl[3] * 2),
+            int(d[4] * pl[4] * 3),
+            stones
+        ]
         
         players_data.append({
             "points": score,
             "stones": stones,
+            "details": score_details,
             "city_state": city_hexes
         })
 
