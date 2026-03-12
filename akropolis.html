@@ -134,7 +134,6 @@
             <a class="item" style="padding: 0.8em 1em;" :class="{ 'active': activeTab === pIdx }" @click.prevent="activeTab = pIdx">
                <span x-text="pIdx === 0 ? 'You' : 'P' + pIdx"></span>
                <span style="margin-left: 5px; font-weight: bold; color: #d97706;">👑<span x-text="player.points"></span></span>
-               <span style="margin-left: 5px; font-weight: bold; color: #64748b;">💎<span x-text="player.stones"></span></span>
                <i x-show="pIdx === $store.game.currentPlayer" class="asterisk icon small red" style="margin-left:5px"></i>
             </a>
           </template>
@@ -144,7 +143,7 @@
           <template x-for="(player, pIdx) in $store.game.view.players" :key="'city-'+pIdx">
             <div class="city-wrapper" :class="{ 'active-tab': activeTab === pIdx }">
               <div class="desktop-city-header">
-                <span x-text="pIdx === 0 ? 'Your City' : 'City P' + pIdx"></span> - 👑 <span x-text="player.points"></span> - 💎 <span x-text="player.stones"></span>
+                <span x-text="pIdx === 0 ? 'Your City' : 'City P' + pIdx"></span> - 👑 <span x-text="player.points"></span>
                 <i x-show="pIdx === $store.game.currentPlayer" class="asterisk icon small red"></i>
               </div>
               
@@ -230,6 +229,7 @@
                     <span class="score-badge" style="background-color: #ef4444;" x-text="player.details[2]"></span>
                     <span class="score-badge" style="background-color: #a855f7;" x-text="player.details[3]"></span>
                     <span class="score-badge" style="background-color: #22c55e;" x-text="player.details[4]"></span>
+                    <span class="score-badge" style="background-color: #64748b;" x-text="player.stones"></span>
                 </div>
 
                 <template x-if="pIdx === $store.game.currentPlayer && !$store.game.gameEnded && !$store.game.isLoading">
