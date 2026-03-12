@@ -25,10 +25,11 @@ def init_game(numMCTSSims):
     mcts_args = dotdict({
         'numMCTSSims'     : numMCTSSims,
         'fpu'             : 0.10,
-        'cpuct'           : 1.00,
+        'cpuct'           : 1.5,
         'prob_fullMCTS'   : 1.,
-        'forced_playouts' : False,
+        'forced_playouts' : True,
         'no_mem_optim'    : False,
+        'universes'       : 1,
     })
 
     g = Game()

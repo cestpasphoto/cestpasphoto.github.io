@@ -4,9 +4,8 @@
 
 const numMCTSSims = 25;
 
-const defaultModelFileName = './akropolis/model.onnx';
-const sizeCB = [1, 13, 13, 8];
-const sizeV = [1, 4056];
+const sizeCB = [1, 13, 13, 8]; // 3 = 13x13x11, 4 = 13x13x14
+const sizeV = [1, 4056];       // 3 = 5070, 4 = 6084
 
 const numPlayers = +new URLSearchParams(window.location.search).get('players') || 2;
 // const selectedConfig = configs[numPlayers] || configs[2];
@@ -20,6 +19,8 @@ const list_of_files = [
     ['./akropolis/AkropolisLogicNumba.py', 'AkropolisLogicNumba.py'],
     ['./akropolis/AkropolisConstants.py', 'AkropolisConstants.py'],
 ];
+const defaultModelFileName = './akropolis/model_2pl.onnx';
+
 
 /* ==================================================== */
 /* ===== 3D GEOMETRIC CONSTANTS                     === */
