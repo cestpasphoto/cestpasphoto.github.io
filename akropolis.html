@@ -15,7 +15,6 @@
   <script src="./akropolis/akropolis.js"></script>
   
   <style>
-    /* Responsive SVG sizes */
     @media only screen and (min-width: 992px) {
       [class*="mobile only"]:not(.computer), [class*="tablet only"]:not(.computer), [class*="computer hidden"] { display: none !important; }
       [class*="svgS"] { width: 3.5rem; max-width: 100%; }
@@ -35,7 +34,6 @@
       [class*="svgL"] { width: 6.0rem; max-width: 100%; }
     }
     
-    /* Styles pour le scoreboard compact */
     .score-badge {
       display: inline-block;
       padding: 0.2em 0.3em;
@@ -54,44 +52,41 @@
       gap: 10px;
     }
 
-    /* ========================================================= */
-    /* LOGIQUE RESPONSIVE DES VILLES (ONGLETS vs GRILLE)         */
-    /* ========================================================= */
     .city-container {
       width: 100%;
       background-color: #f8fafc;
       overflow: hidden;
+      touch-action: none; /* Crucial for custom mobile dragging */
     }
     .city-svg {
       width: 100%;
       height: 100%;
     }
     
-    /* MOBILE & TABLETTE (Mode Onglets) */
+    /* MOBILE & TABLETTE */
     @media only screen and (max-width: 991px) {
       .desktop-city-header { display: none; }
       .city-wrapper { display: none; }
       .city-wrapper.active-tab { display: block; }
       .city-container {
-        height: 70vh;
+        height: 65vh;
         border-radius: 0 0 8px 8px;
         border: 1px solid #d4d4d5;
         border-top: none;
       }
     }
 
-    /* ORDINATEUR / DESKTOP (Mode Grille 2x2) */
+    /* ORDINATEUR / DESKTOP (Grille) */
     @media only screen and (min-width: 992px) {
-      .player-tabs-menu { display: none !important; } /* Cache les onglets */
+      .player-tabs-menu { display: none !important; }
       .cities-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr; /* 2 colonnes */
+        grid-template-columns: 1fr 1fr;
         gap: 20px;
-        margin-top: 15px;
       }
-      .city-wrapper { display: block !important; } /* Affiche tout le monde */
+      .city-wrapper { display: block !important; }
       .city-container {
-        height: 55vh; /* Ajusté pour qu'on puisse voir les 2 lignes */
+        height: 55vh; 
         border-radius: 8px;
         border: 1px solid #d4d4d5;
       }
@@ -120,6 +115,7 @@
         <div class="ui small form">
           <div class="field">
             <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
+              <option value="6400">God level</option>
               <optgroup label="Sub optimal levels">
               <option value="100">Medium</option>
               <option value="25" selected>Easy</option>
@@ -158,9 +154,7 @@
               <a href="#" @click.prevent="$store.game.act('select_tile', idx)">
                   <div x-html="ui_renderTile3D(tile, $store.game.extra.selected_tile === idx, 'svgM')"></div>
               </a>
-              <div class="ui tiny label" 
-                   :class="idx <= $store.game.view.players[$store.game.currentPlayer].stones ? 'green' : ''" 
-                   style="margin-top: 2px;">
+              <div class="ui tiny label" :class="idx <= $store.game.view.players[$store.game.currentPlayer].stones ? 'green' : ''" style="margin-top: 2px;">
                 <span x-text="idx"></span> <i class="gem outline icon" style="margin:0;"></i>
               </div>
             </div>
@@ -197,7 +191,6 @@
               <div class="item" style="padding: 0.3em 0;">
                 <div class="content score-row">
                   <strong x-text="(pIdx === 0 ? 'You' : ($store.game.arePlayersHuman[pIdx] ? 'P'+pIdx : 'AI '+pIdx)) + ':'"></strong>
-                  
                   <div>
                     <span class="score-badge" style="background-color: #3b82f6;" x-text="player.details[0]"></span> +
                     <span class="score-badge" style="background-color: #facc15; color: black;" x-text="player.details[1]"></span> +
@@ -213,41 +206,55 @@
           </div>
         </div>
 
-        <div class="ui top attached tabular menu player-tabs-menu" style="margin-top: 10px;">
+      </div>
+    </template>
+  </div>
+
+  <div class="ui fluid container" style="padding: 0 2vw 20px 2vw;">
+    <template x-if="!$store.game.isLoading && $store.game.view && $store.game.view.construction_site">
+      <div>
+        
+        <div class="ui top attached tabular menu player-tabs-menu">
           <template x-for="(player, pIdx) in $store.game.view.players" :key="'tab-'+pIdx">
-            <a class="item" 
-               :class="{ 'active': activeTab === pIdx }" 
-               @click.prevent="activeTab = pIdx" 
+            <a class="item" :class="{ 'active': activeTab === pIdx }" @click.prevent="activeTab = pIdx" 
                x-html="'City P' + pIdx + (pIdx === $store.game.currentPlayer ? ' <i class=\'asterisk icon small red\' style=\'margin-left:5px\'></i>' : '')"></a>
           </template>
         </div>
 
         <div class="cities-grid">
           <template x-for="(player, pIdx) in $store.game.view.players" :key="'city-'+pIdx">
-            
             <div class="city-wrapper" :class="{ 'active-tab': activeTab === pIdx }">
-              
               <div class="desktop-city-header" x-html="(pIdx === 0 ? 'Your City' : ($store.game.arePlayersHuman[pIdx] ? 'City P'+pIdx : 'City AI '+pIdx)) + (pIdx === $store.game.currentPlayer ? ' <i class=\'asterisk icon small red\'></i>' : '')"></div>
               
-              <div class="city-container">
-                <svg class="city-svg" :viewBox="ui_getCityViewBox(player.city_state)" style="transition: viewBox 0.4s ease;" preserveAspectRatio="xMidYMid meet">
-                    
+              <div class="city-container" 
+                   x-data="{ panX: 0, panY: 0, zoom: 1, isDragging: false, startX: 0, startY: 0, hasDragged: false }"
+                   @pointerdown="isDragging = true; hasDragged = false; startX = $event.clientX; startY = $event.clientY;"
+                   @pointermove="if(isDragging) { 
+                      let dx = $event.clientX - startX; let dy = $event.clientY - startY;
+                      if(Math.abs(dx) > 3 || Math.abs(dy) > 3) hasDragged = true;
+                      panX -= dx * 1.5 / zoom; panY -= dy * 1.5 / zoom; 
+                      startX = $event.clientX; startY = $event.clientY; 
+                   }"
+                   @pointerup="isDragging = false"
+                   @pointerleave="isDragging = false"
+                   @wheel.prevent="let z = $event.deltaY > 0 ? 0.9 : 1.1; zoom *= z;"
+                   :style="isDragging ? 'cursor: grabbing;' : 'cursor: grab;'">
+                
+                <svg class="city-svg" :viewBox="ui_getCityViewBox(player.city_state, panX, panY, zoom)" style="transition: viewBox 0.1s ease;" preserveAspectRatio="xMidYMid meet">
                     <g x-html="ui_renderCity3D(player.city_state)"></g>
-                    
                     <g x-show="pIdx === $store.game.currentPlayer && $store.game.extra.selected_tile >= 0"
                        x-html="ui_renderInteractions3D($store.game.extra.valid_placements, $store.game.extra.ghost_hexes, $store.game.extra.selected_site)"></g>
-
                 </svg>
-              </div>
 
+              </div>
             </div>
           </template>
         </div>
 
       </div>
     </template>
-
   </div>
+
 </div>
 </body>
 </html>

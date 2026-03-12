@@ -2,12 +2,19 @@ import json
 import numpy as np
 import js
 from MCTS import MCTS
+import sys
 
 # Dynamically load the correct game module based on the JS frontend configuration
 try:
     num_players = int(js.numPlayers)
 except Exception:
     num_players = 2
+
+import AkropolisConstants
+AkropolisConstants.N_PLAYERS = num_players
+AkropolisConstants.CONSTR_SITE_SIZE = num_players + 2
+sys.modules['AkropolisConstants'] = AkropolisConstants
+
 from AkropolisGame import AkropolisGame as Game
 
 
