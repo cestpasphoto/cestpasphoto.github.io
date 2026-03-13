@@ -85,7 +85,18 @@ function sortCityHexes(cityState) {
 globalThis.ui_renderCity3D = function(cityState) {
     if (!cityState || cityState.length === 0) return '';
     
-    let sorted = sortCityHexes(cityState);
+    let expandedState = [];
+    cityState.forEach(hex => {
+        // Générer les tuiles recouvertes de z=1 jusqu'à z=h-1
+        for (let z = 1; z < hex.h; z++) {
+            expandedState.push({ r: hex.r, q: hex.q, h: z, desc: -1 });
+        }
+        // Ajouter la tuile visible tout en haut
+        expandedState.push(hex);
+    });
+
+    let sorted = sortCityHexes(expandedState);
+    
     let svgs = sorted.map(hex => {
         let coords = getHexCoords(hex.r, hex.q);
         return renderSingleHex3D(coords.x, coords.y, hex.desc, hex.h);

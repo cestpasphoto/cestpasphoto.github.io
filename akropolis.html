@@ -75,35 +75,51 @@
 <div x-data="{ activeTab: 0 }" 
      x-init="$store.game.start(); $watch('$store.game.currentPlayer', val => activeTab = val)">
 
-  <div class="ui borderless compact menu" style="margin-bottom: 0;">
-    <div class="ui container">    
-      <div class="header item" style="font-size: 1.2em; padding: 0.5em;">Akropolis</div>
-      <div class="right menu">
-        <div class="fitted item">
-          <button class="ui icon basic button" @click="$store.game.reset()"><i class="file outline icon"></i></button>  
-        </div> 
+  <div class="ui borderless menu">
+    <div class="ui container">
+      <div class="fitted item">
+        <button class="ui icon button" @click="$store.game.reset()"><i class="file outline icon"></i></button>  
+      </div>    
+      <div class="right menu"> 
         <div class="fitted item"> 
-          <div class="ui small form"><div class="field">
-            <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
-              <option value="100">Med</option>
-              <option value="25" selected>Easy</option>
-            </select>
-          </div></div>
+          <div class="ui small form">
+            <div class="field">
+              <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
+                <optgroup label="Above optimal">
+                <option value="25600">God-like</option>
+                <option value="6400">Boosted</option>
+                </optgroup>
+                <optgroup label="Level used during training">
+                <option value="3200">Native</option>
+                </optgroup>
+                <optgroup label="Sub optimal levels">
+                <option value="800">Easy</option>
+                <option value="200">Easier</option>
+                <option value="50" selected>Very easy</option>
+                <option value="25">Come on</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
         </div>
         <div class="fitted item"> 
-          <div class="ui small form"><div class="field">
-            <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
-                <option value="P0" selected>P vs AI</option>
-                <option value="P1">AI vs P</option>
-                <option value="Human">No AI</option>
-            </select>
-          </div></div>
+          <div class="ui small form">
+            <div class="field">
+              <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
+                  <option value="P0" selected>You vs AI</option>
+                  <option value="P1">AI vs you</option>
+                  <option value="Human">No AI</option>
+                  <option value="AI">WarGames</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
   <div class="ui main text container" style="padding-top: 5px;">
+    <h1 class="ui huge center aligned header">Akropolis with AI</h1> 
     <button x-show="$store.game.isLoading || $store.game.isThinking" class="ui fluid large active loading button" style="margin-top: 5px;">‌</button>
 
     <template x-if="!$store.game.isLoading && $store.game.view && $store.game.view.construction_site">

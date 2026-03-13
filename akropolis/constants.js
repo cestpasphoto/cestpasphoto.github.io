@@ -3,7 +3,7 @@
 /* ==================================================== */
 
 globalThis.numPlayers = +new URLSearchParams(window.location.search).get('players') || 2;
-const numMCTSSims = 25;
+const numMCTSSims = 50;
 
 // Charge dynamiquement model_3pl.onnx, model_4pl.onnx, etc.
 const defaultModelFileName = `./akropolis/model_${numPlayers}pl.onnx`;
@@ -41,8 +41,9 @@ const TILE_EMPTY = 0;
 const TILE_QUARRY = 1;
 
 const COLORS = {
+    '-1': '#666666',
     0: 'transparent',
-    1: '#e2e8f0', 
+    1: '#cbd0d8', 
     2: '#3b82f6', 
     3: '#facc15', 
     4: '#ef4444', 
