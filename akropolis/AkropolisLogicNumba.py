@@ -329,62 +329,44 @@ class Board():
 		heights_flat = self.board_height[:, :, player].ravel()
 		tilesID_flat = self.board_tileID[:, :, player].ravel()
 
-		# Identify which patterns are valid placements (independent of the chosen tile)
-		pattern_is_valid = np.zeros(N_PATTERNS, dtype=np.bool_)
-		for pattern_id in range(N_PATTERNS):
-			cell_a = PATTERNS[pattern_id, 0]
-			# Skip patterns that go off the board
-			if cell_a < 0:
-				continue
-			cell_b = PATTERNS[pattern_id, 1]
-			cell_c = PATTERNS[pattern_id, 2]
+		# Astuce Numpy : on ajoute un élément "-1" à la fin des tableaux.
+		# Ainsi, quand PATTERNS ou PATTERN_NEI contient l'index "-1" (qui signifie hors plateau), 
+		# l'indexation de Numpy ira lire cette dernière valeur "-1" au lieu de boucler 
+		# sur la vraie dernière case du plateau en bas à droite.
+		h = np.append(heights_flat, -1)
+		t = np.append(tilesID_flat, -1)
 
-			height_a = heights_flat[cell_a]
-			height_b = heights_flat[cell_b]
-			height_c = heights_flat[cell_c]
+		# 1. Extraction simultanée pour les 1014 patterns (C-backend)
+		ha = h[PATTERNS[:, 0]]
+		hb = h[PATTERNS[:, 1]]
+		hc = h[PATTERNS[:, 2]]
 
-			# All three cells must have the same height
-			if (height_a != height_b) or (height_a != height_c):
-				continue
+		# Règle A : Les 3 hexagones doivent avoir la même hauteur (et être dans le plateau, donc >= 0)
+		same_height = (ha == hb) & (ha == hc) & (ha >= 0)
 
-			# If placing on empty ground, ensure connectivity to existing stacks
-			if height_a == 0:
-				connected = False
-				# Check all neighbors of the triple
-				for neighbor_idx in PATTERN_NEI[pattern_id]:
-					if neighbor_idx < 0:
-						# End of neighbor list
-						break
-					if heights_flat[neighbor_idx] > 0:
-						connected = True
-						break
-				if not connected:
-					continue
-			# Else check that building above more than a single tile
-			else:
-				tileID_a = tilesID_flat[cell_a]
-				tileID_b = tilesID_flat[cell_b]
-				tileID_c = tilesID_flat[cell_c]
+		# Règle B : Si hauteur = 0, il faut au moins un voisin non vide
+		hn = h[PATTERN_NEI]  # Extraction des voisins dans une matrice (1014, 9)
+		connected = (hn > 0).any(axis=1)
 
-				if (tileID_a == tileID_b) and (tileID_a == tileID_c):
-					continue
+		# Règle C : Si hauteur > 0, on ne peut pas construire sur une seule et même tuile
+		ta = t[PATTERNS[:, 0]]
+		tb = t[PATTERNS[:, 1]]
+		tc = t[PATTERNS[:, 2]]
+		diff_tiles = (ta != tb) | (ta != tc)
 
-			# Pattern is valid for placement
-			pattern_is_valid[pattern_id] = True
+		# Synthèse du masque de validité (tableau de 1014 booléens)
+		pattern_is_valid = same_height & np.where(ha == 0, connected, diff_tiles)
 
-		result = np.zeros(CONSTR_SITE_SIZE * N_PATTERNS, dtype=np.bool_)
-		# For each available tile slot, apply the valid patterns
-		for slot_index in range(min(self.stones[player]+1, CONSTR_SITE_SIZE)):
-			if self.construction_site[slot_index, 0] == EMPTY:
-				# Skip empty slots
-				continue
+		# 2. Assignation rapide aux emplacements du marché
+		result = np.zeros((CONSTR_SITE_SIZE, N_PATTERNS), dtype=np.bool_)
+		max_slots = min(self.stones[player] + 1, CONSTR_SITE_SIZE)
+		
+		# On boucle uniquement sur les slots disponibles (max 4 itérations, coût nul)
+		for slot_index in range(max_slots):
+			if self.construction_site[slot_index, 0] != EMPTY:
+				result[slot_index, :] = pattern_is_valid
 
-			base_offset = slot_index * N_PATTERNS
-			for pattern_id in range(N_PATTERNS):
-				if pattern_is_valid[pattern_id]:
-					result[base_offset + pattern_id] = True
-
-		return result
+		return result.ravel()
 
 	def get_state(self):
 		return self.state
@@ -516,79 +498,46 @@ class Board():
 		self.tiles_bitpack[:] = my_packbits(tiles_availability)
 
 	def _update_districts(self, player: int):
-		# 0) Récupère desc + hauteur et met à plat
-		desc2d = self.board_descr [:, :, player]
-		h2d    = self.board_height[:, :, player]
-		desc   = desc2d.ravel()
-		h      = h2d.ravel()
+		desc = self.board_descr[:, :, player].ravel()
+		h    = self.board_height[:, :, player].ravel()
+		
+		# Vectorization trick: append an EMPTY/0 element at the end.
+		# Since NEIGHBORS contains -1 for off-board coordinates, 
+		# Numpy will automatically fetch this padded "empty" element for borders!
+		desc_pad = np.append(desc, EMPTY)
+		h_pad = np.append(h, 0)
+		
+		voisins_h = h_pad[NEIGHBORS]       # Shape (169, 6)
+		voisins_desc = desc_pad[NEIGHBORS] # Shape (169, 6)
+		
 		district = np.zeros(N_COLORS, dtype=np.int32)
 
-		# 1) GREEN (Jardins)
-		mask_green = (desc == DISTRICT_GREEN)
-		district[GREEN] = h[mask_green].sum()
+		# 1) GREEN (Parks) - No neighbor constraints
+		is_green = (desc == DISTRICT_GREEN)
+		district[GREEN] = h[is_green].sum()
 
-		# 2) YELLOW (Marchés isolés)
-		mask_yellow = (desc == DISTRICT_YELLOW)
-		yellow_idxs = np.nonzero(mask_yellow)[0]
-		score_y = 0
-		for idx in yellow_idxs:
-			isolated = True
-			# si un voisin est aussi un marché YELLOW, ce n'est pas isolé
-			for nb in NEIGHBORS[idx]:
-				if nb >= 0 and desc[nb] == DISTRICT_YELLOW:
-					isolated = False
-					break
-			if isolated:
-				score_y += h[idx]
-		district[YELLOW] = score_y
+		# 2) YELLOW (Markets) - Must not have any YELLOW neighbor
+		is_yellow = (desc == DISTRICT_YELLOW)
+		has_yellow_neighbor = (voisins_desc == DISTRICT_YELLOW).any(axis=1)
+		district[YELLOW] = np.sum(h * is_yellow * (~has_yellow_neighbor))
 
-		# 3) PURPLE (Temples entourés)
-		mask_purple = (desc == DISTRICT_PURPLE)
-		purple_idxs = np.nonzero(mask_purple)[0]
-		score_p = 0
-		for idx in purple_idxs:
-			# ne considérer que les hex complétés (6 voisins)
-			valid_nbs = [nb for nb in NEIGHBORS[idx] if nb >= 0]
-			if len(valid_nbs) == 6:
-				surrounded = True
-				for nb in valid_nbs:
-					if h[nb] == 0:
-						surrounded = False
-						break
-				if surrounded:
-					score_p += h[idx]
-		district[PURPLE] = score_p
+		# 3) PURPLE (Temples) - Must not have any EMPTY neighbor (0 height)
+		is_purple = (desc == DISTRICT_PURPLE)
+		has_empty_neighbor = (voisins_h == 0).any(axis=1)
+		district[PURPLE] = np.sum(h * is_purple * (~has_empty_neighbor))
 
-		# 5) RED (Caserne en périphérie réelle)
-		# Using flood fill algorithm to list tiles connected to the border
-		is_empty = desc == EMPTY
-		outer_empty = np.zeros_like(is_empty)
-		for idx in np.nonzero(is_empty)[0]:
-			for nb in NEIGHBORS[idx]:
-				if nb < 0:
-					outer_empty[idx] = True
-					break
-		stack = [i for i in np.nonzero(outer_empty)[0]]
-		for cur in stack:
-			for nb in NEIGHBORS[cur]:
-				if nb < 0 or outer_empty[nb] or not is_empty[nb]:
-					continue
-				outer_empty[nb] = True
-				stack.append(nb)
-		mask_red = (desc == DISTRICT_RED)
-		red_touch = np.zeros_like(mask_red)
-		for idx in np.nonzero(mask_red)[0]:
-			for nb in NEIGHBORS[idx]:
-				if nb < 0 or outer_empty[nb]:
-					red_touch[idx] = True
-					break
-		district[RED] = h[red_touch].sum()
+		# 4) RED (Barracks) - Must have at least one EMPTY neighbor (or border)
+		is_red = (desc == DISTRICT_RED)
+		district[RED] = np.sum(h * is_red * has_empty_neighbor)
 
-		# 6) BLUE (Maisons) : plus longue chaîne
+		# 5) BLUE (Houses) - Largest connected component
+		# We keep a tiny python loop here because the number of blue tiles is very small
 		mask_blue = (desc == DISTRICT_BLUE)
+		blue_idxs = np.nonzero(mask_blue)[0]
 		visited = np.zeros_like(mask_blue)
 		max_chain = 0
-		for start in np.nonzero(mask_blue)[0]:
+		
+		for start in blue_idxs:
 			if visited[start]:
 				continue
 			chain = 0
@@ -598,12 +547,11 @@ class Board():
 				cur = stack.pop()
 				chain += h[cur]
 				for nb in NEIGHBORS[cur]:
-					if nb < 0 or visited[nb] or not mask_blue[nb]:
-						continue
-					visited[nb] = True
-					stack.append(nb)
-			max_chain = max(max_chain, chain)
+					if nb >= 0 and mask_blue[nb] and not visited[nb]:
+						visited[nb] = True
+						stack.append(nb)
+			if chain > max_chain:
+				max_chain = chain
+				
 		district[BLUE] = max_chain
-
-		# 7) Enregistrement des scores
 		self.districts[player, :] = district
