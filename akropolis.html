@@ -191,8 +191,8 @@
                            scale = Math.max(scale, 0.2);
 
                            // Calculate translation to place the city center exactly in the middle of the container
-                           let tx = (cw / 2) - (cx * scale);
-                           let ty = (ch / 2) - (cy * scale);
+                           let tx = (cw / 2 / scale) - cx;
+                           let ty = (ch / 2 / scale) - cy;
                            
                            // Apply Panzoom transformations
                            if (this.pz) {
