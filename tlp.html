@@ -3,38 +3,147 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.2/dist/semantic.min.css">
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.22.1/full/pyodide.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/ort.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
   
-  <!-- <script src="./thelittleprince/constants.js"></script> -->
-  <script src="./common/game.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
   <script src="./thelittleprince/main.js"></script>
+  <script src="./common/game.js"></script>
+
+  <style>
+      .game-layout {
+          display: grid;
+          gap: 1.5rem;
+      }
+
+      #marketArea { grid-area: M; }
+      #player0Area { grid-area: P0; }
+      #player1Area { grid-area: P1; }
+      #player2Area { grid-area: P2; }
+
+      /* Layout Desktop / Tablette (Paysage) */
+      @media (min-width: 768px) {
+          .game-layout {
+              grid-template-columns: 1fr 1fr 1fr;
+              grid-template-areas:
+                  "M M M"
+                  "P0 P1 P2";
+          }
+      }
+
+      /* Layout Mobile (Portrait) */
+      @media (max-width: 767px) {
+          .game-layout {
+              grid-template-columns: 1fr 1fr;
+              grid-template-areas:
+                  "M M"
+                  "P0 P0"
+                  "P1 P2";
+          }
+          /* Réduire un peu la taille de la police sur les petites planètes des adversaires */
+          #player1Area .planet-tile, #player2Area .planet-tile {
+              font-size: 0.8rem;
+          }
+      }
+
+      /* Styles spécifiques à la Planète (Grille 4x4) */
+      .planet-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 4px;
+          background-color: #f0f0f0;
+          padding: 6px;
+          border-radius: 8px;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .planet-tile {
+          aspect-ratio: 1 / 1;
+          background-color: #fff;
+          border-radius: 4px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+          font-size: 1.2rem;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+          overflow: hidden;
+      }
+
+      .planet-tile.empty-tile {
+          background-color: transparent;
+          box-shadow: none;
+          border: 1px dashed #ccc;
+      }
+
+      .planet-tile.face-down {
+          background: repeating-linear-gradient(45deg, #ddd, #ddd 10px, #eee 10px, #eee 20px);
+      }
+
+      /* Styles pour le Marché central */
+      .market-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 1rem;
+          justify-content: center;
+      }
+
+      .market-card {
+          width: 80px;
+          height: 80px;
+          cursor: pointer;
+          transition: transform 0.2s;
+          border: 2px solid transparent;
+      }
+      
+      .market-card:hover {
+          transform: translateY(-5px);
+      }
+
+      .market-card.selected {
+          border-color: #2185d0; /* Semantic UI blue */
+          transform: scale(1.05);
+      }
+
+      /* Badge pour les scores */
+      .score-badge {
+          position: absolute;
+          top: 5px;
+          right: 5px;
+      }
+  </style>
 </head>
-</head>
-<body>
+<body><div x-data x-init="$store.game.start(); $store.game.showDetails = false;">
 
 <div class="ui borderless menu">
   <div class="ui container">    
     <div class="fitted item">
-      <button class="ui icon button" onclick="reset()"><i class="file outline icon"></i></button>
+      <button class="ui icon button" @click="$store.game.reset()"><i class="file outline icon"></i></button>
     </div> 
     <div class="fitted item"> 
-      <button class="ui icon disabled button" id="editBtn"><i class="edit icon"></i></button>
-    </div> 
+      <button class="ui icon disabled button"><i class="edit icon"></i></button>
+    </div>
     <div class="fitted item"> 
       <div class="ui small form">
         <div class="field">
-          <select onchange="game.change_difficulty(this.value)" id="difficultyForm">
+          <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
             <optgroup label="Above optimal">
-            <option value="3200"       >God-like</option>
-            <option value="800"        >Boosted</option>
+            <option value="12800">God-like</option>
+            <option value="4800">Boosted</option>
+            </optgroup>
             <optgroup label="Level used during training">
-            <option value="200"        >Native</option>
+            <option value="1600">Native</option>
+            </optgroup>
             <optgroup label="Sub optimal levels">
-            <option value="50" selected>Easy</option>
-            <option value="12"         >Easier</option>
-            <option value="3"          >Come on</option>
+            <option value="400">Easy</option>
+            <option value="100">Easier</option>
+            <option value="25" selected>Very easy</option>
+            </optgroup>
           </select>
         </div>
       </div>
@@ -42,11 +151,11 @@
     <div class="fitted item"> 
       <div class="ui small form">
         <div class="field">
-          <select onchange="changeGameMode(this.value)">
-            <option value="P0" selected>You vs AI</option>
-            <option value="P1"         >AI vs you</option>
-            <option value="Human"      >No AI</option>
-            <option value="AI"         >WarGames</option>
+          <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
+              <option value="P0" selected>You vs AI</option>
+              <option value="P1">AI vs you</option>
+              <option value="Human">No AI</option>
+              <option value="AI">WarGames</option>
           </select>
         </div>
       </div>
@@ -54,54 +163,84 @@
   </div>
 </div>
 
+<div class="ui container">
+  <h1 class="ui huge center aligned header">The Little Prince</h1> 
 
-<div class="ui main container">
+  <template x-if="!$store.game.isLoading && $store.game.view && $store.game.view.market">
+    <div class="game-layout">
 
-  <h1 class="ui huge center aligned header">The Little Prince game with AI</h1> 
-  <div class="ui hidden divider"></div>
+      <div class="item" id="marketArea" x-data="{ selectedCardIdx: -1 }">
+        <div class="ui large horizontal divider">Market (Round <span x-text="$store.game.view.round"></span>)</div>
+        
+        <div class="market-container">
+          <template x-for="(card, mIdx) in $store.game.view.market" :key="'market-'+mIdx">
+            <div x-show="!ui_isMarketEmpty(card)" style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
+              
+              <div class="planet-tile market-card" 
+                   :class="{'selected': selectedCardIdx === mIdx}"
+                   @click="selectedCardIdx = (selectedCardIdx === mIdx ? -1 : mIdx)"
+                   x-html="ui_renderTile(card)">
+              </div>
 
+              <div class="ui tiny buttons" x-show="selectedCardIdx === mIdx && !$store.game.isThinking">
+                <template x-for="(player, pIdx) in $store.game.view.players" :key="'btn-'+pIdx">
+                   <button class="ui button" 
+                           :class="ui_getButtonColor(pIdx)"
+                           x-show="player.canPlay"
+                           @click="$store.game.act('play', mIdx, pIdx); selectedCardIdx = -1;">
+                     <i class="user icon"></i> P<span x-text="pIdx"></span>
+                   </button>
+                </template>
+              </div>
 
-<!-- Players name and power -->
+            </div>
+          </template>
+        </div>
+        
+        <div class="ui active centered inline loader" x-show="$store.game.isThinking"></div>
+      </div>
 
+      <template x-for="(player, pIdx) in $store.game.view.players" :key="'player-'+pIdx">
+        <div class="item" :id="'player'+pIdx+'Area'">
+          
+          <div class="ui segment" :class="ui_getPlayerSegmentClass(pIdx)">
+            <a class="ui ribbon label" :class="ui_getButtonColor(pIdx)">
+              <i class="user icon"></i> <span x-text="pIdx === 0 ? 'You (P0)' : 'AI P' + pIdx"></span>
+            </a>
+            <div class="ui top right attached label score-badge">
+              <i class="star icon"></i> <span x-text="player.score"></span>
+            </div>
 
-<!-- Table -->
-  <div class="ui basic segment">
-    <p id="boardSgmt"></p>
-  </div>
+            <div class="ui divider"></div>
 
-  <div class="ui action input">
-    <input type="number" placeholder="ID of your move" id="userMoveID">
-    <button class="ui button" onclick="userMove()">Move</button>
-  </div>
+            <div class="planet-grid">
+              <template x-for="(tile, tIdx) in player.planet" :key="'p'+pIdx+'-t'+tIdx">
+                <div class="planet-tile" 
+                     :class="ui_getTileClasses(tile)" 
+                     x-html="ui_renderTile(tile)">
+                </div>
+              </template>
+            </div>
+            
+            <div class="ui mini labels" style="margin-top: 10px;" x-show="player.detailedScore[1] > 0 || player.detailedScore[2] > 0">
+               <div class="ui red label" x-show="player.detailedScore[1] > 0">
+                 Baobabs <div class="detail" x-text="player.detailedScore[1]"></div>
+               </div>
+               <div class="ui orange label" x-show="player.detailedScore[2] > 0">
+                 Volcanos <div class="detail" x-text="player.detailedScore[2]"></div>
+               </div>
+            </div>
 
-<!-- Button -->
+          </div>
 
+        </div>
+      </template>
 
-  <div class="ui fluid large compact buttons" id="allBtn" style="display: none">
-    <button class="ui icon button" id="undoBtn" onclick="cancel_and_undo()"><i class="undo icon"></i></button>
-  </div>
-  <button class="ui fluid large active loading button" id="loadingBtn">‌</button>
+    </div>
+  </template>
 
-  <div class="ui basic segment">
-    <p id="moveSgmt">Loading pyodide, numpy, onnx; please wait...</p>
-  </div>
+  <button x-show="$store.game.isLoading" class="ui fluid large active loading button">Loading...</button>
 </div>
 
-
-<script>
-  const allBtn      = document.getElementById('allBtn');
-  const undoBtn     = document.getElementById('undoBtn');
-  const loadingBtn  = document.getElementById('loadingBtn');
-  const editBtn     = document.getElementById('editBtn');
-  const moveSgmt    = document.getElementById('moveSgmt');
-
-  const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
-  const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
-  window.onload = () =>
-    [ `${counterAPI_base}/overall`, `${counterAPI_base}/overall_${counterAPI_suffix}`]
-    .forEach(u => fetch(u).catch(() => {}));
-
-  main(usePyodide=true);
-</script>
-</body>
+</div></body>
 </html>

@@ -1,107 +1,155 @@
-// Import common/game.js before this file
+// Game technical constants
+const numPlayers = 3;
+const numMCTSSims = 25;
 
-/* =================== */
-/* =====  CONST  ===== */
-/* =================== */
+// ONNX model dimensions based on observation_size and action_size from Python
+const sizeCB = [1, 55, 15]; 
+const sizeV = [1, 9]; 
 
-// Here are common constants between nogod and god modes.
-// Check also constants_*.js
-
+const defaultModelFileName = './thelittleprince/model.onnx';
 const list_of_files = [
-  ['thelittleprince/Game.py'         , 'Game.py'],
-  ['thelittleprince/proxy.py'        , 'proxy.py'],
-  ['thelittleprince/MCTS.py'         , 'MCTS.py'],
-  ['thelittleprince/TLPDisplay.py'   , 'TLPDisplay.py'],
-  ['thelittleprince/TLPGame.py'      , 'TLPGame.py'],
-  ['thelittleprince/TLPLogicNumba.py', 'TLPLogicNumba.py'],
-  /*[pyConstantsFileName, 'thelittleprinceConstants.py'],*/
+    ['thelittleprince/proxy.py', 'proxy.py'],
+    ['thelittleprince/TLPGame.py', 'TLPGame.py'],
+    ['thelittleprince/TLPLogicNumba.py', 'TLPLogicNumba.py'],
+    ['thelittleprince/TLPDisplay.py', 'TLPDisplay.py'],
+    ['thelittleprince/MCTS.py', 'MCTS.py'],
+    ['thelittleprince/Game.py', 'Game.py']
 ];
 
-const defaultModelFileName = 'thelittleprince/model.onnx';
-/*const pyConstantsFileName = 'thelittleprince/SplendorGame_2pl.py';*/
-const sizeCB = [1, 55, 15];
-const sizeV = [1, 9];
-const nb_players = 3;
+// --- ATTRIBUTES MAPPING (Must match TLPLogicNumba.py) ---
+const ATTR_FACE_DOWN   = 0;
+const ATTR_BAOBAB      = 1;
+const ATTR_VOLCANO     = 2;
+const ATTR_SUNSET      = 3;
+const ATTR_ROSE        = 4;
+const ATTR_LAMPPOST    = 5;
+const ATTR_BOX         = 6;
+const ATTR_BIG_STAR    = 7;
+const ATTR_FOX         = 8;
+const ATTR_ELEPHANT    = 9;
+const ATTR_SNAKE       = 10;
+const ATTR_SHEEP_WHITE = 11;
+const ATTR_SHEEP_GREY  = 12;
+const ATTR_SHEEP_BROWN = 13;
+const ATTR_CARD_TYPE   = 14;
 
-/* =================== */
-/* =====  UTILS  ===== */
-/* =================== */
+// --- CARD TYPES MAPPING ---
+const TYPE_EMPTY       = 0;
+const TYPE_CENTER      = 25;
+const TYPE_UPHILL      = 50;
+const TYPE_DOWNHILL    = 75;
+const TYPE_CORNER      = 100;
 
+// --- VISUAL ASSETS ---
+const EMOJIS = [
+    '🔙', '🌲', '🌋', '🌅', '🌹', '💡', '💼', '🌟', '🦊', '🐘', '🐍', '🐑', '🐺', '🐐'
+];
 
-/* =================== */
-/* =====  LOGIC  ===== */
-/* =================== */
+const CHARACTERS_NAME = [
+    '-', 'Vain man', 'Geographer', 'Astronomer', 'King', 'Lamplighter', 
+    'Hunter', 'Drunkard', 'Businessman (W)', 'Businessman (G)', 'Businessman (B)', 
+    'Gardener', 'Turkish Ast.', 'Little Prince'
+];
 
-class Minivilles extends AbstractGame {
-  constructor() {
-    super()
-    this.validMoves = Array(sizeV[1]); this.validMoves.fill(false);
-  }
+const PLAYER_COLORS = ['blue', 'green', 'orange', 'purple'];
 
-  post_init_game() {
-  }
+// --- UI HELPER FUNCTIONS FOR ALPINE.JS ---
 
-  pre_move(action, manualMove) {
-  }
-
-  post_move(action, manualMove) {
-  }
-
-  post_set_data() {
-  }
-
-  has_changed_on_last_move(item_vector) {
-    return 0;
-  }
-
-  getBoard() {
-    return this.py.getBoard();
-  }
+/**
+ * Checks if a market card slot is completely empty
+ */
+function ui_isMarketEmpty(card) {
+    if (!card) return true;
+    return card[ATTR_CARD_TYPE] === TYPE_EMPTY;
 }
 
-class MoveSelector extends AbstractMoveSelector {}
-
-function moveToString(move, gameMode) {
-  return ''
+/**
+ * Generates the CSS classes for a given tile on the planet
+ */
+function ui_getTileClasses(card) {
+    if (!card || card[ATTR_CARD_TYPE] === TYPE_EMPTY) {
+        return 'empty-tile';
+    }
+    if (card[ATTR_FACE_DOWN] === 1) {
+        return 'face-down';
+    }
+    return '';
 }
 
-/* =================== */
-/* ===== DISPLAY ===== */
-/* =================== */
+/**
+ * Decodes a card array and returns the HTML/Emojis to render inside the tile
+ */
+function ui_renderTile(card) {
+    if (!card || card[ATTR_CARD_TYPE] === TYPE_EMPTY) {
+        return '';
+    }
 
-function userMove() {
-  let move = Number(document.getElementById('userMoveID').value);
-  game.move(move, true);
-  move_sel.reset();
-  refreshBoard();
-  refreshButtons();
+    if (card[ATTR_FACE_DOWN] === 1) {
+        return `<span style="font-size: 2rem;">${EMOJIS[ATTR_FACE_DOWN]}</span>`;
+    }
 
-  ai_play_if_needed();
+    let html = '<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 2px;">';
+
+    // Check if it's a character card (Corners)
+    if (card[ATTR_CARD_TYPE] >= TYPE_CORNER) {
+        const charId = card[ATTR_CARD_TYPE] - TYPE_CORNER;
+        html += `<div style="width: 100%; text-align: center; font-size: 0.8rem; font-weight: bold; padding: 2px;">
+                    ${CHARACTERS_NAME[charId]}
+                 </div>`;
+        
+        // Characters might also have immediate attributes (like giving a star or box)
+        for (let i = 1; i <= 13; i++) {
+            if (card[i] > 0) {
+                html += `<span style="font-size: 0.9rem;">${EMOJIS[i]} x${card[i]}</span>`;
+            }
+        }
+    } else {
+        // Standard edge or center card: iterate through attributes to display emojis
+        for (let i = 1; i <= 13; i++) {
+            if (card[i] > 0) {
+                // Repeat the emoji if the card gives multiple of the same attribute
+                for (let count = 0; count < card[i]; count++) {
+                    html += `<span>${EMOJIS[i]}</span>`;
+                }
+            }
+        }
+    }
+
+    html += '</div>';
+    
+    // Add small visual indicator of edge type for better UX
+    if (card[ATTR_CARD_TYPE] === TYPE_UPHILL) {
+        html += `<div style="position: absolute; bottom: 0; width: 100%; height: 3px; background-color: #8bb174;"></div>`;
+    } else if (card[ATTR_CARD_TYPE] === TYPE_DOWNHILL) {
+        html += `<div style="position: absolute; top: 0; width: 100%; height: 3px; background-color: #8bb174;"></div>`;
+    }
+
+    return html;
 }
 
-function refreshBoard() {
-  console.log('refresh board');
-  document.getElementById('boardSgmt').innerHTML = game.getBoard();
+/**
+ * Returns the semantic UI color for a player
+ */
+function ui_getButtonColor(pIdx) {
+    return PLAYER_COLORS[pIdx % PLAYER_COLORS.length];
 }
 
-function refreshButtons(loading=false) {
-  console.log('refresh buttons');
-  if (!loading) {
-    allBtn.style = "";
-    loadingBtn.style = "display: none";
-  }
+/**
+ * Highlights the segment of the player currently taking their turn
+ */
+function ui_getPlayerSegmentClass(pIdx) {
+    const store = Alpine.store('game');
+    if (!store || !store.view) return '';
+
+    let classes = '';
+    // Highlight if it's currently this player's turn to act
+    if (pIdx === store.currentPlayer) {
+        classes += 'raised secondary ';
+    }
+    // Fade out a bit if the player has already played this round
+    if (store.view.players && store.view.players[pIdx] && !store.view.players[pIdx].canPlay) {
+        classes += 'tertiary ';
+    }
+    
+    return classes;
 }
-
-function refreshPlayersText() {
-}
-
-function changeMoveText() {
-}
-
-/* =================== */
-/* ===== ACTIONS ===== */
-/* =================== */
-
-
-var game = new Minivilles();
-var move_sel = new MoveSelector();

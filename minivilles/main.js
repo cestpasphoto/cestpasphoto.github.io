@@ -1,107 +1,33 @@
-// Import common/game.js before this file
+// minivilles/main.js
 
 /* =================== */
-/* =====  CONST  ===== */
+/* ===== GLOBALS ===== */
 /* =================== */
 
-// Here are common constants between nogod and god modes.
-// Check also constants_*.js
+// Minivilles is configured for 2 players by default in the provided logic
+const numPlayers = 2;
 
-const list_of_files = [
-  ['minivilles/Game.py'                , 'Game.py'],
-  ['minivilles/proxy.py'               , 'proxy.py'],
-  ['minivilles/MCTS.py'                , 'MCTS.py'],
-  ['minivilles/MinivillesDisplay.py'   , 'MinivillesDisplay.py'],
-  ['minivilles/MinivillesGame.py'      , 'MinivillesGame.py'],
-  ['minivilles/MinivillesLogicNumba.py', 'MinivillesLogicNumba.py'],
-  /*[pyConstantsFileName, 'MinivillesConstants.py'],*/
-];
+// Default number of MCTS simulations for the AI
+const numMCTSSims = 25;
 
-const defaultModelFileName = 'minivilles/model.onnx';
-/*const pyConstantsFileName = 'minivilles/SplendorGame_2pl.py';*/
+// Size of the Canonical Board:
+// In MinivillesLogicNumba.py, observation_size(2) returns (58, 2).
+// Flattened size = 58 * 2 = 116.
 const sizeCB = [1, 58, 2];
+
+// Size of the Valid Actions array:
+// In MinivillesLogicNumba.py, action_size() returns 21.
 const sizeV = [1, 21];
-const nb_players = 2;
 
-/* =================== */
-/* =====  UTILS  ===== */
-/* =================== */
+// Path to the ONNX model trained for Minivilles
+const defaultModelFileName = 'minivilles/model.onnx';
 
-
-/* =================== */
-/* =====  LOGIC  ===== */
-/* =================== */
-
-class Minivilles extends AbstractGame {
-  constructor() {
-    super()
-    this.validMoves = Array(sizeV[1]); this.validMoves.fill(false);
-  }
-
-  post_init_game() {
-  }
-
-  pre_move(action, manualMove) {
-  }
-
-  post_move(action, manualMove) {
-  }
-
-  post_set_data() {
-  }
-
-  has_changed_on_last_move(item_vector) {
-    return 0;
-  }
-
-  getBoard() {
-    return this.py.getBoard();
-  }
-}
-
-class MoveSelector extends AbstractMoveSelector {}
-
-function moveToString(move, gameMode) {
-  return ''
-}
-
-/* =================== */
-/* ===== DISPLAY ===== */
-/* =================== */
-
-function userMove() {
-  let move = Number(document.getElementById('userMoveID').value);
-  game.move(move, true);
-  move_sel.reset();
-  refreshBoard();
-  refreshButtons();
-
-  ai_play_if_needed();
-}
-
-function refreshBoard() {
-  console.log('refresh board');
-  document.getElementById('boardSgmt').innerHTML = game.getBoard();
-}
-
-function refreshButtons(loading=false) {
-  console.log('refresh buttons');
-  if (!loading) {
-    allBtn.style = "";
-    loadingBtn.style = "display: none";
-  }
-}
-
-function refreshPlayersText() {
-}
-
-function changeMoveText() {
-}
-
-/* =================== */
-/* ===== ACTIONS ===== */
-/* =================== */
-
-
-var game = new Minivilles();
-var move_sel = new MoveSelector();
+// List of Python files to be fetched and mounted in Pyodide's virtual filesystem
+const list_of_files = [
+    ['minivilles/proxy.py', 'proxy.py'],
+    ['minivilles/MinivillesGame.py', 'MinivillesGame.py'],
+    ['minivilles/MinivillesLogicNumba.py', 'MinivillesLogicNumba.py'],
+    ['minivilles/MinivillesDisplay.py', 'MinivillesDisplay.py'],
+    ['minivilles/MCTS.py', 'MCTS.py'],
+    ['minivilles/Game.py', 'Game.py']
+];

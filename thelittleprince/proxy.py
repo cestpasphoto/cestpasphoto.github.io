@@ -1,100 +1,132 @@
-from MCTS import MCTS
-from TLPGame import TLPGame as Game
-from TLPDisplay import move_to_str
+import json
 import numpy as np
 
-g, board, mcts, player = None, None, None, 0
-history = [] # Previous states (new to old, not current). Each is an array with player and board and action
+from MCTS import MCTS
+from TLPGame import TLPGame as Game
+from TLPLogicNumba import my_unpackbits
 
+# Utility class to allow dot notation access for dictionaries
 class dotdict(dict):
-	def __getattr__(self, name):
-		return self[name]
+    def __getattr__(self, name):
+        return self[name]
+
+# Global state variables for game mechanics and UI tracking
+g, board, mcts, player = None, None, None, 0
+history = []
 
 def init_game(numMCTSSims):
-	global g, board, mcts, player, history
+    # Initializes the game environment, MCTS agent, and resets history
+    global g, board, mcts, player, history
 
-	mcts_args = dotdict({
-		'numMCTSSims'     : numMCTSSims,
-		'fpu'             : 0.10,
-		'cpuct'           : 1.00,
-		'prob_fullMCTS'   : 1.,
-		'forced_playouts' : False,
-		'no_mem_optim'    : False,
-	})
+    mcts_args = dotdict({
+        'numMCTSSims'     : numMCTSSims,
+        'fpu'             : 0.177,
+        'cpuct'           : 1.0,
+        'prob_fullMCTS'   : 1.,
+        'forced_playouts' : False,
+        'no_mem_optim'    : False,
+        'universes'       : 1,
+    })
 
-	g = Game()
-	board = g.getInitBoard()
-	mcts = MCTS(g, None, mcts_args)
-	player = 0
-	history = []
-	valids = g.getValidMoves(board, player)
-	end = [0,0]
+    g = Game()
+    board = g.getInitBoard()
+    mcts = MCTS(g, None, mcts_args)
+    player = 0
+    history = []
 
-	return player, end, valids
+    return get_render_state()
+
+def undo(are_players_human):
+    # Reverts the board to the previous state for the current player
+    global g, board, mcts, player, history
+    
+    if len(history) > 0:
+        player_asking_revert = player
+        for index, state in enumerate(history):
+            if (state[0] == player_asking_revert) and (index+1 == len(history) or history[index+1][0] != player_asking_revert):
+                break
+        player, board = state[0], state[1]
+        history = history[index+1:]
+        
+    return get_render_state()
+
+def set_edit_mode(mode):
+    # Stub to prevent JS crash if the edit mode toggle is triggered
+    return get_render_state()
 
 def getNextState(action):
-	global g, board, mcts, player, history
-	history.insert(0, [player, np.copy(board), action])
-	board, player = g.getNextState(board, player, action)
-	end = g.getGameEnded(board, player)
-	valids = g.getValidMoves(board, player)
+    # Standard entry point for AI moves triggered by the JS client
+    execute_move(int(action))
+    return get_render_state()
 
-	return player, end, valids
+def handle_action(action_name, *args):
+    # Routes UI interactions (card selection + next player) to the proper game action ID
+    if action_name == "play":
+        card_idx = int(args[0])
+        next_player_id = int(args[1])
+        
+        # Calculate the delta since actions are encoded relative to the current player
+        player_delta = (next_player_id - player) % g.getNumberOfPlayers()
+        action = card_idx * g.getNumberOfPlayers() + player_delta
+        
+        execute_move(action)
+
+    return get_render_state()
+
+def execute_move(action):
+    # Processes the chosen action and updates game history
+    global g, board, player, history
+    
+    history.insert(0, [player, np.copy(board), action])
+    board, player = g.getNextState(board, player, action)
+
+def get_render_state():
+    # Packages the current game state into a JSON payload tailored for the frontend
+    global g, board, player, history
+
+    end = g.getGameEnded(board, player)
+    valids = g.getValidMoves(board, player)
+    n = g.getNumberOfPlayers()
+
+    # Extract market cards
+    market_cards = [g.board.market[i].tolist() for i in range(n)]
+
+    # Extract players' data (planets, scores, and active status)
+    view_players = []
+    who_can_play = my_unpackbits(g.board.round_and_state[2])[:n]
+    
+    for p in range(n):
+        # 16 cards per player to represent their planet
+        planet = g.board.players_cards[16*p : 16*(p+1)].tolist()
+        score = g.board.players_score[p].tolist()
+        
+        view_players.append({
+            "score": int(sum(score)),
+            "detailedScore": score,
+            "planet": planet,
+            "canPlay": bool(who_can_play[p])
+        })
+
+    viewData = {
+        "market": market_cards,
+        "players": view_players,
+        "round": int(g.getRound(board)),
+    }
+
+    state_dict = {
+        "statusMessage": "",
+        "currentPlayer": int(player),
+        "gameEnded": bool(end[0] != 0 if isinstance(end, np.ndarray) else end != 0),
+        "editMode": 0,
+        "canUndo": len(history) > 0,
+        "validMoves": [bool(v) for v in valids],
+        "viewData": viewData
+    }
+
+    return json.dumps(state_dict)
 
 def changeDifficulty(numMCTSSims):
-	global g, board, mcts, player, history
-	mcts.args.numMCTSSims = numMCTSSims
-	print('Difficulty changed to', mcts.args.numMCTSSims);
-
-async def guessBestAction():
-	global g, board, mcts, player, history
-	probs, _, _ = await mcts.getActionProb(g.getCanonicalForm(board, player), force_full_search=True)
-	g.board.copy_state(board, True) # g.board was in canonical form, set it back to normal form
-	best_action = max(range(len(probs)), key=lambda x: probs[x])
-
-	# Compute good moves
-	print('List of best moves found by AI:')
-	sorted_probs = sorted([(action,p) for action,p in enumerate(probs)], key=lambda x: x[1], reverse=True)
-	for i, (action, p) in enumerate(sorted_probs):
-		if p < sorted_probs[0][1] / 3. or i >= 3:
-			break
-		print(f'{int(100*p)}% [{action}] {move_to_str(action, short=False)}')
-
-	return best_action
-
-def revert_to_previous_move(player_asking_revert):
-	global g, board, mcts, player, history
-	if len(history) > 0:
-		# Revert to the previous 0 before a 1, or first 0 from game
-		for index, state in enumerate(history):
-			if (state[0] == player_asking_revert) and (index+1 == len(history) or history[index+1][0] != player_asking_revert):
-				break
-		print(f'index={index} / {len(history)}');
-		
-		# Actually revert, and update history
-		# print(f'Board to revert: {state[1]}')
-		player, board = state[0], state[1]
-		history = history[index+1:]
-
-	end = g.getGameEnded(board, player)
-	valids = g.getValidMoves(board, player)
-	return player, end, valids
-
-def get_last_action():
-	global g, board, mcts, player, history
-
-	if len(history) < 1:
-		return None
-	return history[0][2]
-
-# -----------------------------------------------------------------------------
-
-def getBoard():
-	result = '';
-	result += 'Round and state  : ' + np.array_str(g.board.round_and_state) + '<br>';
-	result += 'Market           : ' + np.array_str(g.board.market) + '<br>';
-	result += 'Players score    : ' + np.array_str(g.board.players_score) + '<br>';
-	result += 'Players cards    : ' + np.array_str(g.board.players_cards) + '<br>';
-	result += '<br>'
-	result += 'Valid moves      : ' + np.array_str(np.flatnonzero(g.getValidMoves(board, player)));
-	return result
+    # Adjusts AI search iterations
+    global mcts
+    if mcts is not None:
+        mcts.args.numMCTSSims = numMCTSSims
