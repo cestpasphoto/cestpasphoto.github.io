@@ -17,17 +17,19 @@ def init_game(numMCTSSims):
     # Initializes the main game environment, MCTS agent, and clears history.
     global g, board, mcts, player, history, edit_mode
 
-    mcts_args = dotdict({
-        'numMCTSSims'     : numMCTSSims,
-        'fpu'             : 0.10,
-        'cpuct'           : 1.00,
-        'prob_fullMCTS'   : 1.,
-        'forced_playouts' : False,
-        'no_mem_optim'    : False,
-    })
-
     g = Game()
     board = g.getInitBoard()
+
+    mcts_args = dotdict({
+        'numMCTSSims'     : numMCTSSims,
+        'fpu'             : 0.1 if g.num_players > 2 else 0.0593,
+        'cpuct'           : 1.0 if g.num_players > 2 else 0.8,
+        'prob_fullMCTS'   : 1.,
+        'forced_playouts' : True,
+        'no_mem_optim'    : False,
+        'universes'       : None if g.num_players > 2 else 3,
+    })
+
     mcts = MCTS(g, None, mcts_args)
     player = 0
     history = []

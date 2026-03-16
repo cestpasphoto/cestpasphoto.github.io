@@ -28,10 +28,13 @@ class dotdict(dict):
 
 def init_game(numMCTSSims):
     global g, board, mcts, player, history, edit_mode
-
+    
+    g = Game()
+    board = g.getInitBoard()
+    
     mcts_args = dotdict({
         'numMCTSSims'     : numMCTSSims,
-        'fpu'             : 0.10,
+        'fpu'             : 0.1,
         'cpuct'           : 1.5,
         'prob_fullMCTS'   : 1.,
         'forced_playouts' : True,
@@ -39,8 +42,6 @@ def init_game(numMCTSSims):
         'universes'       : 1,
     })
 
-    g = Game()
-    board = g.getInitBoard()
     mcts = MCTS(g, None, mcts_args)
     player = 0
     history = []
