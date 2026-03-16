@@ -56,7 +56,7 @@
       .city-wrapper { display: none; }
       .city-wrapper.active-tab { display: block; }
       .city-container { 
-          height: 65vh; max-height: 600px; /* Sécurité anti-scroll vertical */
+          height: 65vh; max-height: 600px;
           border-radius: 0 0 8px 8px; border: 1px solid #d4d4d5; border-top: none; 
       }
     }
@@ -221,14 +221,14 @@
                                 :disabled="!$store.game.extra.can_confirm || $store.game.isThinking"
                                 :class="$store.game.extra.can_confirm ? 'green' : 'black'"
                                 @click.stop="$store.game.act('confirm_action')"
-                                x-html="$store.game.extra.can_confirm ? 'Confirm <i></i>' : 'Waiting...'">
+                                x-html="$store.game.extra.can_confirm ? 'Confirm <i></i>' : 'Select a tile'">
                         </button>
                     </div>
                 </template>
 
                 <button class="ui mini circular icon basic button"
                         style="position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(255,255,255,0.9);"
-                        @click.stop="doReset()" title="Recentrer">
+                        @click.stop="doReset()" title="Recenter view">
                     <i class="crosshairs icon"></i>
                 </button>
 
