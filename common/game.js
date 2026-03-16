@@ -223,7 +223,8 @@ async function execute_ai_move() {
         let ai_script = `
 import numpy as np
 canonicalBoard = proxy.g.getCanonicalForm(proxy.board, proxy.player)
-probs, _, _ = await proxy.mcts.getActionProb(canonicalBoard, temp=0)
+# force_full_search is not required since prob_fullMCTS = 1, but just in case
+probs, _, _ = await proxy.mcts.getActionProb(canonicalBoard, temp=0., force_full_search=True)
 action = np.argmax(probs)
 proxy.getNextState(action)
 `;
