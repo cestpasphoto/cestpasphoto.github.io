@@ -155,6 +155,8 @@ globalThis.ui_renderInteractions3D = function(validPlacements, ghostHexes, selec
             let cy = coords.y - (baseHeight * TILE_THICKNESS);
             let isSelected = (siteIdx === selectedSite);
             let actionCode = `if(!window.__isDraggingMap) Alpine.store('game').act('select_position', ${siteIdx});`;
+            // Remplace la ligne actionCode par ceci dans ui_renderInteractions3D :
+            // let actionCode = `ui_handleSiteClick(${siteIdx}, event);`;
             
             svgs.push(`<circle cx="${coords.x}" cy="${cy}" r="25" fill="transparent" style="cursor: pointer;" onclick="${actionCode}" />`);
             let dotColor = isSelected ? 'rgba(255, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.6)';
@@ -185,8 +187,8 @@ globalThis.ui_getCityBounds = function(cityState) {
         if (cy > maxY) maxY = cy;
     });
 
-    let paddingX = HEX_W * 2.5;
-    let paddingY = HEX_R * 3.5;
+    let paddingX = HEX_W * 1;
+    let paddingY = HEX_R * 2;
     
     return { 
         x: minX - paddingX, 
@@ -195,3 +197,81 @@ globalThis.ui_getCityBounds = function(cityState) {
         h: (maxY - minY) + paddingY * 2 
     };
 };
+
+
+// --- NEW GLOBAL FUNCTIONS ---
+
+// Initialize Panzoom and event listeners
+globalThis.ui_initPanzoom = function(containerEl, layerEl) {
+    let pz = Panzoom(layerEl, {
+        maxScale: 3,
+        minScale: 0.1
+    });
+    
+    containerEl.addEventListener('wheel', pz.zoomWithWheel);
+    
+    layerEl.addEventListener('panzoompan', (e) => { 
+        // Only lock drag if it's an actual user pointer event (mouse/touch).
+        // e.detail.originalEvent is undefined when pz.pan() is called by the API.
+        if (e.detail && e.detail.originalEvent) {
+            layerEl.style.transition = 'none';
+            window.__isDraggingMap = true; 
+        }
+    });
+    
+    layerEl.addEventListener('panzoomend', () => { 
+        setTimeout(() => { window.__isDraggingMap = false; }, 50); 
+    });
+    
+    return pz;
+};
+
+// Reset camera to fit the city bounds
+globalThis.ui_resetCam = function(containerEl, pzInstance, cityState) {
+    if (!pzInstance || !containerEl) return false;
+    
+    let cw = containerEl.clientWidth;
+    let ch = containerEl.clientHeight;
+    
+    if (cw === 0 || ch === 0) return false; 
+    
+    let bounds = ui_getCityBounds(cityState);
+    let cx = bounds.x + bounds.w / 2;
+    let cy = bounds.y + bounds.h / 2;
+    
+    let scale = Math.min(cw / bounds.w, ch / bounds.h);
+    scale = Math.min(scale, 1.2); 
+    scale = Math.max(scale, 0.2);
+
+    let tx = (cw / 2 / scale) - cx;
+    let ty = (ch / 2 / scale) - cy;
+    
+    pzInstance.zoom(scale, { animate: true });
+    pzInstance.pan(tx, ty, { animate: true });
+    
+    // Safety clear: Ensure API movements don't lock future interactions
+    window.__isDraggingMap = false;
+    
+    return true;
+};
+
+
+// Executes a non-blocking telemetry ping for basic traffic analytics on page load.
+// const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
+// const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
+
+// window.addEventListener('load', () => {
+//     const urls = [ 
+//         `${counterAPI_base}/overall`, 
+//         `${counterAPI_base}/overall_${counterAPI_suffix}`,
+//         `${counterAPI_base}/akropolis_${counterAPI_suffix}`
+//     ];
+    
+//     urls.forEach(url => {
+//         fetch(url, { mode: 'no-cors' }).catch(e => {
+//             console.debug("Analytics blocked or failed");
+//         });
+//     });
+// });
+
+

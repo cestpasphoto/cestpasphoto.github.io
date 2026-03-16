@@ -65,7 +65,16 @@
       .player-tabs-menu { display: none !important; }
       .cities-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
       .city-wrapper { display: block !important; }
+      
+      /* Default height for 2 players */
       .city-container { height: 60vh; border-radius: 8px; border: 1px solid #d4d4d5; }
+      
+      /* Auto-adapt height for 3+ players so it stays within the screen */
+      .cities-grid.multi-row .city-container { 
+          height: calc((100vh - 280px) / 2); 
+          min-height: 250px; 
+      }
+      
       .desktop-city-header { display: block; text-align: center; font-weight: bold; margin-bottom: 5px; color: #333; }
     }
   </style>
@@ -155,79 +164,31 @@
           </template>
         </div>
 
-        <div class="cities-grid">
+        <div class="cities-grid" :class="{ 'multi-row': $store.game.view && $store.game.view.players.length > 2 }">
           <template x-for="(player, pIdx) in $store.game.view.players" :key="'city-'+pIdx">
             <div class="city-wrapper" :class="{ 'active-tab': activeTab === pIdx }">
               <div class="desktop-city-header">
                 <span x-text="pIdx === 0 ? 'Your City' : 'City P' + pIdx"></span> - 👑 <span x-text="player.points"></span>
                 <i x-show="pIdx === $store.game.currentPlayer" class="asterisk icon small red"></i>
               </div>
-              
+
               <div class="city-container" 
                    x-data="{ 
                        pz: null,
-                       
-                       resetCam() {
-                           // Get container dimensions in pixels
-                           let cw = this.$el.clientWidth;
-                           let ch = this.$el.clientHeight;
-                           
-                           // Protection against hidden mobile tabs (dimensions = 0)
-                           if (cw === 0 || ch === 0) {
-                               setTimeout(() => this.resetCam(), 50);
-                               return;
+                       doReset() {
+                           if (!ui_resetCam(this.$el, this.pz, player.city_state)) {
+                               setTimeout(() => this.doReset(), 50);
                            }
-                           
-                           // Calculate city bounds and mathematical center
-                           let bounds = ui_getCityBounds(player.city_state);
-                           let cx = bounds.x + bounds.w / 2;
-                           let cy = bounds.y + bounds.h / 2;
-                           
-                           // Calculate optimal scale to fit screen with a 5% margin
-                           let scale = Math.min(cw / bounds.w, ch / bounds.h) * 0.95;
-                           
-                           // Clamp scale to prevent extreme zoom-in (early game) or zoom-out
-                           scale = Math.min(scale, 1.2); 
-                           scale = Math.max(scale, 0.2);
-
-                           // Calculate translation to place the city center exactly in the middle of the container
-                           let tx = (cw / 2 / scale) - cx;
-                           let ty = (ch / 2 / scale) - cy;
-                           
-                           // Apply Panzoom transformations
-                           if (this.pz) {
-                               this.pz.zoom(scale, { animate: true });
-                               this.pz.pan(tx, ty, { animate: true });
-                           }
-                       },
-                       
-                       initPanzoom() {
-                           // Apply Panzoom to the inner <g> layer, NOT the <svg>
-                           this.pz = Panzoom(this.$refs.panzoomLayer, {
-                               maxScale: 3,
-                               minScale: 0.1
-                           });
-                           
-                           // Bind wheel zoom to the container element
-                           this.$el.addEventListener('wheel', this.pz.zoomWithWheel);
-                           
-                           // Disable map interactions while dragging
-                           this.$refs.panzoomLayer.addEventListener('panzoompan', () => { 
-                               window.__isDraggingMap = true; 
-                           });
-                           this.$refs.panzoomLayer.addEventListener('panzoomend', () => { 
-                               setTimeout(() => { window.__isDraggingMap = false; }, 50); 
-                           });
                        }
                    }"
                    x-init="
-                       initPanzoom();
-                       setTimeout(() => resetCam(), 100);
-                       $watch('activeTab', val => { if(val === pIdx) setTimeout(() => resetCam(), 50); });
-                       $watch('player.city_state', () => { setTimeout(() => resetCam(), 50); });
+                       pz = ui_initPanzoom($el, $refs.panzoomLayer);
+                       setTimeout(() => doReset(), 100);
+                       
+                       $watch('activeTab', val => { if(val === pIdx) setTimeout(() => doReset(), 50); });
+                       $watch('player.city_state', () => { setTimeout(() => doReset(), 50); });
                    "
-                   @resize.window="resetCam()">
-                
+                   @resize.window="doReset()">
                 <svg class="city-svg">
                     <g x-ref="panzoomLayer">
                         <rect x="-50000" y="-50000" width="100000" height="100000" fill="transparent" />
@@ -267,11 +228,12 @@
 
                 <button class="ui mini circular icon basic button"
                         style="position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(255,255,255,0.9);"
-                        @click.stop="resetCam()" title="Recentrer">
+                        @click.stop="doReset()" title="Recentrer">
                     <i class="crosshairs icon"></i>
                 </button>
 
-              </div>
+              </div>              
+
             </div>
           </template>
         </div>

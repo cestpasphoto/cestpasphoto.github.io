@@ -5,12 +5,10 @@
 globalThis.numPlayers = +new URLSearchParams(window.location.search).get('players') || 2;
 const numMCTSSims = 50;
 
-// Charge dynamiquement model_3pl.onnx, model_4pl.onnx, etc.
 const defaultModelFileName = `./akropolis/model_${numPlayers}pl.onnx`;
 
-// La dimension du plateau change selon le nombre de joueurs (3*N + 2)
 const sizeCB = [1, 13, 13, (3 * numPlayers) + 2];
-const sizeV = [1, 4056];
+const sizeV = [1, (numPlayers + 2) * (13*13) * 6];
 
 const list_of_files = [
     ['./akropolis/Game.py', 'Game.py'],
