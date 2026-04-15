@@ -33,12 +33,12 @@ def init_game(numMCTSSims):
 
     mcts_args = dotdict({
         'numMCTSSims'     : numMCTSSims,
-        'fpu'             : 0.5 if g.num_players > 2 else 0.177,
-        'cpuct'           : 0.5 if g.num_players > 2 else 0.4,
+        'fpu'             : [0.177, 0.1, 0.5][g.num_players-2],
+        'cpuct'           : [0.4  , 1.0, 0.5][g.num_players-2],
         'prob_fullMCTS'   : 1.,
         'forced_playouts' : True,
         'no_mem_optim'    : False,
-        'universes'       : None if g.num_players > 2 else 2,
+        'universes'       : [None , 1  , 2  ][g.num_players-2],
     })
 
     mcts = MCTS(g, None, mcts_args)
