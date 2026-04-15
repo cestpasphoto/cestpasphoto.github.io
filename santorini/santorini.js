@@ -10,7 +10,7 @@ const list_of_files = [
 ];
 
 // Define tensor shapes required for the ONNX neural network inference
-const sizeCB = [1, 25, 3];
+const sizeCB = [1, 5, 5, 3];
 const sizeV = [1, onnxOutputSize];
 
 // Set the default number of Monte Carlo Tree Search simulations per move
