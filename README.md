@@ -4,19 +4,24 @@ All AI are running on client side, need 10\~20s to load it first time.
 
 ### Links
 
+**Akropolis**
+- <https://cestpasphoto.github.io/akropolis.html?players=2>
+- <https://cestpasphoto.github.io/akropolis.html?players=3>
+- <https://cestpasphoto.github.io/akropolis.html?players=4>
+
 **Santorini**
 - <https://cestpasphoto.github.io/santorini.html>
-- <https://cestpasphoto.github.io/santorini_with_gods.html>
+- <https://cestpasphoto.github.io/santorini.html?gods=11>
 
 **Splendor**
-- <https://cestpasphoto.github.io/splendor.html>
-- <https://cestpasphoto.github.io/splendor_3pl.html>
-- <https://cestpasphoto.github.io/splendor_4pl.html>
+- <https://cestpasphoto.github.io/splendor.html?players=2>
+- <https://cestpasphoto.github.io/splendor.html?players=3>
+- <https://cestpasphoto.github.io/splendor.html?players=4>
 
 **Smallworld**
-- <https://cestpasphoto.github.io/smallworld.html>
-- <https://cestpasphoto.github.io/smallworld_3pl.html>
-- <https://cestpasphoto.github.io/smallworld_4pl.html>
+- <https://cestpasphoto.github.io/smallworld.html?players=2>
+- <https://cestpasphoto.github.io/smallworld.html?players=3>
+- <https://cestpasphoto.github.io/smallworld.html?players=4>
 
 **Wordle**
 - <https://cestpasphoto.github.io/wordle.html>
@@ -69,6 +74,18 @@ Details: needed to reproduce Lapidary "behavior" (only to win gold even if one h
 The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
 
 The UI also propose "undervolted" settings: instead of exploring 400 future positions, it explores 200 or 50 or 10 of them to reduce strength. If AI was trained with these lower numbers, it could have been stronger but that wasn't the purpose.
+
+
+## Online Akropolis AI
+
+Using same AI as Santorini, described above. Supporting 2, 3 and 4 players.
+
+### Strength
+
+No objective tests done except [this one](https://www.reddit.com/r/boardgames/comments/133f72n/comment/n5gymnk/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button) in 2 players mode, it "only" wins 78% of the games. Note that randomness can have a lot of impact on this game so benchmarks should be done carefully.
+The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
+
+The UI also propose "undervolted" settings: instead of exploring 1600 future positions, it explores 400 or 100 or 25 or 10 of them to reduce strength.
 
 
 ## Online wordle solver
