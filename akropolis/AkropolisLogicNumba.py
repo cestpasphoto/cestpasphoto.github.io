@@ -385,6 +385,7 @@ class Board():
 			district_scores = (self.districts.astype(np.int16) * self.plazas * PLAZA_STARS).sum(axis=1)
 			# We multiply the base score by 1000 and add the stones to implicitly break ties
 			scores_proxy = (district_scores + self.stones.astype(np.int16)) * 1000 + self.stones.astype(np.int16)
+			m = scores_proxy.max()
 			single_winner = int((scores_proxy == m).sum()) == 1
 			return np.where(scores_proxy == m, np.float32(1.0 if single_winner else 0.001), np.float32(-1.0))
 		return np.zeros((N_PLAYERS,), dtype=np.float32)
