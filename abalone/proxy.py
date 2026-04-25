@@ -316,12 +316,12 @@ def get_render_state():
     for r in range(9):
         for q in range(9):
             if board[r, q, 2] == 1: 
-                my_marble = board[r, q, 0] == 1
-                opp_marble = board[r, q, 1] == 1
-                
+                # Layer 0 is strictly Player 0, Layer 1 is strictly Player 1
                 abs_player = -1
-                if my_marble: abs_player = player
-                elif opp_marble: abs_player = 1 - player
+                if board[r, q, 0] == 1: 
+                    abs_player = 0
+                elif board[r, q, 1] == 1: 
+                    abs_player = 1
                 
                 cells.append({
                     'r': r,

@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Abalone - Local AI</title>
+    
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+    
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
     
     <script src="abalone/constants.js"></script>
     <script src="abalone/abalone.js"></script>
@@ -14,104 +17,90 @@
 
     <style>
         body {
-            font-family: system-ui, -apple-system, sans-serif;
             background-color: #f4f4f9;
-            color: #333;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
         }
-        .container {
-            max-width: 800px;
-            width: 100%;
-        }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .scoreboard {
-            display: flex;
-            gap: 20px;
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-        .score-p0 { color: #111; }
-        .score-p1 { color: #888; }
-        
         .board-container {
             width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
+            max-width: 650px;
+            margin: 2em auto;
         }
         svg {
             width: 100%;
             height: auto;
-            drop-shadow: 0 10px 15px rgba(0,0,0,0.1);
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
         }
-        .controls {
-            margin-top: 20px;
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-        button {
-            padding: 8px 16px;
-            background-color: #333;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        button:hover:not(:disabled) {
-            background-color: #555;
-        }
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        .status-bar {
+        .status-message {
+            font-size: 1.2em;
+            font-weight: bold;
             text-align: center;
-            margin-top: 15px;
-            font-size: 1.1rem;
-            font-weight: 500;
+            margin-top: 1em;
+            color: #333;
         }
     </style>
 </head>
 <body x-data>
-    <div class="container" x-show="!$store.game.isLoading">
-        <div class="header">
-            <h2>Abalone</h2>
-            <div class="scoreboard">
-                <div class="score-p0">P0 (Black): <span x-text="$store.game.extra.p0_score || 0"></span>/6</div>
-                <div class="score-p1">P1 (White): <span x-text="$store.game.extra.p1_score || 0"></span>/6</div>
+
+    <div class="ui inverted top attached menu" x-show="!$store.game.isLoading">
+        <div class="header item">
+            <i class="circle icon"></i> Abalone
+        </div>
+        
+        <div class="item">
+            <div class="ui black horizontal label">P0</div>
+            Black Score: <span style="margin-left:5px;" x-text="$store.game.extra.p0_score || 0"></span>/6
+        </div>
+        <div class="item">
+            <div class="ui white horizontal label" style="background-color: white; color: black;">P1</div>
+            White Score: <span style="margin-left:5px;" x-text="$store.game.extra.p1_score || 0"></span>/6
+        </div>
+
+        <div class="right menu">
+            <div class="item">
+                 <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
+                    <optgroup label="Above optimal">
+                    <option value="3200">God-like</option>
+                    <option value="1600">Boosted</option>
+                    </optgroup>
+                    <optgroup label="Level used during training">
+                    <option value="800">Native</option>
+                    </optgroup>
+                    <optgroup label="Sub optimal levels">
+                    <option value="400">Easy</option>
+                    <option value="200">Easier</option>
+                    <option value="50" selected>Very easy</option>
+                    <option value="25">Come on</option>
+                    </optgroup>
+                  </select>
             </div>
-        </div>
 
-        <div class="board-container" x-html="ui_renderBoard($store.game.view.cells)">
-        </div>
+            <div class="item">
+                <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
+                    <option value="P0" selected>Human vs AI</option>
+                    <option value="Human">Human vs Human</option>
+                    <option value="P1">AI vs Human</option>
+                    <option value="AI">AI vs AI</option>
+                </select>
+            </div>
 
-        <div class="status-bar" x-text="$store.game.statusMessage"></div>
-
-        <div class="controls">
-            <button @click="$store.game.act('undo')" :disabled="!$store.game.canUndo">Undo</button>
-            <button @click="$store.game.reset()">Reset</button>
-            
-            <select @change="$store.game.setGameMode($event.target.value)">
-                <option value="Human">Human vs Human</option>
-                <option value="P0">Human vs AI</option>
-                <option value="P1">AI vs Human</option>
-                <option value="AI">AI vs AI</option>
-            </select>
+            <a class="item" @click="$store.game.act('undo')" :class="{disabled: !$store.game.canUndo}">
+                <i class="undo icon"></i> Undo
+            </a>
+            <a class="item" @click="$store.game.reset()">
+                <i class="redo icon"></i> Reset
+            </a>
         </div>
     </div>
 
-    <div class="loading" x-show="$store.game.isLoading" style="text-align:center; margin-top: 20vh;">
-        <h2 x-text="$store.game.loadingMessage">Loading...</h2>
+    <div class="ui container" x-show="!$store.game.isLoading">
+        
+        <div class="status-message" x-text="$store.game.statusMessage"></div>
+
+        <div class="board-container" x-html="ui_renderBoard($store.game.view.cells)"></div>
+
+    </div>
+
+    <div class="ui active dimmer" x-show="$store.game.isLoading">
+        <div class="ui large text loader" x-text="$store.game.loadingMessage">Loading...</div>
     </div>
 
     <script>
