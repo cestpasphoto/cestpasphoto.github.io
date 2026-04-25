@@ -103,7 +103,20 @@ function ui_renderBoard(cells) {
     return `<svg viewBox="0 0 100 100">${cellsHtml}</svg>`;
 }
 
-// Analytics (optional, copied from your framework)
+// Executes a non-blocking telemetry ping for basic traffic analytics on page load.
+const counterAPI_base = 'https://abacus.jasoncameron.dev/hit/cestpasphoto.github.io';
+const counterAPI_suffix = new Date().toISOString().slice(2,7).replace('-','');
+
 window.addEventListener('load', () => {
-    // ... ton code d'analytics existant ...
+    const urls = [ 
+        `${counterAPI_base}/overall`, 
+        `${counterAPI_base}/overall_${counterAPI_suffix}`,
+        `${counterAPI_base}/abalone_${counterAPI_suffix}`
+    ];
+    
+    urls.forEach(url => {
+        fetch(url, { mode: 'no-cors' }).catch(e => {
+            console.debug("Analytics blocked or failed");
+        });
+    })
 });
