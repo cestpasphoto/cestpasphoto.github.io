@@ -116,6 +116,10 @@ def set_edit_mode(mode):
 def handle_action(actionName, *args):
     global interaction_step, selected_anchor, selected_group_size, selected_group_axis
     
+    if actionName == "undo":
+        are_human = args[0] if len(args) > 0 else None
+        return undo(are_human)
+        
     if actionName == "click_cell":
         r, q = args[0], args[1]
         

@@ -17,90 +17,110 @@
 
     <style>
         body {
-            background-color: #f4f4f9;
+            background-color: #ffffff;
         }
         .board-container {
-            width: 100%;
+            width: 100vw;
             max-width: 650px;
-            margin: 2em auto;
+            margin: 1em auto;
+            padding: 0 5px;
         }
         svg {
             width: 100%;
             height: auto;
-            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));
         }
         .status-message {
             font-size: 1.2em;
             font-weight: bold;
             text-align: center;
-            margin-top: 1em;
+            margin-top: 0.5em;
             color: #333;
+        }
+        .game-info {
+            text-align: center;
+            margin-bottom: 1em;
+            font-size: 1.1em;
+        }
+
+        @media only screen and (max-width: 767px) {
+            .ui.container.main-content {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+            }
         }
     </style>
 </head>
 <body x-data>
 
-    <div class="ui inverted top attached menu" x-show="!$store.game.isLoading">
-        <div class="header item">
-            <i class="circle icon"></i> Abalone
-        </div>
-        
-        <div class="item">
-            <div class="ui black horizontal label">P0</div>
-            Black Score: <span style="margin-left:5px;" x-text="$store.game.extra.p0_score || 0"></span>/6
-        </div>
-        <div class="item">
-            <div class="ui white horizontal label" style="background-color: white; color: black;">P1</div>
-            White Score: <span style="margin-left:5px;" x-text="$store.game.extra.p1_score || 0"></span>/6
-        </div>
-
-        <div class="right menu">
-            <div class="item">
-                 <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
-                    <optgroup label="Above optimal">
-                    <option value="3200">God-like</option>
-                    <option value="1600">Boosted</option>
-                    </optgroup>
-                    <optgroup label="Level used during training">
-                    <option value="800">Native</option>
-                    </optgroup>
-                    <optgroup label="Sub optimal levels">
-                    <option value="400">Easy</option>
-                    <option value="200">Easier</option>
-                    <option value="50" selected>Very easy</option>
-                    <option value="25">Come on</option>
-                    </optgroup>
-                  </select>
+    <div class="ui borderless menu">
+        <div class="ui container">
+            <div class="fitted item">
+                <button class="ui icon button" @click="$store.game.act('undo', $store.game.arePlayersHuman)" :disabled="!$store.game.canUndo" title="Undo">
+                    <i class="undo icon"></i>
+                </button>
+                <button class="ui icon button" @click="$store.game.reset()" title="Reset">
+                    <i class="file outline icon"></i>
+                </button>  
+            </div>    
+            <div class="right menu"> 
+                <div class="fitted item"> 
+                    <div class="ui small form">
+                        <div class="field">
+                            <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
+                                <optgroup label="Above optimal">
+                                    <option value="3200">God-like</option>
+                                    <option value="1600">Boosted</option>
+                                </optgroup>
+                                <optgroup label="Level used during training">
+                                    <option value="800">Native</option>
+                                </optgroup>
+                                <optgroup label="Sub optimal levels">
+                                    <option value="400">Easy</option>
+                                    <option value="100">Easier</option>
+                                    <option value="50" selected>Very easy</option>
+                                    <option value="25">Come on</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="fitted item"> 
+                    <div class="ui small form">
+                        <div class="field">
+                            <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
+                                <option value="P0" selected>You vs AI</option>
+                                <option value="P1">AI vs you</option>
+                                <option value="Human">No AI</option>
+                                <option value="AI">WarGames</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
-
-            <div class="item">
-                <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
-                    <option value="P0" selected>Human vs AI</option>
-                    <option value="Human">Human vs Human</option>
-                    <option value="P1">AI vs Human</option>
-                    <option value="AI">AI vs AI</option>
-                </select>
-            </div>
-
-            <a class="item" @click="$store.game.act('undo')" :class="{disabled: !$store.game.canUndo}">
-                <i class="undo icon"></i> Undo
-            </a>
-            <a class="item" @click="$store.game.reset()">
-                <i class="redo icon"></i> Reset
-            </a>
         </div>
     </div>
 
-    <div class="ui container" x-show="!$store.game.isLoading">
+    <div class="ui container main-content">
+        <h1 class="ui huge center aligned header" style="margin-bottom: 0.2em;">Abalone with AI</h1> 
         
+        <div class="game-info">
+            <div class="ui horizontal list">
+                <div class="item"><strong>Round:</strong> <span x-text="$store.game.extra.round || 0"></span></div>
+                <div class="item">
+                    <i class="circle icon" style="color: #000;"></i> <strong>P0:</strong> <span x-text="$store.game.extra.p0_score || 0"></span>/6
+                </div>
+                <div class="item">
+                    <i class="circle outline icon" style="color: #000;"></i> <strong>P1:</strong> <span x-text="$store.game.extra.p1_score || 0"></span>/6
+                </div>
+                <div class="item" x-show="$store.game.isLoading || $store.game.isThinking">
+                    <div class="ui active inline mini loader"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="status-message" x-text="$store.game.statusMessage"></div>
 
         <div class="board-container" x-html="ui_renderBoard($store.game.view.cells)"></div>
-
-    </div>
-
-    <div class="ui active dimmer" x-show="$store.game.isLoading">
-        <div class="ui large text loader" x-text="$store.game.loadingMessage">Loading...</div>
     </div>
 
     <script>

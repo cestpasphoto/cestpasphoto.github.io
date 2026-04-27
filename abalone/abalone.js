@@ -26,64 +26,58 @@ const colors = {
 function ui_renderCell(cell) {
     if (!cell) return '';
 
-    // Mathematical conversion from Axial (r, q) to Cartesian (x, y) for pointy-topped hexes
-    const R = 5; // Hexagon radius in SVG coordinate units
-    const W = R * Math.sqrt(3); // Width
-    const H = R * 2; // Height
+    const R = 5; 
+    const W = R * Math.sqrt(3);
+    const H = R * 2; 
     
-    // The center of the 9x9 board is at r=4, q=4
     const r_offset = cell.r - 4;
     const q_offset = cell.q - 4;
     
-    const cx = 50; // SVG ViewBox Center X
-    const cy = 50; // SVG ViewBox Center Y
+    const cx = 50; 
+    const cy = 50; 
     
     const x = cx + (q_offset + r_offset / 2) * W;
     const y = cy + r_offset * (H * 0.75);
 
-    // Calculate hexagon points relative to its center
     const points = [
         [0, -R], [W/2, -R/2], [W/2, R/2], 
         [0, R], [-W/2, R/2], [-W/2, -R/2]
     ].map(p => `${x + p[0]},${y + p[1]}`).join(' ');
 
-    // Styling based on state from proxy.py
-    let hexFill = '#cfb997'; // Classic wooden board color
-    let hexStroke = '#8c7352';
+    // Styles épurés pour le plateau
+    let hexFill = 'transparent'; 
+    let hexStroke = '#cccccc';
     let hexStrokeWidth = 0.3;
     let cursor = 'default';
 
     if (cell.isSelectable) {
-        hexFill = '#e3cfb3'; // Brighter when hoverable/selectable
+        hexFill = '#f4f4f4'; // Léger gris au survol possible
         cursor = 'pointer';
     }
     if (cell.isSelected) {
-        hexFill = '#a6cfb3'; // Greenish tint for selected group
-        hexStroke = '#2b7a4b';
+        hexFill = '#e0e0e0';
+        hexStroke = '#888888';
         hexStrokeWidth = 1;
     }
 
     let marbleHtml = '';
     if (cell.player !== -1) {
-        const marbleColor = colors[cell.player];
-        const shadowColor = cell.player === 0 ? '#000000' : '#bbbbbb';
-        
-        // Add a slight scale effect if it's the anchor/selected
+        // Couleurs brutes : Noir (0) et Blanc (1)
+        const marbleColor = cell.player === 0 ? '#000000' : '#ffffff';
+        // Ajout d'une bordure noire pour que la bille blanche soit visible sur fond blanc
+        const marbleStroke = cell.player === 1 ? 'stroke="#000000" stroke-width="0.3"' : '';
         const radius = cell.isSelected ? R * 0.75 : R * 0.7;
         
         marbleHtml = `
-            <circle cx="${x}" cy="${y}" r="${radius}" fill="${marbleColor}" filter="drop-shadow(1px 2px 2px rgba(0,0,0,0.5))" />
-            <circle cx="${x - R*0.2}" cy="${y - R*0.2}" r="${radius * 0.2}" fill="white" opacity="0.3" filter="blur(0.5px)" />
+            <circle cx="${x}" cy="${y}" r="${radius}" fill="${marbleColor}" ${marbleStroke} />
         `;
     }
 
-    // Last move indicator
     let lastMoveHtml = '';
     if (cell.lastMove) {
         lastMoveHtml = `<circle cx="${x}" cy="${y}" r="${R * 0.15}" fill="red" />`;
     }
 
-    // Wrap the cell in a clickable group, sending the act('click_cell', r, q) to Alpine
     return `
         <g transform="translate(0, 0)" onclick="Alpine.store('game').act('click_cell', ${cell.r}, ${cell.q})" style="cursor: ${cursor}">
             <polygon points="${points}" fill="${hexFill}" stroke="${hexStroke}" stroke-width="${hexStrokeWidth}" />
