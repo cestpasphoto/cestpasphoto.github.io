@@ -60,7 +60,10 @@
                 </button>
                 <button class="ui icon button" @click="$store.game.reset()" title="Reset">
                     <i class="file outline icon"></i>
-                </button>  
+                </button> 
+                <button class="ui icon button" @click="$store.game.toggleEdit()" title="Edit Board">
+                    <i class="edit icon"></i>
+                </button> 
             </div>    
             <div class="right menu"> 
                 <div class="fitted item"> 
@@ -119,6 +122,11 @@
         </div>
 
         <div class="status-message" x-text="$store.game.statusMessage"></div>
+
+        <div x-show="$store.game.editMode !== 0" class="ui info message" style="text-align: center; max-width: 650px; margin: 1em auto;">
+            <div class="header">Edit Mode Active</div>
+            <p>Click on cells to cycle their content (Empty &rarr; Black &rarr; White). Click the Edit button again to resume playing.</p>
+        </div>
 
         <div class="board-container" x-html="ui_renderBoard($store.game.view.cells)"></div>
     </div>

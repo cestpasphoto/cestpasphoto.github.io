@@ -107,8 +107,13 @@ def undo(arePlayersHuman=None):
 
 
 def set_edit_mode(mode):
-    global edit_mode
-    edit_mode = int(mode)
+    global edit_mode, valids, game_result
+    
+    edit_mode = 1 if edit_mode == 0 else 0
+    if edit_mode == 0:
+        valids = g.getValidMoves(board, player)
+        game_result = g.getGameEnded(board, player).tolist()
+        
     _reset_interaction()
     return get_render_state()
 
@@ -122,6 +127,22 @@ def handle_action(actionName, *args):
         
     if actionName == "click_cell":
         r, q = args[0], args[1]
+
+        # When in EDIT mode
+        if edit_mode != 0:
+            if board[r, q, 0] == 1:
+                # Noir -> Blanc
+                board[r, q, 0] = 0
+                board[r, q, 1] = 1
+            elif board[r, q, 1] == 1:
+                # Blanc -> Vide
+                board[r, q, 0] = 0
+                board[r, q, 1] = 0
+            else:
+                # Vide -> Noir
+                board[r, q, 0] = 1
+                board[r, q, 1] = 0
+            return get_render_state()
         
         is_my_marble = (board[r, q, 0] == 1)
         
@@ -327,12 +348,14 @@ def get_render_state():
                 elif board[r, q, 1] == 1: 
                     abs_player = 1
                 
+                is_selectable = True if edit_mode != 0 else bool(selectable_mask[r, q])
+
                 cells.append({
                     'r': r,
                     'q': q,
                     'player': abs_player,
                     'isSelected': (r, q) in selected_marbles,
-                    'isSelectable': bool(selectable_mask[r, q]),
+                    'isSelectable': is_selectable,
                     'lastMove': (r, q) in previous_coords
                 })
 
