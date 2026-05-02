@@ -359,8 +359,8 @@ def get_render_state():
                     'lastMove': (r, q) in previous_coords
                 })
 
-    p0_score = int(board[0, 0, 3] if player == 0 else board[0, 1, 3])
-    p1_score = int(board[0, 1, 3] if player == 0 else board[0, 0, 3])
+    p0_score = int(board[0, 0, 3])
+    p1_score = int(board[0, 1, 3])
     round_val = int(board[0, 2, 3])
 
     return json.dumps({
