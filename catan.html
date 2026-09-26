@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catan with AI</title>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
+  <!-- Pyodide 0.27 ships numpy 2 (engine ~3x faster than with 0.26's numpy 1.26) -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.0/dist/ort.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
+  <script src="./catan/constants.js"></script>
+  <script src="./catan/geometry.js"></script>
+  <script src="./common/game.js"></script>
+  <script src="./catan/catan.js"></script>
+  <style>
+    body { background: #f7f5ef; }
+    .board, .chip, .stat, .choices .button, .journal, .trade { font-family: Lato, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"; }
+    .ui.main.container { padding: 0.5em 0 2em; }
+    .board { display: block; width: 100%; max-width: 560px; margin: 0 auto; touch-action: manipulation; user-select: none; }
+    .board .deco { pointer-events: none; }
+    .board .hit { pointer-events: all; cursor: pointer; }
+    .board .nohit { pointer-events: none; }
+    .board .pulse { animation: pulse 1.1s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: 0.35; } }
+
+    .strip { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3em 0.6em; padding: 0.35em 0.6em; border-left: 4px solid transparent; }
+    .strip.actor { background: #fffbe6; }
+    .strip .name { min-width: 5.5em; }
+    .stat { white-space: nowrap; }
+    .badge { font-size: 0.85em; padding: 0 0.35em; border-radius: 0.6em; background: #eee; white-space: nowrap; }
+    .badge.warn { background: #ffe0b2; }
+
+    .prompt { margin: 0.5em 0 !important; padding: 0.6em 0.8em !important; }
+    .prompt .dice { float: right; font-weight: bold; }
+    .choices { margin-top: 0.4em; display: flex; flex-wrap: wrap; gap: 0.3em; }
+    .choices .button { margin: 0 !important; }
+
+    .hand { display: flex; flex-wrap: wrap; gap: 0.3em; align-items: center; margin-top: 0.3em; }
+    .chip { display: inline-flex; align-items: center; gap: 0.2em; padding: 0.15em 0.45em; border-radius: 0.5em; background: #fff; border: 1px solid #ddd; font-size: 1.1em; }
+    .chip.zero { opacity: 0.35; }
+    .chip.playable { border-color: #21ba45; box-shadow: 0 0 0 1px #21ba45; cursor: pointer; }
+    .chip.new { opacity: 0.55; font-style: italic; }
+    .small { font-size: 0.85em; color: #777; }
+
+    .trade .row { display: flex; align-items: center; gap: 0.25em; margin: 0.25em 0; }
+    .trade .row > .label { width: 3.2em; font-weight: bold; }
+    .trade .res.button { padding: 0.45em 0.5em !important; min-width: 2.8em; font-size: 1.05em; white-space: nowrap; }
+    .trade .res.button { position: relative; }
+    .trade .rate { position: absolute; left: 0; right: 0; bottom: -1.35em; font-size: 0.7em; color: #888; font-weight: normal; }
+    .trade .row.give { margin-bottom: 1.2em; }
+
+    .journal .evt { padding: 0.15em 0; border-bottom: 1px solid #f0f0f0; }
+    .priv { color: #888; }
+  </style>
+</head>
+<body><div x-data x-init="$store.game.start()">
+
+<div class="ui borderless menu">
+  <div class="ui container">
+    <div class="fitted item">
+      <button class="ui icon button" @click="ui_newGame()"><i class="file outline icon"></i></button>
+    </div>
+    <div class="fitted item">
+      <div class="ui small form">
+        <div class="field">
+          <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
+            <optgroup label="Above optimal">
+            <option value="1600"       >Boosted</option>
+            </optgroup>
+            <optgroup label="Level used during training">
+            <option value="800"        >Native</option>
+            </optgroup>
+            <optgroup label="Sub optimal levels">
+            <option value="200"        >Medium</option>
+            <option value="50" selected>Easy</option>
+            <option value="12"         >Easier</option>
+            <option value="3"          >Come on</option>
+            </optgroup>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="fitted item">
+      <div class="ui small form">
+        <div class="field">
+          <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
+            <option value="P0" selected>You vs AI</option>
+            <option value="P1">AI vs you</option>
+            <option value="Human">No AI</option>
+            <option value="AI">WarGames</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="ui main text container">
+
+  <!-- Other players (everybody when no human plays) -->
+  <div class="ui segments" x-show="$store.game.view.players">
+    <template x-for="p in ui_stripSeats()" :key="'strip' + p">
+      <div class="ui segment strip" :class="{ actor: p === $store.game.currentPlayer && !$store.game.gameEnded }"
+           :style="'border-left-color:' + SEAT_COLORS[p]">
+        <span class="name" x-html="ui_nameHtml(p)"></span>
+        <span x-html="ui_stripLine(p)"></span>
+      </div>
+    </template>
+  </div>
+
+  <!-- Board -->
+  <svg class="board" x-init="$el.setAttribute('viewBox', GEO.viewBox)" xmlns="http://www.w3.org/2000/svg">
+    <g x-html="ui_boardSvg()"></g>
+  </svg>
+
+  <!-- Prompt and choice buttons -->
+  <div class="ui message prompt" :class="{ positive: $store.game.gameEnded }">
+    <span class="dice" x-show="$store.game.view.dice" x-text="'🎲 ' + $store.game.view.dice"></span>
+    <i class="notched circle loading icon" x-show="$store.game.isThinking || $store.game.isLoading"></i>
+    <span x-html="ui_promptHtml()"></span>
+    <div class="choices" x-show="ui_canAct() && ($store.game.extra.choices || []).length">
+      <template x-for="(c, i) in ($store.game.extra.choices || [])" :key="'c' + i + c.l">
+        <button class="ui compact button" :class="c.c" @click="$store.game.act(c.a, ...c.x)" x-html="ui_fmt(c.l)"></button>
+      </template>
+    </div>
+  </div>
+
+  <!-- The viewer's own panel -->
+  <div class="ui segment" x-show="ui_viewer() >= 0 && ui_player(ui_viewer())" :style="'border-left: 4px solid ' + SEAT_COLORS[Math.max(ui_viewer(), 0)]">
+    <template x-if="ui_viewer() >= 0 && ui_player(ui_viewer())">
+      <div>
+        <div>
+          <span x-html="ui_nameHtml(ui_viewer())"></span>
+          <span class="stat">· 🏅 <span x-text="ui_vp(ui_viewer())"></span> VP</span>
+          <span x-html="ui_badges(ui_viewer())"></span>
+        </div>
+        <div class="hand">
+          <template x-for="r in [0, 1, 2, 3, 4]" :key="'res' + r">
+            <span class="chip" :class="{ zero: !ui_mine().res[r] }" :title="RES_NAMES[r]">
+              <span x-text="RES_EMOJI[r]"></span><b x-text="ui_mine().res[r]"></b>
+            </span>
+          </template>
+        </div>
+        <div class="hand">
+          <template x-for="k in DEV_ORDER" :key="'dev' + k">
+            <span class="chip" x-show="ui_mine().dev[k]"
+                  :class="{ playable: ui_canAct() && ($store.game.extra.dev || [])[k] !== -1 }"
+                  :title="DEV_NAMES[k]" @click="ui_clickDev(k)">
+              <span x-text="DEV_EMOJI[k]"></span><b x-text="ui_mine().dev[k]"></b>
+            </span>
+          </template>
+          <template x-for="k in DEV_ORDER" :key="'new' + k">
+            <span class="chip new" x-show="ui_mine().devNew[k]" :title="DEV_NAMES[k] + ' (bought this turn)'">
+              <span x-text="DEV_EMOJI[k]"></span><b x-text="ui_mine().devNew[k]"></b> new
+            </span>
+          </template>
+        </div>
+        <div class="small" style="margin-top: 0.4em">
+          Left: 🛣️ <span x-text="ui_mine().left[0]"></span>
+          · 🏠 <span x-text="ui_mine().left[1]"></span>
+          · 🏙️ <span x-text="ui_mine().left[2]"></span>
+          — Costs: road 🧱🌲 · settlement 🧱🌲🌾🐑 · city ⛰️⛰️⛰️🌾🌾 · card ⛰️🌾🐑
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Actions -->
+  <div class="ui fluid compact buttons">
+    <button class="ui icon button" @click="ui_undo()"
+            :class="{ disabled: !$store.game.canUndo || $store.game.isThinking || $store.game.isLoading }">
+      <i class="undo icon"></i>
+    </button>
+    <button class="ui button" @click="ui_play($store.game.extra.buyDev)"
+            :class="{ disabled: !ui_canAct() || !($store.game.extra.buyDev >= 0) }">🃏 Card</button>
+    <button class="ui button" @click="$store.game.act('trade', 'toggle')"
+            :class="{ disabled: !ui_canAct() || !$store.game.extra.canTrade, active: $store.game.extra.trade?.open }">🔁 Trade</button>
+    <button class="ui button" @click="ui_play($store.game.extra.endTurn)"
+            :class="{ disabled: !ui_canAct() || !($store.game.extra.endTurn >= 0), primary: ui_canAct() && $store.game.extra.endTurn >= 0 }">End turn</button>
+  </div>
+
+  <!-- Trade panel: one draft, two outlets (bank or players) -->
+  <div class="ui segment trade" x-show="ui_canAct() && $store.game.extra.trade?.open">
+    <div class="row give">
+      <span class="label">Give</span>
+      <template x-for="r in [0, 1, 2, 3, 4]" :key="'tg' + r">
+        <button class="ui basic button res" @click="$store.game.act('trade', 'add', 'give', r)"
+                :class="{ blue: $store.game.extra.trade?.give[r] > 0 }">
+          <span x-text="RES_EMOJI[r]"></span><b x-text="$store.game.extra.trade?.give[r] || ''"></b>
+          <span class="rate" x-text="($store.game.extra.trade?.rates || [])[r] + ':1'"></span>
+        </button>
+      </template>
+      <button class="ui basic icon button" @click="$store.game.act('trade', 'reset', 'give')"><i class="eraser icon"></i></button>
+    </div>
+    <div class="row">
+      <span class="label">Get</span>
+      <template x-for="r in [0, 1, 2, 3, 4]" :key="'ta' + r">
+        <button class="ui basic button res" @click="$store.game.act('trade', 'add', 'ask', r)"
+                :class="{ green: $store.game.extra.trade?.ask[r] > 0 }">
+          <span x-text="RES_EMOJI[r]"></span><b x-text="$store.game.extra.trade?.ask[r] || ''"></b>
+        </button>
+      </template>
+      <button class="ui basic icon button" @click="$store.game.act('trade', 'reset', 'ask')"><i class="eraser icon"></i></button>
+    </div>
+    <div class="ui two small buttons" style="margin-top: 0.5em">
+      <button class="ui button" @click="$store.game.act('trade', 'bank')"
+              :class="{ disabled: !($store.game.extra.trade?.bank >= 0), teal: $store.game.extra.trade?.bank >= 0 }"
+              x-text="$store.game.extra.trade?.bankLabel"></button>
+      <button class="ui button" @click="$store.game.act('trade', 'offer')"
+              :class="{ disabled: !$store.game.extra.trade?.offer, teal: $store.game.extra.trade?.offer }">Offer to players</button>
+    </div>
+    <div class="small" style="margin-top: 0.4em" x-text="$store.game.extra.trade?.hint"></div>
+  </div>
+
+  <!-- Journal: what happened since your last decision -->
+  <div class="ui segment journal" x-data="{ open: true }" x-show="$store.game.view.players">
+    <div style="cursor: pointer" @click="open = !open">
+      <b>Journal</b> <span class="small" x-text="open ? '▾' : '▸'"></span>
+    </div>
+    <div x-show="open" style="margin-top: 0.3em">
+      <template x-for="ev in ui_recent().list.slice().reverse()" :key="'ev' + ev.id">
+        <div class="evt" x-html="ui_evHtml(ev)"></div>
+      </template>
+    </div>
+  </div>
+
+</div>
+
+</div></body>
+</html>
