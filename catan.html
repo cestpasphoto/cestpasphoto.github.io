@@ -212,6 +212,11 @@
               :class="{ disabled: !$store.game.extra.trade?.offer, teal: $store.game.extra.trade?.offer }">Offer to players</button>
     </div>
     <div class="small" style="margin-top: 0.4em" x-text="$store.game.extra.trade?.hint"></div>
+    <div class="small" style="margin-top: 0.3em">
+      Bank: <span x-text="ui_res1($store.game.view.bank || [])"></span>
+      · dev cards left: <span x-text="$store.game.view.deck"></span>
+      · tap a resource again past its limit to reset it
+    </div>
   </div>
 
   <!-- Journal: what happened since your last decision -->

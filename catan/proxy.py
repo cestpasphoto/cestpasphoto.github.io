@@ -30,7 +30,7 @@ class dotdict(dict):
 
 
 P = N_PLAYERS
-MAX_EVENTS = 80
+MAX_EVENTS = 150
 RES = ['🧱', '🌲', '⛰️', '🌾', '🐑']
 DEV_EMOJI = ['⚔️', '⭐', '🛣️', '💰', '🎁']
 DEV_NAMES = ['Knight', 'Victory Point', 'Road Building', 'Monopoly', 'Year of Plenty']
@@ -43,7 +43,7 @@ eng = rot = rd = None   # scratch boards owned by this module
 history = []         # snapshots taken before each human decision
 events = []          # journal, see _ev()
 next_id = 1
-marks = [0] * P      # per seat: last event id before that seat's latest decision
+marks = [0] * P      # per seat: last event id before that seat ended its previous turn
 ui = {}              # interaction state
 end_announced = False
 
@@ -180,7 +180,6 @@ def _play(action):
 
 def _human(actions):
     _snapshot()
-    marks[player] = next_id - 1
     for a in actions:
         _play(a)
     _reset_ui(keep_trade=True)
@@ -246,12 +245,13 @@ def _trade_action(sub, *args):
         for s in (['give', 'ask'] if side is None else [side]):
             t[s] = [0] * N_RESOURCES
     elif sub == 'add':
+        # +1 per tap; once the limit is reached, the next tap brings it back to 0
         side, r = args[0], int(args[1])
-        hand = _hand(board, player)
-        if side == 'give' and t['give'][r] < hand[r] and sum(t['give']) < 4 and t['ask'][r] == 0:
-            t['give'][r] += 1
-        elif side == 'ask' and sum(t['ask']) < 3 and t['give'][r] == 0:
-            t['ask'][r] += 1
+        other = 'ask' if side == 'give' else 'give'
+        if t[other][r] == 0:
+            cap = min(_hand(board, player)[r], 4 - sum(t['give']) + t['give'][r]) if side == 'give' \
+                else 3 - sum(t['ask']) + t['ask'][r]
+            t[side][r] = t[side][r] + 1 if t[side][r] < cap else 0
     elif sub == 'bank':
         a, _, _ = _bank_action()
         if a >= 0:
@@ -262,7 +262,6 @@ def _trade_action(sub, *args):
         if ok:
             s_ask, s_give = _set_index(t['ask']), _set_index(t['give'])
             _snapshot()
-            marks[player] = next_id - 1
             composer = player
             _play(A_TRADE_RECV + s_ask)
             # the GIVE ply is auto-resolved when it has a single legal option,
@@ -316,7 +315,13 @@ def _offer_check():
     if s_ask < 0 or s_give < 0:
         return False, 'Not a legal offer'
     if not _legal(A_TRADE_RECV + s_ask):
-        return False, 'Opponents cannot supply that, or you must keep a card you do not ask for'
+        hand, bank = _hand(board, player), _ints(_ga(board)[GA_BANK:GA_BANK + N_RESOURCES])
+        for r in range(N_RESOURCES):
+            held = BANK_PER_RESOURCE - bank[r] - hand[r]      # public: what the opponents hold together
+            if ask[r] > held:
+                return False, (f'Opponents hold {held} {RES[r]} in total '
+                               f'({BANK_PER_RESOURCE} − {bank[r]} in bank − {hand[r]} yours)')
+        return False, 'You must keep a card of a type you do not ask for'
     eng.copy_state(_rotate(board, player), True)
     eng._do_trade_recv(s_ask, 0)
     if not eng._give_is_legal(0, s_give):
@@ -438,6 +443,7 @@ def _describe(who, move, before, after):
         t = move - A_TRADE_ACCEPT
         _ev(f'{w} took the counter-offer of @{(who + t) % P}' if t else f'{w} refused every counter-offer')
     elif move == A_END_TURN:
+        marks[who] = next_id - 1          # this seat's journal restarts here
         rd.copy_state(after, False)
         _ev(f'— Round {int(rd.get_round())}: @{int(_gb(after)[GB_TURN_PLAYER])} —', k='turn')
     for p in range(P):
@@ -610,7 +616,10 @@ def _extra():
                     choices.append(_choice(label, 'play', a))
             choices.append(_choice('Cancel', 'cancel', color='basic'))
     elif phase == PHASE_MAIN:
-        ex['prompt'] = 'Build on the board, buy, trade or end your turn'
+        what = [name for name, lo, n in (('road', A_ROAD, N_EDGES), ('settlement', A_SETTLEMENT, N_VERTICES),
+                                         ('city', A_CITY, N_VERTICES)) if any(lo <= a < lo + n for a in legal)]
+        ex['prompt'] = (f'Tap a highlighted spot to build a {" / ".join(what)}, or buy, trade, end turn' if what
+                        else 'Nothing to build: buy, trade or end your turn')
     elif phase == PHASE_ROAD_BUILDING:
         ex['prompt'] = f'Road Building: place {int(_gb(board)[GB_PENDING_COUNT])} more road(s)'
     elif phase == PHASE_TRADE_ANSWER:

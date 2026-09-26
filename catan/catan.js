@@ -34,7 +34,7 @@ function ui_viewer() {
   if (humans.length === 1) return humans[0];
   return s.arePlayersHuman[s.currentPlayer] ? s.currentPlayer : humans[0];
 }
-function ui_sees(p) { const w = ui_viewer(); return w < 0 || w === p; }
+function ui_sees(p) { const w = ui_viewer(); return w < 0 || w === p || S().gameEnded; }
 
 function ui_canAct() {
   const s = S();
@@ -50,6 +50,7 @@ function ui_nameHtml(p) {
 }
 // Python writes seats as @0 @1 @2
 function ui_fmt(text) { return (text || '').replace(/@(\d)/g, (_, d) => ui_nameHtml(+d)); }
+function ui_res1(counts) { return counts.map((n, r) => RES_EMOJI[r] + n).join(' '); }
 function ui_res(counts) { return counts.map((n, r) => RES_EMOJI[r].repeat(n)).join('') || '∅'; }
 
 
@@ -165,7 +166,7 @@ function ui_recent() {
 function ui_evHtml(ev) {
   const w = ui_viewer();
   let s = ui_fmt(ev.t);
-  if (ev.pt && (w < 0 || (ev.ps || []).includes(w))) s += ` <span class="priv">(${ev.pt})</span>`;
+  if (ev.pt && (w < 0 || S().gameEnded || (ev.ps || []).includes(w))) s += ` <span class="priv">(${ev.pt})</span>`;
   return s;
 }
 function ui_isRecent(kind, i) { return ui_recent()[kind].has(i); }
