@@ -15,7 +15,9 @@ in the page (Pyodide's memory), so masking is a display matter, done by
 catan.js according to who is human. Events carry their private part apart
 (`pt`, visible to the seats in `ps` only).
 """
+import base64
 import json
+import zlib
 import numpy as np
 
 from MCTS import MCTS
@@ -38,6 +40,7 @@ DEV_NAMES = ['Knight', 'Victory Point', 'Road Building', 'Monopoly', 'Year of Pl
 g = None             # Game; g.board is the scratch board of MCTS, never read here
 board = None         # current state, absolute frame
 player = 0           # seat that must act next
+ply = 0              # count of actions submitted to Game.getNextState so far, == Arena's `it`
 mcts = None
 eng = rot = rd = None   # scratch boards owned by this module
 history = []         # snapshots taken before each human decision
@@ -46,6 +49,7 @@ next_id = 1
 marks = [0] * P      # per seat: last event id before that seat ended its previous turn
 ui = {}              # interaction state
 end_announced = False
+pre_recv_state = ''  # debug: state ID captured just before the last A_TRADE_RECV ply
 
 
 # =============================================================================
@@ -53,11 +57,13 @@ end_announced = False
 # =============================================================================
 
 def init_game(numMCTSSims):
-    global g, board, player, mcts, eng, rot, rd, history, events, next_id, marks, end_announced
+    global g, board, player, ply, mcts, eng, rot, rd, history, events, next_id, marks, end_announced, pre_recv_state
     g = Game()
     eng, rot, rd = Board(P), Board(P), Board(P)
     board = np.copy(g.getInitBoard())
     player = 0
+    ply = 0
+    pre_recv_state = ''
     mcts_args = dotdict({            # evaluation profile of pit.py --strict
         'numMCTSSims'      : numMCTSSims,
         'cpuct'            : 1.0,
@@ -171,8 +177,13 @@ def _step(action, actor):
 
 
 def _play(action):
-    global board, player
+    global board, player, ply, pre_recv_state
+    if A_TRADE_RECV <= action < A_TRADE_RECV + N_TRADE_SETS:
+        # captured here (not just in the human trade panel) so an AI-submitted
+        # player-trade offer is debuggable too, not only a human-composed one
+        pre_recv_state = _state_id()
     board, player, trace = _step(action, player)
+    ply += 1                                            # one submitted action == one Arena `it`
     for who, move, before, after in trace:
         _describe(who, move, before, after)
     _announce_end()
@@ -211,13 +222,13 @@ def _robber_options(h):
 # =============================================================================
 
 def _snapshot():
-    history.append((np.copy(board), player, [dict(e) for e in events], next_id, list(marks), end_announced))
+    history.append((np.copy(board), player, ply, [dict(e) for e in events], next_id, list(marks), end_announced))
 
 
 def _undo():
-    global board, player, events, next_id, marks, end_announced
+    global board, player, ply, events, next_id, marks, end_announced
     if history:
-        board, player, events, next_id, marks, end_announced = history.pop()
+        board, player, ply, events, next_id, marks, end_announced = history.pop()
     _reset_ui()
 
 
@@ -469,6 +480,16 @@ def _announce_end():
 # Rendering
 # =============================================================================
 
+def _state_id():
+    """Same wire format as Arena.playGame's `initial_state` (pit.py --state / -s):
+    raw board bytes (absolute frame, int8) + current player (1 byte) + ply count
+    (2 bytes, big-endian), deflated (wbits=-15) and base64-encoded."""
+    data = board.tobytes() + bytes([int(player) & 0xFF]) + int(ply & 0xFFFF).to_bytes(2, 'big')
+    co = zlib.compressobj(9, zlib.DEFLATED, -15)
+    raw = co.compress(data) + co.flush()
+    return base64.b64encode(raw).decode('ascii')
+
+
 def _pa(st, p): return st[ROW_PLAYER + 4 * p]
 def _pb(st, p): return st[ROW_PLAYER + 4 * p + 1]
 def _pc(st, p): return st[ROW_PLAYER + 4 * p + 2]
@@ -519,6 +540,8 @@ def _view():
         players=players,
         events=events,
         marks=list(marks),
+        stateId=_state_id(),
+        preRecvStateId=pre_recv_state,
     )
 
 
