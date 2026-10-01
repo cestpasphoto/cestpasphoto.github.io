@@ -49,6 +49,7 @@ next_id = 1
 marks = [0] * P      # per seat: last event id before that seat ended its previous turn
 ui = {}              # interaction state
 end_announced = False
+pre_recv_state = ''  # debug: state ID captured just before the last A_TRADE_RECV ply
 
 
 # =============================================================================
@@ -56,12 +57,13 @@ end_announced = False
 # =============================================================================
 
 def init_game(numMCTSSims):
-    global g, board, player, ply, mcts, eng, rot, rd, history, events, next_id, marks, end_announced
+    global g, board, player, ply, mcts, eng, rot, rd, history, events, next_id, marks, end_announced, pre_recv_state
     g = Game()
     eng, rot, rd = Board(P), Board(P), Board(P)
     board = np.copy(g.getInitBoard())
     player = 0
     ply = 0
+    pre_recv_state = ''
     mcts_args = dotdict({            # evaluation profile of pit.py --strict
         'numMCTSSims'      : numMCTSSims,
         'cpuct'            : 1.0,
@@ -175,7 +177,11 @@ def _step(action, actor):
 
 
 def _play(action):
-    global board, player, ply
+    global board, player, ply, pre_recv_state
+    if A_TRADE_RECV <= action < A_TRADE_RECV + N_TRADE_SETS:
+        # captured here (not just in the human trade panel) so an AI-submitted
+        # player-trade offer is debuggable too, not only a human-composed one
+        pre_recv_state = _state_id()
     board, player, trace = _step(action, player)
     ply += 1                                            # one submitted action == one Arena `it`
     for who, move, before, after in trace:
@@ -237,7 +243,7 @@ def _reset_ui(keep_trade=False):
 
 
 # =============================================================================
-# Trade panel (bank only)
+# Trade panel
 # =============================================================================
 
 def _trade_action(sub, *args):
@@ -250,20 +256,37 @@ def _trade_action(sub, *args):
         for s in (['give', 'ask'] if side is None else [side]):
             t[s] = [0] * N_RESOURCES
     elif sub == 'add':
-        # +1 per tap; once the limit is reached, the next tap brings it back to 0.
-        # Bank trades only (player trade is gone from the engine): up to 4 cards
-        # given (worst bank ratio), exactly 1 card asked.
+        # +1 per tap; once the limit is reached, the next tap brings it back to 0
         side, r = args[0], int(args[1])
         other = 'ask' if side == 'give' else 'give'
         if t[other][r] == 0:
             cap = min(_hand(board, player)[r], 4 - sum(t['give']) + t['give'][r]) if side == 'give' \
-                else 1 - sum(t['ask']) + t['ask'][r]
+                else 3 - sum(t['ask']) + t['ask'][r]
             t[side][r] = t[side][r] + 1 if t[side][r] < cap else 0
     elif sub == 'bank':
         a, _, _ = _bank_action()
         if a >= 0:
             _human([a])
             ui['trade']['open'] = True
+    elif sub == 'offer':
+        ok, _ = _offer_check()
+        if ok:
+            s_ask, s_give = _set_index(t['ask']), _set_index(t['give'])
+            _snapshot()
+            composer = player
+            _play(A_TRADE_RECV + s_ask)
+            # the GIVE ply is auto-resolved when it has a single legal option,
+            # which is then necessarily this one (_offer_check checked it)
+            if _ga(board)[GA_PHASE] == PHASE_TRADE_OFFER and player == composer:
+                _play(A_TRADE_GIVE + s_give)
+            _reset_ui()
+
+
+def _set_index(counts):
+    for s in range(N_TRADE_SETS):
+        if all(int(TRADE_SETS[s, r]) == counts[r] for r in range(N_RESOURCES)):
+            return s
+    return -1
 
 
 def _rates(p):
@@ -276,9 +299,7 @@ def _bank_action():
     t = ui['trade']
     gives = [r for r in range(N_RESOURCES) if t['give'][r] > 0]
     asks = [r for r in range(N_RESOURCES) if t['ask'][r] > 0]
-    if len(gives) != 1:
-        return -1, 0, 'Bank: give a single type of resource' if len(gives) > 1 else ''
-    if len(asks) != 1 or t['ask'][asks[0]] != 1:
+    if len(gives) != 1 or len(asks) != 1 or t['ask'][asks[0]] != 1:
         return -1, 0, ''
     gr, gt = gives[0], asks[0]
     ratio = _rates(player)[gr]
@@ -292,22 +313,49 @@ def _bank_action():
     return a, ratio, ''
 
 
+def _offer_check():
+    t = ui['trade']
+    give, ask = t['give'], t['ask']
+    if _gb(board)[GB_PLAYER_TRADE_DONE]:
+        return False, 'Only one offer to players per turn'
+    if sum(give) == 0 or sum(ask) == 0:
+        return False, ''
+    if sum(give) > 3 or sum(ask) > 3:
+        return False, 'Players: at most 3 cards each way'
+    s_ask, s_give = _set_index(ask), _set_index(give)
+    if s_ask < 0 or s_give < 0:
+        return False, 'Not a legal offer'
+    if not _legal(A_TRADE_RECV + s_ask):
+        hand, bank = _hand(board, player), _ints(_ga(board)[GA_BANK:GA_BANK + N_RESOURCES])
+        for r in range(N_RESOURCES):
+            held = BANK_PER_RESOURCE - bank[r] - hand[r]      # public: what the opponents hold together
+            if ask[r] > held:
+                return False, (f'Opponents hold {held} {RES[r]} in total '
+                               f'({BANK_PER_RESOURCE} − {bank[r]} in bank − {hand[r]} yours)')
+        return False, 'You must keep a card of a type you do not ask for'
+    eng.copy_state(_rotate(board, player), True)
+    eng._do_trade_recv(s_ask, 0)
+    if not eng._give_is_legal(0, s_give):
+        return False, 'Not a legal offer'
+    return True, ''
+
+
 def _trade_state():
     t = ui['trade']
     bank, ratio, bank_hint = _bank_action()
+    offer, offer_hint = _offer_check()
     if sum(t['give']) + sum(t['ask']) == 0:
         hint = 'Tap what you give, then what you want'
     elif sum(t['ask']) == 0:
         hint = 'Now tap what you want'
     elif sum(t['give']) == 0:
         hint = 'Now tap what you give'
-    elif bank >= 0:
+    elif bank >= 0 or offer:
         hint = ''
     else:
-        hint = bank_hint
-    # `offer` (player trade) is always False: the page still reads it, the engine no longer has it
+        hint = bank_hint if (bank_hint and (sum(t['give']) > 3 or not offer_hint)) else (offer_hint or bank_hint)
     return dict(open=t['open'], give=list(t['give']), ask=list(t['ask']), bank=int(bank),
-                bankLabel=f'Bank {ratio}:1' if ratio else 'Bank', offer=False, hint=hint,
+                bankLabel=f'Bank {ratio}:1' if ratio else 'Bank', offer=bool(offer), hint=hint,
                 rates=_rates(player))
 
 
@@ -394,6 +442,14 @@ def _describe(who, move, before, after):
             dr = [0] * N_RESOURCES
             dr[r] = 1
             _ev(f'{w} discarded {_res_str(dr)}', k='discard', w=who, dr=dr)
+    elif A_TRADE_GIVE <= move < A_TRADE_GIVE + N_TRADE_SETS:
+        d = _pd(after, who)
+        _ev(f'{w} offers {_res_str(d[PD_TRADE_GIVE:PD_TRADE_GIVE + N_RESOURCES])} '
+            f'for {_res_str(d[PD_TRADE_RECV:PD_TRADE_RECV + N_RESOURCES])}')
+    elif move == A_TRADE_OK:
+        _ev(f'{w} accepted the trade ✅')
+    elif move == A_TRADE_NO:
+        _ev(f'{w} declined ❌')
     elif move == A_END_TURN:
         marks[who] = next_id - 1          # this seat's journal restarts here
         rd.copy_state(after, False)
@@ -434,6 +490,7 @@ def _state_id():
 def _pa(st, p): return st[ROW_PLAYER + 4 * p]
 def _pb(st, p): return st[ROW_PLAYER + 4 * p + 1]
 def _pc(st, p): return st[ROW_PLAYER + 4 * p + 2]
+def _pd(st, p): return st[ROW_PLAYER + 4 * p + 3]
 def _ga(st): return st[ROW_GLOBAL]
 def _gb(st): return st[ROW_GLOBAL + 1]
 def _hand(st, p): return [int(x) for x in st[ROW_PLAYER + 4 * p, PA_RESOURCES:PA_RESOURCES + N_RESOURCES]]
@@ -444,7 +501,8 @@ def _view():
     rd.copy_state(board, False)
     players = []
     for p in range(P):
-        a, b, c = _pa(board, p), _pb(board, p), _pc(board, p)
+        a, b, c, d = _pa(board, p), _pb(board, p), _pc(board, p), _pd(board, p)
+        st = int(d[PD_TRADE_STATUS])
         players.append(dict(
             vp=int(c[PC_VP_PUBLIC]), vpDev=int(c[PC_VP_DEV]),
             nRes=int(a[PA_TOTAL_RES]), res=_ints(a[PA_RESOURCES:PA_RESOURCES + N_RESOURCES]),
@@ -454,6 +512,9 @@ def _view():
             road=int(b[PB_HAS_ROAD]), army=int(b[PB_HAS_ARMY]),
             left=[int(b[PB_ROADS_LEFT]), int(b[PB_SETTLEMENTS_LEFT]), int(b[PB_CITIES_LEFT])],
             owe=int(c[PC_DISCARD_LEFT]),
+            offer=None if st == TRADE_NONE else dict(
+                st=st, ask=_ints(d[PD_TRADE_RECV:PD_TRADE_RECV + N_RESOURCES]),
+                give=_ints(d[PD_TRADE_GIVE:PD_TRADE_GIVE + N_RESOURCES])),
         ))
     edges = []
     for e in range(N_EDGES):
@@ -477,6 +538,7 @@ def _view():
         events=events,
         marks=list(marks),
         stateId=_state_id(),
+        preRecvStateId=pre_recv_state,
     )
 
 
@@ -533,9 +595,9 @@ def _extra():
         ex['endTurn'] = A_END_TURN
         covered.add(A_END_TURN)
 
-    # trade panel: bank trades only
+    # trade panel: bank trades and player offers
     if phase == PHASE_MAIN:
-        tr = [a for a in legal if A_BANK_TRADE <= a < A_BANK_TRADE + 20]
+        tr = [a for a in legal if A_BANK_TRADE <= a < A_BANK_TRADE + 20 or A_TRADE_RECV <= a < A_TRADE_RECV + N_TRADE_SETS]
         ex['canTrade'] = bool(tr)
         covered.update(tr)
         if not tr:
@@ -580,6 +642,21 @@ def _extra():
                         else 'Nothing to build: buy, trade or end your turn')
     elif phase == PHASE_ROAD_BUILDING:
         ex['prompt'] = f'Road Building: place {int(_gb(board)[GB_PENDING_COUNT])} more road(s)'
+    elif phase == PHASE_TRADE_ANSWER:
+        t = int(_gb(board)[GB_TURN_PLAYER])
+        d = _pd(board, t)
+        ex['prompt'] = (f'@{t} gives {_res_str(d[PD_TRADE_GIVE:PD_TRADE_GIVE + N_RESOURCES])} '
+                        f'and wants {_res_str(d[PD_TRADE_RECV:PD_TRADE_RECV + N_RESOURCES])}')
+        if A_TRADE_OK in legal:
+            choices.append(_choice('✅ Accept', 'play', A_TRADE_OK, color='green'))
+        choices.append(_choice('❌ Decline', 'play', A_TRADE_NO))
+        covered.update([A_TRADE_OK, A_TRADE_NO])
+    elif phase == PHASE_TRADE_OFFER:
+        ex['prompt'] = 'Complete your offer: what do you give?'
+        for s in range(N_TRADE_SETS):
+            if A_TRADE_GIVE + s in legal:
+                choices.append(_choice(_res_str(TRADE_SETS[s]), 'play', A_TRADE_GIVE + s))
+                covered.add(A_TRADE_GIVE + s)
 
     # sub-choices opened from a development card
     if pending and pending[0] == 'monopoly' and mono:
@@ -620,6 +697,10 @@ def _label(a):
     if A_BANK_TRADE <= a < A_BANK_TRADE + 20: return f'Bank trade {a - A_BANK_TRADE}'
     if A_DISCARD <= a < A_DISCARD + N_RESOURCES: return f'Discard {RES[a - A_DISCARD]}'
     if a == A_END_TURN: return 'End turn'
+    if A_TRADE_RECV <= a < A_TRADE_RECV + N_TRADE_SETS: return f'Ask {_res_str(TRADE_SETS[a - A_TRADE_RECV])}'
+    if A_TRADE_GIVE <= a < A_TRADE_GIVE + N_TRADE_SETS: return f'Give {_res_str(TRADE_SETS[a - A_TRADE_GIVE])}'
+    if a == A_TRADE_OK: return 'Accept'
+    if a == A_TRADE_NO: return 'Decline'
     return f'Action {a}'
 
 

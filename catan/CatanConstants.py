@@ -4,7 +4,7 @@ import numpy as np
 
 N_PLAYERS = 3                  # 2, 3 or 4 -- changes observation_size() and action_size()
 RANDOM_BOARD = True            # shuffle hexes, number tokens and port types at init
-# A position with at most SYM_TRIVIAL_MAX_LEGAL legal moves (e.g. roll or knight)
+# A position with at most SYM_TRIVIAL_MAX_LEGAL legal moves (roll, trade answer)
 # carries almost no policy signal: it is kept in the replay buffer with
 # probability N_SYM_TRIVIAL / N_ISOMETRIES. N_SYM_TRIVIAL = 12 disables this.
 SYM_TRIVIAL_MAX_LEGAL = 2
@@ -223,7 +223,7 @@ MP_VERTEX_HEX = np.array([[v, VERTEX_TO_HEX[v, k]]
 # CatanLogicNumba.py for the column-by-column description.
 
 N_COLS = 12
-ROWS_PER_PLAYER = 4                             # A hand / B pieces / C public / D unused
+ROWS_PER_PLAYER = 4                             # A hand / B pieces / C public / D trade
 ROW_VERTEX = 0                                  # 54 rows, one per vertex  -> NN token
 ROW_HEX = ROW_VERTEX + N_VERTICES               # 19 rows, one per hex     -> NN token
 ROW_PLAYER = ROW_HEX + N_HEXES                  # 4 rows per player        -> NN token
@@ -246,9 +246,19 @@ PC_DISCARD_LEFT = 10           # cards this player still owes after a 7
 PC_TOTAL_DEV_NEW = 9            # dev cards bought this turn: public (only the TYPE is hidden),
                                # lets sample_world tell a playable card from a new one
 PC_TRADES_THIS_TURN = 11       # bank trades made this turn, see MAX_TRADES_PER_TURN
-# Player row D -- UNUSED, always zero. It held the player-trade offer; player
-# trade is gone, but the row is kept so that the state shape (hence the network
-# and its checkpoints) is unchanged.
+# Player row D -- this player's standing player-trade offer, PUBLIC (get_observation
+# leaves it alone). Kept on its AUTHOR's rows, so it rotates with its owner in
+# swap_players and needs no relabelling.
+PD_TRADE_RECV = 0              # 5 slots: what this player asks FOR
+PD_TRADE_GIVE = 5              # 5 slots: what this player offers IN EXCHANGE
+PD_TRADE_STATUS = 10           # TRADE_* below
+# col 11 free
+
+# PD_TRADE_STATUS values. The whole protocol state is DERIVED from these plus
+# GB_TURN_PLAYER -- no separate "who answers next" counter to keep in sync:
+#   the player composing an offer  = the unique TRADE_COMPOSING
+#   the next player to answer      = first TRADE_NONE after the turn player, in seat order
+TRADE_NONE, TRADE_COMPOSING, TRADE_OFFERED, TRADE_REFUSED = 0, 1, 2, 3
 
 # Global row A
 GA_BANK, GA_DEV_DECK, GA_DICE, GA_PHASE = 0, 5, 10, 11
@@ -260,16 +270,18 @@ GB_SETUP_STEP = 4              # index in the snake placement order
 GB_DEV_PLAYED = 5              # 5 slots: dev cards played, per type (conservation of dev cards)
 GB_CHANCE_COUNTER = 10         # bumped at every chance draw, mod 100: decorrelates the
                                # successive draws of one stream (see Stochastic.py)
-# col 11 unused, always zero (was the player-trade flag)
+GB_PLAYER_TRADE_DONE = 11      # 0/1, one player-trade ATTEMPT per turn (success or not),
+                               # bounds the search depth like MAX_TRADES_PER_TURN
 # No board index is ever stored in a global column (it would not follow the
 # isometries): the setup vertex is DERIVED, the player's only building with no
 # road of its own.
 
-# Phases
+# Phases. PHASE_TRADE_OFFER covers BOTH plies of an announcement (ask, then offer):
+# which one is pending is read off the composer's PD_TRADE_RECV, so no fourth phase.
 PHASE_SETUP_SETTLEMENT, PHASE_SETUP_ROAD = 0, 1
 PHASE_ROLL, PHASE_DISCARD, PHASE_MOVE_ROBBER, PHASE_MAIN = 2, 3, 4, 5
-PHASE_ROAD_BUILDING = 6
-N_PHASES = 10                  # 7..9 never reached (were the player-trade phases)
+PHASE_ROAD_BUILDING, PHASE_TRADE_OFFER, PHASE_TRADE_ANSWER = 6, 7, 8
+N_PHASES = 10                  # 9 never reached (was the counter-offer pick)
 
 ############################## ACTION LAYOUT ##################################
 #
@@ -293,16 +305,45 @@ A_DISCARD = A_BANK_TRADE + 20                   # 5 : resource id, one card at a
 A_END_TURN = A_DISCARD + N_RESOURCES            # 1
 N_ACTIONS_V1 = A_END_TURN + 1
 
-# Ids [N_ACTIONS_V1, N_ACTIONS) are NEVER legal. They were the player trade
-# (55 asks + 55 offers + OK + NO + P counter picks), now removed, and are kept
-# so that the policy head (hence the checkpoints) keeps its shape.
-N_ACTIONS = N_ACTIONS_V1 + 2 * 55 + 2 + N_PLAYERS
+# ---- Player-to-player trade -------------------------------------------------
+#
+# An announcement is FACTORISED over two plies instead of enumerated. Every
+# multiset of 1..3 cards over the 5 resources (5 + 15 + 35 = 55) can be asked for
+# and offered, so a flat id per (ask, offer) PAIR would need 55*55 = 3025; the
+# split needs 55 + 55 and loses nothing. RECV comes first because what a player
+# needs follows from what it is building, while what it will part with depends on
+# what it is asking for.
+TRADE_SETS = np.array([
+	[1,0,0,0,0], [0,1,0,0,0], [0,0,1,0,0], [0,0,0,1,0], [0,0,0,0,1],
+	[2,0,0,0,0], [1,1,0,0,0], [1,0,1,0,0], [1,0,0,1,0], [1,0,0,0,1],
+	[0,2,0,0,0], [0,1,1,0,0], [0,1,0,1,0], [0,1,0,0,1], [0,0,2,0,0],
+	[0,0,1,1,0], [0,0,1,0,1], [0,0,0,2,0], [0,0,0,1,1], [0,0,0,0,2],
+	[3,0,0,0,0], [2,1,0,0,0], [2,0,1,0,0], [2,0,0,1,0], [2,0,0,0,1],
+	[1,2,0,0,0], [1,1,1,0,0], [1,1,0,1,0], [1,1,0,0,1], [1,0,2,0,0],
+	[1,0,1,1,0], [1,0,1,0,1], [1,0,0,2,0], [1,0,0,1,1], [1,0,0,0,2],
+	[0,3,0,0,0], [0,2,1,0,0], [0,2,0,1,0], [0,2,0,0,1], [0,1,2,0,0],
+	[0,1,1,1,0], [0,1,1,0,1], [0,1,0,2,0], [0,1,0,1,1], [0,1,0,0,2],
+	[0,0,3,0,0], [0,0,2,1,0], [0,0,2,0,1], [0,0,1,2,0], [0,0,1,1,1],
+	[0,0,1,0,2], [0,0,0,3,0], [0,0,0,2,1], [0,0,0,1,2], [0,0,0,0,3],
+], dtype=np.int8)
+N_TRADE_SETS = TRADE_SETS.shape[0]              # 55
+TRADE_SET_SIZE = TRADE_SETS.sum(1).astype(np.int8)
+
+A_TRADE_RECV = N_ACTIONS_V1                     # 55 : the multiset I ask FOR
+A_TRADE_GIVE = A_TRADE_RECV + N_TRADE_SETS      # 55 : the multiset I offer in exchange
+A_TRADE_OK = A_TRADE_GIVE + N_TRADE_SETS        # 1 : a responder accepts the turn player's offer
+A_TRADE_NO = A_TRADE_OK + 1                     # 1 : a responder declines
+# The last N_PLAYERS ids are NEVER legal. They were the counter-offer picks, now
+# removed, and are kept so that the policy head (hence the checkpoints) keeps
+# its shape.
+N_ACTIONS = A_TRADE_NO + 1 + N_PLAYERS
 
 # Unordered pairs of resources, for Year of Plenty (id -> the two resource ids)
 YOP_PAIRS = np.array([[a, b] for a in range(N_RESOURCES) for b in range(a, N_RESOURCES)], dtype=np.int8)
 
 # Image of every action id under each isometry. int16: N_ACTIONS exceeds 127.
-# Starting from the identity leaves every non-board id unchanged.
+# Starting from the identity leaves the trade block alone: its ids name
+# RESOURCES, which no isometry permutes (asserted in CatanConstantsTest).
 ISO_ACTION = np.tile(np.arange(N_ACTIONS, dtype=np.int16), (N_ISOMETRIES, 1))
 for _s in range(N_ISOMETRIES):
 	for _e in range(N_EDGES):
