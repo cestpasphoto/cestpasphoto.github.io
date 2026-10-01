@@ -38,14 +38,11 @@ from Stochastic import hashed_draw
 #     B  dev cards bought this turn, knights, pieces left, longest road, bonuses
 #     C  VP (public / from dev cards), dev played this turn, ports (cached from
 #        the vertices), dev cards bought this turn, cards owed after a 7, bank trades
-#     D  standing trade offer (ask, give, status), PUBLIC. Kept on its author's
-#        rows so it rotates with its owner; the protocol state (composer, next
-#        responder) is derived from the statuses, never stored.
+#     D  unused, always zero (kept for the state shape, see CatanConstants.py)
 #   2 global rows
 #     A  bank, dev deck per type, last roll, phase
 #     B  round (lo/hi), pending roads or discards, turn player (relative to the
-#        player to move), setup step, dev cards played per type, chance counter,
-#        player trade done this turn
+#        player to move), setup step, dev cards played per type, chance counter
 #
 # HIDDEN INFORMATION (get_observation / sample_world)
 #   Hidden: the resources and dev cards of the OTHER players, and the composition
@@ -55,8 +52,6 @@ from Stochastic import hashed_draw
 #   the deck iff it no longer sums to dev_deck_size: no flag to keep in sync.
 #   sample_world() re-deals every masked hand and the deck so that all margins
 #   hold: each total, each resource outside the bank, each dev type not played.
-#   A published offer proves its author holds what it gives: those cards are
-#   reserved before any random draw.
 #   Legality never reads hidden information: valid_moves() is the same on the
 #   true state and on the observation.
 #   With 2 players the opponent's resources are deducible from the bank.
@@ -90,36 +85,11 @@ from Stochastic import hashed_draw
 #   A_DISCARD        + r              r   in [0, 5)    discard ONE card, repeated
 #   A_END_TURN
 #
-#   Player trade, only while ENABLE_PLAYER_TRADE:
-#   A_TRADE_RECV     + s              s   in [0, 55)   announce: I ask for TRADE_SETS[s]
-#   A_TRADE_GIVE     + s              s   in [0, 55)   ... and offer TRADE_SETS[s] for it
-#   A_TRADE_OK                                         accept the turn player's offer
-#   A_TRADE_NO                                         decline it, without countering
-#   A_TRADE_ACCEPT   + t              t   in [0, P)    the turn player takes the counter
-#                                                      from relative player t;
-#                                                      t = 0 = refuse them all
+#   Ids from N_ACTIONS_V1 to N_ACTIONS are never legal (former player trade,
+#   kept for the shape of the policy head, see CatanConstants.py).
 #
-#   An announcement is FACTORISED over two plies: a flat id per (ask, offer) pair
-#   would need 55*55 = 3025 ids, the split needs 55+55 and loses nothing.
-#
-#   PROTOCOL (non-official: real haggling has no bounded ply count)
-#     turn player : RECV, GIVE                                    2 plies
-#     each other player, in seat order, answers ONCE, and always
-#     to the TURN PLAYER's offer:
-#         OK      -> executes at once, the round table is CLOSED  1 ply
-#         NO      -> next responder                               1 ply
-#         counter -> RECV, GIVE, stacked for the turn player,
-#                    then the next responder                      2 plies
-#     if at least one counter is standing:
-#         turn player : A_TRADE_ACCEPT + t, or t=0 to refuse all  1 ply
-#     Worst case 2P+1 plies (7 at P=3). A counter is never submitted to the other
-#     responders, which is what keeps that bound; every trade involves the turn
-#     player on one side.
-#
-# Relative player ids (A_ROBBER, A_TRADE_ACCEPT) are expressed in the CANONICAL
-# frame, so that swap_players() never changes the meaning of an action id. The
-# trade SET ids name resources, which no isometry permutes, so they map to
-# themselves (asserted in CatanConstantsTest.py).
+# Relative player ids (A_ROBBER) are expressed in the CANONICAL frame, so that
+# swap_players() never changes the meaning of an action id.
 #
 # A choice with a single legal option is NEVER exposed: make_move() resolves it
 # on the spot (only one legal edge during setup, a single robbable opponent, a
@@ -317,7 +287,7 @@ class Board():
 		# OFFICIAL RULE: a player wins only during its OWN turn, the instant the
 		# condition is met. Testing only the turn player also keeps terminality
 		# from depending on the hidden VP cards of the other players, except in
-		# the phases where the actor is not the turn player (discard, trade answer).
+		# the discard phase, where the actor is not the turn player.
 		turn_player = int(self.globals_[1, GB_TURN_PLAYER])
 		timeout = self.get_round() >= self.max_rounds
 		if not timeout:
@@ -431,26 +401,10 @@ class Board():
 			else:
 				masked[p] = 1
 
-		# Cards promised by published offers are reserved in a pass of their own,
-		# before any random draw: otherwise one player's random cards could use
-		# up a resource another player has publicly committed to.
-		forced = np.zeros(self.num_players, dtype=np.int8)
-		for p in range(self.num_players):
-			if masked[p] == 0 or self.players[4*p + 3, PD_TRADE_STATUS] != TRADE_OFFERED:
-				continue
-			for r in range(N_RESOURCES):
-				g = self.players[4*p + 3, PD_TRADE_GIVE + r]
-				if g > 0:
-					if pool[r] < g:
-						raise ValueError("sample_world: published offers exceed the pool")
-					pool[r] -= g
-					self.players[4*p, PA_RESOURCES + r] += g
-					forced[p] += g
-
 		for p in range(self.num_players):
 			if masked[p] == 0:
 				continue
-			for _c in range(self.players[4*p, PA_TOTAL_RES] - forced[p]):
+			for _c in range(self.players[4*p, PA_TOTAL_RES]):
 				counter += 1
 				r = self._draw_from_pool(pool, random_seed, counter)
 				self.players[4*p, PA_RESOURCES + r] += 1
@@ -568,46 +522,6 @@ class Board():
 				return True
 		return False
 
-	############################## RULES: PLAYER TRADE ########################
-	# Legality NEVER reads a hidden hand, which is what keeps the action space
-	# usable under masking (get_observation):
-	#   - what I may ASK for is bounded by what the opponents hold COLLECTIVELY,
-	#     = BANK_PER_RESOURCE - bank - my own hand. Bank and my hand are both
-	#     public to me, so the bound is public; it says nothing about WHO holds
-	#     what, which is the part that is actually hidden.
-	#   - what I may GIVE, and whether I may accept, is read off my own hand.
-
-	def _recv_is_legal(self, player, s):
-		keeps_something = False
-		for r in range(N_RESOURCES):
-			mine = self.players[4*player, PA_RESOURCES + r]
-			if TRADE_SETS[s, r] > BANK_PER_RESOURCE - self.globals_[0, GA_BANK + r] - mine:
-				return False                    # nobody out there can supply that much
-			if TRADE_SETS[s, r] == 0 and mine > 0:
-				keeps_something = True
-		# Guarantee the GIVE ply that follows will have at least one legal move:
-		# the giveaway must be disjoint from the ask, so the player has to hold a
-		# card of some type it is NOT asking for. Without this, an announcement
-		# could walk into a phase with zero legal actions.
-		return keeps_something
-
-	def _give_is_legal(self, player, s):
-		d = 4*player + 3
-		for r in range(N_RESOURCES):
-			if TRADE_SETS[s, r] > self.players[4*player, PA_RESOURCES + r]:
-				return False
-			if TRADE_SETS[s, r] > 0 and self.players[d, PD_TRADE_RECV + r] > 0:
-				return False                    # never trade a resource against itself
-		return True
-
-	def _can_pay_recv_of(self, payer, proposer):
-		# whoever accepts an offer hands over the proposer's PD_TRADE_RECV
-		d = 4*proposer + 3
-		for r in range(N_RESOURCES):
-			if self.players[4*payer, PA_RESOURCES + r] < self.players[d, PD_TRADE_RECV + r]:
-				return False
-		return True
-
 	def _robber_victims(self, h, player):
 		# bit p set if player p can be robbed on hex h
 		out = np.zeros(self.num_players, dtype=np.int8)
@@ -634,14 +548,14 @@ class Board():
 		return 0   # no unroaded settlement: caller has a stale/inconsistent state
 
 	def _next_actor(self):
-		# Returns a CANONICAL-RELATIVE offset (0 = the player currently at
-		# canonical index 0), never an absolute player id: make_move() applies its
-		# auto-resolved moves in that frame and the caller rotates the board once,
-		# afterwards.
-		#   - setup road: it belongs to whoever owns the only settlement without
-		#     a road (V_OWNER is canonical-relative), not necessarily to offset 0;
-		#   - setup settlement: the snake order is absolute, so return how far it
-		#     moves this step, not where it is.
+		# Index, IN THE FRAME OF THE BOARD, of the next player to act. make_move()
+		# runs on canonical boards (MCTS: the mover is index 0) and on absolute
+		# boards (Coach, Arena, pit: the mover is any seat), so nothing here may
+		# depend on the frame (checked by CatanFrameTest):
+		#   - setup road: whoever owns the only settlement without a road;
+		#   - setup settlement: the snake order, counted from the first player,
+		#     whose index GB_TURN_PLAYER keeps during the whole setup;
+		#   - discard: in seat order from the turn player.
 		phase = self.globals_[0, GA_PHASE]
 		if phase == PHASE_SETUP_ROAD:
 			for v in range(N_VERTICES):
@@ -656,32 +570,15 @@ class Board():
 			return 0   # unreachable in a consistent state; see _setup_vertex's own guard
 		if phase == PHASE_SETUP_SETTLEMENT:
 			s = int(self.globals_[1, GB_SETUP_STEP])
-			if s == 0:
-				return 0
 			P = int(self.num_players)
 			cur_abs = s if s < P else 2*P - 1 - s
-			prev_abs = (s - 1) if (s - 1) < P else 2*P - 1 - (s - 1)
-			return (cur_abs - prev_abs) % P
+			return (int(self.globals_[1, GB_TURN_PLAYER]) + cur_abs) % P
 		if phase == PHASE_DISCARD:
-			for p in range(self.num_players):
+			t = int(self.globals_[1, GB_TURN_PLAYER])
+			for i in range(self.num_players):
+				p = (t + i) % self.num_players
 				if self.players[4*p + 2, PC_DISCARD_LEFT] > 0:
 					return p
-		# Trade: nothing is stored about whose turn it is to speak, it is read
-		# back off the per-player statuses (see the BOARD DESCRIPTION header).
-		if phase == PHASE_TRADE_OFFER:
-			for p in range(self.num_players):
-				if self.players[4*p + 3, PD_TRADE_STATUS] == TRADE_COMPOSING:
-					return p
-			return int(self.globals_[1, GB_TURN_PLAYER])   # unreachable when consistent
-		if phase == PHASE_TRADE_ANSWER:
-			t = int(self.globals_[1, GB_TURN_PLAYER])
-			for i in range(1, self.num_players):
-				p = (t + i) % self.num_players
-				if self.players[4*p + 3, PD_TRADE_STATUS] == TRADE_NONE:
-					return p
-			return t                                        # unreachable when consistent
-		# PHASE_TRADE_ACCEPT is answered by the turn player, which the line below
-		# already returns.
 		return int(self.globals_[1, GB_TURN_PLAYER])
 
 	############################## VALID MOVES ################################
@@ -731,39 +628,6 @@ class Board():
 				if self._edge_owner(e) == 0 and self._road_connected(e, player):
 					valids[A_ROAD + e] = True
 
-		elif phase == PHASE_TRADE_OFFER:
-			# One phase, two plies: an empty PD_TRADE_RECV means the ask is still
-			# to come, otherwise the offer is. No fourth phase id needed.
-			asked = 0
-			for r in range(N_RESOURCES):
-				asked += self.players[4*player + 3, PD_TRADE_RECV + r]
-			if asked == 0:
-				for s in range(N_TRADE_SETS):
-					if self._recv_is_legal(player, s):
-						valids[A_TRADE_RECV + s] = True
-			else:
-				for s in range(N_TRADE_SETS):
-					if self._give_is_legal(player, s):
-						valids[A_TRADE_GIVE + s] = True
-
-		elif phase == PHASE_TRADE_ANSWER:
-			t = int(self.globals_[1, GB_TURN_PLAYER])
-			valids[A_TRADE_NO] = True                       # always available
-			if self._can_pay_recv_of(player, t):
-				valids[A_TRADE_OK] = True
-			if ENABLE_TRADE_COUNTER:                        # or counter-offer
-				for s in range(N_TRADE_SETS):
-					if self._recv_is_legal(player, s):
-						valids[A_TRADE_RECV + s] = True
-
-		elif phase == PHASE_TRADE_ACCEPT:
-			valids[A_TRADE_ACCEPT + 0] = True               # refuse every counter
-			for i in range(1, self.num_players):
-				q = (player + i) % self.num_players
-				if (self.players[4*q + 3, PD_TRADE_STATUS] == TRADE_OFFERED
-						and self._can_pay_recv_of(player, q)):
-					valids[A_TRADE_ACCEPT + i] = True
-
 		elif phase == PHASE_MAIN:
 			a, b, c = 4*player, 4*player + 1, 4*player + 2
 			if self.players[b, PB_ROADS_LEFT] > 0 and self._can_afford(player, COST_ROAD):
@@ -807,12 +671,6 @@ class Board():
 						if self.globals_[0, GA_BANK + get] > 0:
 							valids[A_BANK_TRADE + g*4 + k] = True
 						k += 1
-			# Opening a player trade IS the A_TRADE_RECV action: no separate
-			# "I would like to trade" id, which would cost a whole ply.
-			if ENABLE_PLAYER_TRADE and self.globals_[1, GB_PLAYER_TRADE_DONE] == 0:
-				for s in range(N_TRADE_SETS):
-					if self._recv_is_legal(player, s):
-						valids[A_TRADE_RECV + s] = True
 			valids[A_END_TURN] = True
 
 		return valids
@@ -879,16 +737,6 @@ class Board():
 			self._do_bank_trade(move - A_BANK_TRADE, player)
 		elif A_DISCARD <= move < A_DISCARD + N_RESOURCES:
 			self._do_discard(move - A_DISCARD, player)
-		elif A_TRADE_RECV <= move < A_TRADE_RECV + N_TRADE_SETS:
-			self._do_trade_recv(move - A_TRADE_RECV, player)
-		elif A_TRADE_GIVE <= move < A_TRADE_GIVE + N_TRADE_SETS:
-			self._do_trade_give(move - A_TRADE_GIVE, player)
-		elif move == A_TRADE_OK:
-			self._do_trade_ok(player)
-		elif move == A_TRADE_NO:
-			self._do_trade_no(player)
-		elif A_TRADE_ACCEPT <= move < A_TRADE_ACCEPT + int(self.num_players):
-			self._do_trade_accept(move - A_TRADE_ACCEPT, player)
 		elif move == A_END_TURN:
 			self._end_turn(player)
 
@@ -989,8 +837,7 @@ class Board():
 	def _advance_setup(self, player, random_seed):
 		self.globals_[1, GB_SETUP_STEP] += 1
 		if self.globals_[1, GB_SETUP_STEP] >= 2*self.num_players:
-			self.globals_[1, GB_TURN_PLAYER] = 0
-			self._start_turn(0)
+			self._start_turn(int(self.globals_[1, GB_TURN_PLAYER]))   # the first player opens
 		else:
 			self.globals_[0, GA_PHASE] = PHASE_SETUP_SETTLEMENT
 
@@ -1000,7 +847,6 @@ class Board():
 			self.players[4*player + 1, PB_DEV_NEW + k] = 0
 		self.players[4*player + 2, PC_DEV_PLAYED_THIS_TURN] = 0
 		self.players[4*player + 2, PC_TRADES_THIS_TURN] = 0
-		self.globals_[1, GB_PLAYER_TRADE_DONE] = 0
 		self._refresh_totals(player)
 		self.globals_[0, GA_PHASE] = PHASE_ROLL
 
@@ -1112,82 +958,6 @@ class Board():
 		self.players[4*player, PA_RESOURCES + get] += 1
 		self.players[4*player + 2, PC_TRADES_THIS_TURN] += 1
 		self._refresh_totals(player)
-
-	############################## MAKE MOVE: PLAYER TRADE ####################
-	# See the ACTION DESCRIPTION header for the protocol and its ply bound. Every
-	# transition below is driven by the per-player statuses alone, so there is no
-	# protocol counter that swap_players could leave stale.
-
-	def _do_trade_recv(self, s, player):
-		d = 4*player + 3
-		for r in range(N_RESOURCES):
-			self.players[d, PD_TRADE_RECV + r] = TRADE_SETS[s, r]
-			self.players[d, PD_TRADE_GIVE + r] = 0
-		self.players[d, PD_TRADE_STATUS] = TRADE_COMPOSING
-		self.globals_[0, GA_PHASE] = PHASE_TRADE_OFFER
-
-	def _do_trade_give(self, s, player):
-		d = 4*player + 3
-		for r in range(N_RESOURCES):
-			self.players[d, PD_TRADE_GIVE + r] = TRADE_SETS[s, r]
-		self.players[d, PD_TRADE_STATUS] = TRADE_OFFERED
-		self._advance_trade()
-
-	def _do_trade_no(self, player):
-		self.players[4*player + 3, PD_TRADE_STATUS] = TRADE_REFUSED
-		self._advance_trade()
-
-	def _do_trade_ok(self, player):
-		# a responder accepts the TURN PLAYER's standing offer: that closes the
-		# round table at once, whatever is still stacked behind it
-		self._execute_trade(int(self.globals_[1, GB_TURN_PLAYER]), player)
-		self._end_trade()
-
-	def _do_trade_accept(self, t, player):
-		# `player` is the turn player picking among the stacked counters;
-		# t is a RELATIVE id, 0 meaning "refuse them all"
-		if t != 0:
-			self._execute_trade((player + t) % self.num_players, player)
-		self._end_trade()
-
-	def _execute_trade(self, proposer, accepter):
-		# The proposer receives its RECV and parts with its GIVE; the accepter does
-		# the reverse. Both sides were checked when they committed -- the proposer's
-		# GIVE by _give_is_legal, the accepter's side by _can_pay_recv_of -- and no
-		# action in between can spend a card, since the only moves available are
-		# answers to this same announcement.
-		d = 4*proposer + 3
-		for r in range(N_RESOURCES):
-			n_recv = self.players[d, PD_TRADE_RECV + r]
-			n_give = self.players[d, PD_TRADE_GIVE + r]
-			self.players[4*accepter, PA_RESOURCES + r] += n_give - n_recv
-			self.players[4*proposer, PA_RESOURCES + r] += n_recv - n_give
-		self._refresh_totals(accepter)
-		self._refresh_totals(proposer)
-
-	def _advance_trade(self):
-		t = int(self.globals_[1, GB_TURN_PLAYER])
-		for i in range(1, self.num_players):            # anyone still to answer?
-			p = (t + i) % self.num_players
-			if self.players[4*p + 3, PD_TRADE_STATUS] == TRADE_NONE:
-				self.globals_[0, GA_PHASE] = PHASE_TRADE_ANSWER
-				return
-		for i in range(1, self.num_players):            # any counter left standing?
-			p = (t + i) % self.num_players
-			if self.players[4*p + 3, PD_TRADE_STATUS] == TRADE_OFFERED:
-				self.globals_[0, GA_PHASE] = PHASE_TRADE_ACCEPT
-				return
-		self._end_trade()                               # everyone refused
-
-	def _end_trade(self):
-		for p in range(self.num_players):
-			d = 4*p + 3
-			for r in range(N_RESOURCES):
-				self.players[d, PD_TRADE_RECV + r] = 0
-				self.players[d, PD_TRADE_GIVE + r] = 0
-			self.players[d, PD_TRADE_STATUS] = TRADE_NONE
-		self.globals_[1, GB_PLAYER_TRADE_DONE] = 1      # spent even when nobody accepted
-		self.globals_[0, GA_PHASE] = PHASE_MAIN
 
 	def _draw_dev(self, player, random_seed):
 		total = 0

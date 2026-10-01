@@ -122,7 +122,7 @@ class MCTS():
             valid_moves_mask = self.game.getValidMoves(canonicalBoard, 0)  # legality reads public info only
         else:
             s = self.game.stringRepresentation(canonicalBoard)
-            counts = [self.nodes_data[s][5][a] for a in range(action_size)] # Nsa
+            counts = [int(n) for n in self.nodes_data[s][5]] # Nsa, as Python ints: their int16 sum overflows
             q = list(self.nodes_data[s][3][1])
             valid_moves_mask = self.nodes_data[s][1] # Vs from root node
 
