@@ -49,7 +49,6 @@ next_id = 1
 marks = [0] * P      # per seat: last event id before that seat ended its previous turn
 ui = {}              # interaction state
 end_announced = False
-pre_recv_state = ''  # debug: state ID captured just before the last A_TRADE_RECV ply
 
 
 # =============================================================================
@@ -57,13 +56,12 @@ pre_recv_state = ''  # debug: state ID captured just before the last A_TRADE_REC
 # =============================================================================
 
 def init_game(numMCTSSims):
-    global g, board, player, ply, mcts, eng, rot, rd, history, events, next_id, marks, end_announced, pre_recv_state
+    global g, board, player, ply, mcts, eng, rot, rd, history, events, next_id, marks, end_announced
     g = Game()
     eng, rot, rd = Board(P), Board(P), Board(P)
     board = np.copy(g.getInitBoard())
     player = 0
     ply = 0
-    pre_recv_state = ''
     mcts_args = dotdict({            # evaluation profile of pit.py --strict
         'numMCTSSims'      : numMCTSSims,
         'cpuct'            : 1.0,
@@ -177,11 +175,7 @@ def _step(action, actor):
 
 
 def _play(action):
-    global board, player, ply, pre_recv_state
-    if A_TRADE_RECV <= action < A_TRADE_RECV + N_TRADE_SETS:
-        # captured here (not just in the human trade panel) so an AI-submitted
-        # player-trade offer is debuggable too, not only a human-composed one
-        pre_recv_state = _state_id()
+    global board, player, ply
     board, player, trace = _step(action, player)
     ply += 1                                            # one submitted action == one Arena `it`
     for who, move, before, after in trace:
@@ -538,7 +532,6 @@ def _view():
         events=events,
         marks=list(marks),
         stateId=_state_id(),
-        preRecvStateId=pre_recv_state,
     )
 
 

@@ -1,8 +1,9 @@
+# Copy of CatanConstants.py with N_PLAYERS = 4, mounted as CatanConstants.py by catan.js.
 import numpy as np
 
 ############################## GAME CONFIGURATION #############################
 
-N_PLAYERS = 3                  # 2, 3 or 4 -- changes observation_size() and action_size()
+N_PLAYERS = 4                  # 2, 3 or 4 -- changes observation_size() and action_size()
 RANDOM_BOARD = True            # shuffle hexes, number tokens and port types at init
 # A position with at most SYM_TRIVIAL_MAX_LEGAL legal moves (roll, trade answer)
 # carries almost no policy signal: it is kept in the replay buffer with

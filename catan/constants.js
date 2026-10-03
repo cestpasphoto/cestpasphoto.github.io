@@ -1,12 +1,34 @@
-// Catan is played with the 3-player model only.
-const numPlayers = 3;
-const defaultModelFileName = 'catan/model.onnx';
-const sizeCB = [1, 87, 12];     // observation_size() = (75 + 4*3, 12)
-const sizeV = [1, 402];         // action_size()
+// One configuration per player count, chosen with `catan.html?players=N` (3 by default).
+// The engine reads N_PLAYERS from CatanConstants.py: the matching copy
+// (CatanConstants_<N>pl.py, identical but for N_PLAYERS) is mounted under that name, see list_of_files in catan.js.
+const configs = {
+  2: {
+    defaultModelFileName: 'catan/model_2pl.onnx',
+    pyConstantsFileName: 'catan/CatanConstants_2pl.py',
+    sizeCB: [1, 83, 12],        // observation_size() = (75 + 4*2, 12)
+    sizeV: [1, 382],            // action_size()
+  },
+  3: {
+    defaultModelFileName: 'catan/model_3pl.onnx',
+    pyConstantsFileName: 'catan/CatanConstants_3pl.py',
+    sizeCB: [1, 87, 12],
+    sizeV: [1, 402],
+  },
+  4: {
+    defaultModelFileName: 'catan/model_4pl.onnx',
+    pyConstantsFileName: 'catan/CatanConstants_4pl.py',
+    sizeCB: [1, 91, 12],
+    sizeV: [1, 422],
+  },
+};
+
+const _playersParam = +new URLSearchParams(window.location.search).get('players');
+const numPlayers = configs[_playersParam] ? _playersParam : 3;
+const { sizeV, sizeCB, pyConstantsFileName, defaultModelFileName } = configs[numPlayers];
 
 // Seats
-const SEAT_COLORS = ['#2185D0', '#DB2828', '#F2711C'];
-const SEAT_NAMES = ['Blue', 'Red', 'Orange'];
+const SEAT_COLORS = ['#2185D0', '#DB2828', '#F2711C', '#A333C8'];
+const SEAT_NAMES = ['Blue', 'Red', 'Orange', 'Purple'];
 
 // Resources, in engine order (BRICK, LUMBER, ORE, GRAIN, WOOL)
 const RES_EMOJI = ['🧱', '🌲', '⛰️', '🌾', '🐑'];

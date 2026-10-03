@@ -246,21 +246,6 @@
               x-text="copied ? 'Copied ✓' : 'Copy'"></button>
     </div>
   </div>
-
-  <!-- Debug: state right before the last player-trade RECV ply -->
-  <div class="ui segment journal" x-data="{ open: false, copied: false }" x-show="$store.game.view.preRecvStateId">
-    <div style="cursor: pointer" @click="open = !open">
-      <b>Before last offer (RECV)</b> <span class="small" x-text="open ? '▾' : '▸'"></span>
-    </div>
-    <div x-show="open" style="margin-top: 0.3em">
-      <div class="small" style="margin-bottom: 0.3em">State just before the offer's <code>A_TRADE_RECV</code> ply.</div>
-      <textarea readonly rows="3"
-                style="width: 100%; font-family: monospace; font-size: 0.72em; word-break: break-all; resize: none; border: 1px solid #ddd; padding: 0.3em; box-sizing: border-box"
-                x-text="$store.game.view.preRecvStateId" @click="$el.select()"></textarea>
-      <button class="ui compact button" style="margin-top: 0.3em"
-              @click="navigator.clipboard.writeText($store.game.view.preRecvStateId || '').then(() => { copied = true; setTimeout(() => copied = false, 1200) })"
-              x-text="copied ? 'Copied ✓' : 'Copy'"></button>
-    </div>
   </div>
 
 </div>
