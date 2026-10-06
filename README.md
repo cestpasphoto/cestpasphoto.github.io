@@ -23,6 +23,11 @@ All AI are running on client side, need 10\~20s to load it first time.
 - <https://cestpasphoto.github.io/smallworld.html?players=3>
 - <https://cestpasphoto.github.io/smallworld.html?players=4>
 
+**Catan**
+- <https://cestpasphoto.github.io/catan.html?players=2>
+- <https://cestpasphoto.github.io/catan.html?players=3>
+- <https://cestpasphoto.github.io/catan.html?players=4>
+
 **Wordle**
 - <https://cestpasphoto.github.io/wordle.html>
 
@@ -88,6 +93,24 @@ The training has been fully done on CPU, check [my repo](https://github.com/cest
 The UI also propose "undervolted" settings: instead of exploring 1600 future positions, it explores 400 or 100 or 25 or 10 of them to reduce strength.
 
 
+## Online Catan AI
+
+Using same AI as Santorini, described above. Supporting 2, 3 and 4 players.
+
+The AI plays with the same information as a human player: it doesn't see opponents' resources and development cards, nor the order of the development deck.
+
+### Rules
+
+Official rules, with a few changes needed to keep the search tractable:
+* Trading with other players: the player whose turn it is may broadcast one offer per turn, up to 3 cards asked for up to 3 cards given. Each other player, in turn, accepts or declines; the first one to accept makes the trade. No counter-offers.
+* At most 6 bank/port trades per turn.
+
+### Strength
+
+No objective tests against another Catan AI done yet. It wins more than 90% of games against a simple rule-based bot.
+The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
+
+
 ## Online wordle solver
 
 Based on entropy method from the 3Blue1Brown [video](https://www.youtube.com/watch?v=v68zYyaEmEA), I developed this AI compatible with not only English dictionary but also French one.
@@ -112,3 +135,9 @@ My goal from the start was to run AI on client side. They all use the following 
 * I am no expert in JS/HTML/CSS so I chose fomantic-ui: result is quite decent on PC and mobile with low barrier at start. But gosh JavaScript is such an ugly language :-)
 
 I was quite surprised by the final performance of AlphaZero ported in the browser: since game logic and MCTS is in python/pyodide and ML is in JavaScript, browser has to switch these two frameworks and therefore a larger overhead for type conversion. I expected this overhead to be worse but at the end, it is has roughly same speed than regulary python and only 5-10x slower than numba.
+
+---
+
+## License
+
+My own code is licensed under the [PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0/): free to use, modify and share for noncommercial purposes. Parts derived from [alpha-zero-general](https://github.com/suragnair/alpha-zero-general) remain under the MIT License. See [LICENSE](LICENSE) for details. For commercial use, please contact me.
