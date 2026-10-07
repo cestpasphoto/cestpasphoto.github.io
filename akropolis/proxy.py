@@ -1,21 +1,18 @@
 import json
 import numpy as np
-import js
 from MCTS import MCTS
-import sys
 
-# Dynamically load the correct game module based on the JS frontend configuration
-try:
-    num_players = int(js.numPlayers)
-except Exception:
-    num_players = 2
-
-import AkropolisConstants
-AkropolisConstants.N_PLAYERS = num_players
-AkropolisConstants.CONSTR_SITE_SIZE = num_players + 2
-sys.modules['AkropolisConstants'] = AkropolisConstants
-
+from AkropolisConstants import N_PLAYERS   # read from globalThis.gameConfig at import
 from AkropolisGame import AkropolisGame as Game
+
+
+# MCTS arguments of the page: common part, then one profile per value of N_PLAYERS (checked by make_web_py.py)
+MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
+MCTS_PROFILES = {
+    2: dict(fpu=0.1, cpuct=1.5, universes=1),
+    3: dict(fpu=0.1, cpuct=1.5, universes=1),
+    4: dict(fpu=0.1, cpuct=1.5, universes=1),
+}
 
 
 class dotdict(dict):
@@ -32,15 +29,7 @@ def init_game(numMCTSSims):
     g = Game()
     board = g.getInitBoard()
     
-    mcts_args = dotdict({
-        'numMCTSSims'     : numMCTSSims,
-        'fpu'             : 0.1,
-        'cpuct'           : 1.5,
-        'prob_fullMCTS'   : 1.,
-        'forced_playouts' : True,
-        'no_mem_optim'    : False,
-        'universes'       : 1,
-    })
+    mcts_args = dotdict(MCTS_COMMON, numMCTSSims=numMCTSSims, **MCTS_PROFILES[N_PLAYERS])
 
     mcts = MCTS(g, None, mcts_args)
     player = 0

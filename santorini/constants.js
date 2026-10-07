@@ -5,7 +5,6 @@ const configs = {
       gods_descr: ["Move and build"],
       gods_instructions: ["Click highlighted cells to select your choice"],
       onnxOutputSize: 162,
-      pyConstantsFileName: 'santorini/SantoriniConstantsNoGod.py',
       defaultModelFileName: 'santorini/model_no_god.onnx',
     },
 
@@ -38,7 +37,6 @@ const configs = {
         "To use such power, click worker twice and build then select regular action", // Prometheus
       ],
       onnxOutputSize: 1782,
-      pyConstantsFileName: 'santorini/SantoriniConstantsWithGods.py',
       defaultModelFileName: 'santorini/model_gods_default.onnx',
     }
 };
@@ -46,4 +44,6 @@ const configs = {
 const numPlayers = 2;
 const NB_GODS = +new URLSearchParams(window.location.search).get('gods') || 1;
 const selectedConfig = (NB_GODS === 1) ? configs.noGods : configs.withGods;
-const { gods_name, gods_descr, gods_instructions, onnxOutputSize, pyConstantsFileName, defaultModelFileName } = selectedConfig;
+const { gods_name, gods_descr, gods_instructions, onnxOutputSize, defaultModelFileName } = selectedConfig;
+// Read by the Python engine when it is imported (_webconfig.py): must be set before `import proxy`
+globalThis.gameConfig = { NB_GODS: NB_GODS };

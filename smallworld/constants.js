@@ -3,8 +3,6 @@ function getGameConfigs() {
   return {
     2: {
       defaultModelFileName: 'smallworld/model.onnx',
-      pyConstantsFileName: 'smallworld/SmallworldConstants_2pl.py',
-      pyMapsFileName: 'smallworld/SmallworldMaps_2pl.py',
       nbAreas: 23,
       nbTurns: 10,
       mapDimensions: "0 0 100 70",
@@ -15,8 +13,6 @@ function getGameConfigs() {
     
     3: {
       defaultModelFileName: 'smallworld/model_3pl.onnx',
-      pyConstantsFileName: 'smallworld/SmallworldConstants_3pl.py',
-      pyMapsFileName: 'smallworld/SmallworldMaps_3pl.py',
       nbAreas: 30,
       nbTurns: 10,
       mapDimensions: "0 0 140 100",
@@ -27,8 +23,6 @@ function getGameConfigs() {
 
     4: {
       defaultModelFileName: 'smallworld/model_4pl.onnx',
-      pyConstantsFileName: 'smallworld/SmallworldConstants_4pl.py',
-      pyMapsFileName: 'smallworld/SmallworldMaps_4pl.py',
       nbAreas: 39,
       nbTurns: 9,
       mapDimensions: "0 0 140 130",
@@ -450,7 +444,9 @@ const elementsCoord_4pl = [
 
 const numPlayers = +new URLSearchParams(window.location.search).get('players') || 2;
 const selectedConfig = getGameConfigs()[numPlayers] || getGameConfigs()[2];
-const { elementsCoord, mapAreas, mapPoints, mapDimensions, nbTurns, nbAreas, pyMapsFileName, pyConstantsFileName, defaultModelFileName } = selectedConfig;
+const { elementsCoord, mapAreas, mapPoints, mapDimensions, nbTurns, nbAreas, defaultModelFileName } = selectedConfig;
+// Read by the Python engine when it is imported (_webconfig.py): must be set before `import proxy`
+globalThis.gameConfig = { NUMBER_PLAYERS: numPlayers };
 
 const list_of_files = [
   ['smallworld/Game.py'                , 'Game.py'],
@@ -458,10 +454,13 @@ const list_of_files = [
   ['smallworld/MCTS.py'                , 'MCTS.py'],
   ['smallworld/SmallworldDisplay.py'   , 'SmallworldDisplay.py'],
   ['smallworld/SmallworldGame.py'      , 'SmallworldGame.py'],
-  [pyConstantsFileName                 , 'SmallworldConstants.py'],
+  ['smallworld/SmallworldConstants.py'  , 'SmallworldConstants.py'],
+  ['smallworld/_webconfig.py'           , '_webconfig.py'],
   ['smallworld/SmallworldLogicNumba.py', 'SmallworldLogicNumba.py'],
   ['smallworld/SmallworldMaps.py'      , 'SmallworldMaps.py'],
-  [pyMapsFileName                      , `SmallworldMaps_${numPlayers}pl.py`],
+  ['smallworld/SmallworldMaps_2pl.py'   , 'SmallworldMaps_2pl.py'],   // SmallworldMaps.py imports the one it needs
+  ['smallworld/SmallworldMaps_3pl.py'   , 'SmallworldMaps_3pl.py'],
+  ['smallworld/SmallworldMaps_4pl.py'   , 'SmallworldMaps_4pl.py'],
 ];
 
 const sizeCB = [1, nbAreas + 5*numPlayers + 6+1, 8];

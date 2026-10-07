@@ -5,6 +5,14 @@ from SplendorGame import SplendorGame as Game
 from SplendorLogic import np_all_cards_1, np_all_cards_2, np_all_cards_3, np_all_nobles
 from SplendorLogicNumba import my_packbits, my_unpackbits
 
+# MCTS arguments: common part, then one profile per number of players
+MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
+MCTS_PROFILES = {
+    2: dict(fpu=0.0593, cpuct=0.8, universes=3),
+    3: dict(fpu=0.1   , cpuct=1.0, universes=1   ),
+    4: dict(fpu=0.1   , cpuct=0.8, universes=3),
+}
+
 class dotdict(dict):
     def __getattr__(self, name):
         return self[name]
@@ -20,15 +28,7 @@ def init_game(numMCTSSims):
     g = Game()
     board = g.getInitBoard()
 
-    mcts_args = dotdict({
-        'numMCTSSims'     : numMCTSSims,
-        'fpu'             : 0.1 if g.num_players > 2 else 0.0593,
-        'cpuct'           : 1.0 if g.num_players == 3 else 0.8,
-        'prob_fullMCTS'   : 1.,
-        'forced_playouts' : True,
-        'no_mem_optim'    : False,
-        'universes'       : None if g.num_players == 3 else 3,
-    })
+    mcts_args = dotdict(MCTS_COMMON, numMCTSSims=numMCTSSims, **MCTS_PROFILES[NUMBER_PLAYERS])
 
     mcts = MCTS(g, None, mcts_args)
     player = 0

@@ -6,7 +6,8 @@ const list_of_files = [
   ['santorini/SantoriniDisplay.py', 'SantoriniDisplay.py'],
   ['santorini/SantoriniGame.py', 'SantoriniGame.py'],
   ['santorini/SantoriniLogicNumba.py', 'SantoriniLogicNumba.py'],
-  [pyConstantsFileName, 'SantoriniConstants.py'],
+  ['santorini/SantoriniConstants.py', 'SantoriniConstants.py'],
+  ['santorini/_webconfig.py', '_webconfig.py'],
 ];
 
 // Define tensor shapes required for the ONNX neural network inference

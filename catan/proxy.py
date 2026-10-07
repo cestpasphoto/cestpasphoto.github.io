@@ -26,6 +26,16 @@ from CatanLogicNumba import Board
 from CatanConstants import *
 
 
+# MCTS arguments of the page: common part, then one profile per value of N_PLAYERS (checked by make_web_py.py)
+MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False, fpu_root=0.0, ratio_fullMCTS=1, forced_playouts_k=1.5,
+                   dirichletAlpha=0., temperature=[1., 1., 1.])
+MCTS_PROFILES = {
+    2: dict(fpu=0.1, cpuct=1.0, universes=1),
+    3: dict(fpu=0.1, cpuct=1.0, universes=1),
+    4: dict(fpu=0.1, cpuct=1.0, universes=1),
+}
+
+
 class dotdict(dict):
     def __getattr__(self, name):
         return self[name]
@@ -62,20 +72,7 @@ def init_game(numMCTSSims):
     board = np.copy(g.getInitBoard())
     player = 0
     ply = 0
-    mcts_args = dotdict({            # evaluation profile of pit.py --strict
-        'numMCTSSims'      : numMCTSSims,
-        'cpuct'            : 1.0,
-        'fpu'              : 0.1,
-        'fpu_root'         : 0.0,
-        'universes'        : 1,
-        'prob_fullMCTS'    : 1.,
-        'ratio_fullMCTS'   : 1,
-        'forced_playouts'  : False,
-        'forced_playouts_k': 1.5,
-        'no_mem_optim'     : False,
-        'dirichletAlpha'   : 0.,
-        'temperature'      : [1., 1., 1.],
-    })
+    mcts_args = dotdict(MCTS_COMMON, numMCTSSims=numMCTSSims, **MCTS_PROFILES[N_PLAYERS])
     mcts = MCTS(g, None, mcts_args)
     history, events, next_id, marks, end_announced = [], [], 1, [0] * P, False
     _reset_ui()

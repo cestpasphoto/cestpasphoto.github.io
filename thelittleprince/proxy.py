@@ -2,10 +2,17 @@ import json
 import numpy as np
 
 from MCTS import MCTS
-from TLPGame import TLPGame as Game
+from TLPGame import TLPGame as Game, NUMBER_PLAYERS
 from TLPLogicNumba import my_unpackbits
 
 # Utility class to allow dot notation access for dictionaries
+# MCTS arguments of the page: common part, then one profile per value of NUMBER_PLAYERS (checked by make_web_py.py)
+MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
+MCTS_PROFILES = {
+    3: dict(fpu=0.2, cpuct=1.0, universes=1),
+}
+
+
 class dotdict(dict):
     def __getattr__(self, name):
         return self[name]
@@ -21,15 +28,7 @@ def init_game(numMCTSSims):
     g = Game()
     board = g.getInitBoard()
 
-    mcts_args = dotdict({
-        'numMCTSSims'     : numMCTSSims,
-        'fpu'             : 0.2 if g.num_players > 2 else 0.158,
-        'cpuct'           : 1.0 if g.num_players > 2 else 0.741,
-        'prob_fullMCTS'   : 1.,
-        'forced_playouts' : True,
-        'no_mem_optim'    : False,
-        'universes'       : None if g.num_players > 2 else 3,
-    })
+    mcts_args = dotdict(MCTS_COMMON, numMCTSSims=numMCTSSims, **MCTS_PROFILES[NUMBER_PLAYERS])
 
     mcts = MCTS(g, None, mcts_args)
     player = 0

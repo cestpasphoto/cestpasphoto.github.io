@@ -5,6 +5,14 @@ from SantoriniGame import SantoriniGame as Game
 import SantoriniConstants as constants
 
 
+# MCTS arguments of the page: common part, then one profile per value of NB_GODS (checked by make_web_py.py)
+MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
+MCTS_PROFILES = {
+     1: dict(fpu=0.03  , cpuct=2.75, universes=1),
+    11: dict(fpu=0.0191, cpuct=1.08, universes=1),
+}
+
+
 class dotdict(dict):
     # Allows dot notation access to dictionary attributes
     def __getattr__(self, name):
@@ -36,15 +44,7 @@ def init_game(numMCTSSims):
     g = Game()
     board = g.getInitBoard()
 
-    mcts_args = dotdict({
-        'numMCTSSims'    : numMCTSSims,
-        'fpu'            : 0.03 if constants.NB_GODS == 1 else 0.0191,
-        'cpuct'          : 2.75 if constants.NB_GODS == 1 else 1.08,
-        'prob_fullMCTS'  : 1.,
-        'forced_playouts': True,
-        'no_mem_optim'   : False,
-        'universes'      : None if constants.NB_GODS == 1 else 1,
-    })
+    mcts_args = dotdict(MCTS_COMMON, numMCTSSims=numMCTSSims, **MCTS_PROFILES[constants.NB_GODS])
 
     mcts = MCTS(g, None, mcts_args)
     player = 0

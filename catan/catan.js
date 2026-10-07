@@ -2,7 +2,8 @@
 const list_of_files = [
   ['catan/Game.py', 'Game.py'],
   ['catan/Stochastic.py', 'Stochastic.py'],
-  [pyConstantsFileName, 'CatanConstants.py'],   // per player count, see constants.js
+  ['catan/CatanConstants.py', 'CatanConstants.py'],
+  ['catan/_webconfig.py', '_webconfig.py'],
   ['catan/CatanLogicNumba.py', 'CatanLogicNumba.py'],
   ['catan/CatanGame.py', 'CatanGame.py'],
   ['catan/MCTS.py', 'MCTS.py'],

@@ -8,6 +8,15 @@ from SmallworldConstants import *
 from SmallworldMaps import *
 
 # Utility class to allow dot notation access for dictionaries
+# MCTS arguments of the page: common part, then one profile per value of NUMBER_PLAYERS (checked by make_web_py.py)
+MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
+MCTS_PROFILES = {
+    2: dict(fpu=0.177, cpuct=0.4, universes=1),
+    3: dict(fpu=0.1  , cpuct=1.0, universes=1),
+    4: dict(fpu=0.5  , cpuct=0.5, universes=2),
+}
+
+
 class dotdict(dict):
     def __getattr__(self, name):
         return self[name]
@@ -31,15 +40,7 @@ def init_game(numMCTSSims):
     g = Game()
     board = g.getInitBoard()
 
-    mcts_args = dotdict({
-        'numMCTSSims'     : numMCTSSims,
-        'fpu'             : [0.177, 0.1, 0.5][g.num_players-2],
-        'cpuct'           : [0.4  , 1.0, 0.5][g.num_players-2],
-        'prob_fullMCTS'   : 1.,
-        'forced_playouts' : True,
-        'no_mem_optim'    : False,
-        'universes'       : [None , 1  , 2  ][g.num_players-2],
-    })
+    mcts_args = dotdict(MCTS_COMMON, numMCTSSims=numMCTSSims, **MCTS_PROFILES[NUMBER_PLAYERS])
 
     mcts = MCTS(g, None, mcts_args)
     player = 0
