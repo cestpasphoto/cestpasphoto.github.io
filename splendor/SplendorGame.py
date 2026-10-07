@@ -6,8 +6,13 @@ from SplendorLogic import print_board, move_to_str
 from SplendorLogicNumba import Board, observation_size, action_size
 import numpy as np
 
-from _webconfig import get as _web_config
-NUMBER_PLAYERS = _web_config('NUMBER_PLAYERS', (2, 3, 4))
+import js as _js   # NUMBER_PLAYERS is set by the page: globalThis.gameConfig = {NUMBER_PLAYERS: ...}
+try:
+    NUMBER_PLAYERS = int(_js.gameConfig.NUMBER_PLAYERS)
+except AttributeError:
+    raise RuntimeError('globalThis.gameConfig.NUMBER_PLAYERS must be set by the page before importing proxy')
+if NUMBER_PLAYERS not in (2, 3, 4):
+    raise ValueError(f'globalThis.gameConfig.NUMBER_PLAYERS = {NUMBER_PLAYERS}, supported values: (2, 3, 4)')
 
 class SplendorGame(Game):
 	def __init__(self):

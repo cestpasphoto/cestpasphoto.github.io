@@ -3,7 +3,7 @@
 /* ==================================================== */
 
 const numPlayers = +new URLSearchParams(window.location.search).get('players') || 2;
-// Read by the Python engine when it is imported (_webconfig.py): must be set before `import proxy`
+// Read by the Python engine when its constants module is imported: must be set before `import proxy`
 globalThis.gameConfig = { N_PLAYERS: numPlayers };
 const numMCTSSims = 50;
 
@@ -19,7 +19,6 @@ const list_of_files = [
     ['./akropolis/AkropolisGame.py', 'AkropolisGame.py'],
     ['./akropolis/AkropolisLogicNumba.py', 'AkropolisLogicNumba.py'],
     ['./akropolis/AkropolisConstants.py', 'AkropolisConstants.py'],
-    ['./akropolis/_webconfig.py', '_webconfig.py'],
 ];
 
 /* ==================================================== */

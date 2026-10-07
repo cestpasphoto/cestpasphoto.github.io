@@ -21,7 +21,7 @@ const configs = {
 const _playersParam = +new URLSearchParams(window.location.search).get('players');
 const numPlayers = configs[_playersParam] ? _playersParam : 3;
 const { sizeV, sizeCB, defaultModelFileName } = configs[numPlayers];
-// Read by the Python engine when it is imported (_webconfig.py): must be set before `import proxy`
+// Read by the Python engine when its constants module is imported: must be set before `import proxy`
 globalThis.gameConfig = { N_PLAYERS: numPlayers };
 
 // Seats

@@ -12,8 +12,8 @@ MCTS.py and Game.py, plus every local module they import, recursively. A local m
 module level, a package Pyodide does not provide (torch, ...: see --allow); the
 imports of a left-out module are then removed from the shipped files, together
 with the functions, methods and statements that use what they imported.
-Packages listed in --stub (default colorama: terminal colours only) are replaced
-by an inert object instead, so that the module importing them is still shipped.
+Display-only packages (--strip, default colorama) are removed from the code: colour
+codes become empty strings, the text is returned unformatted.
 
 Every shipped file is written flat into <web folder> (Pyodide loads them from the
 root of its filesystem): relative and package imports are rewritten as plain
@@ -29,12 +29,12 @@ must exist there.
 --players 2,3,4: the configuration constant (a module-level `NAME = <int>` whose
 name contains PLAYERS, e.g. N_PLAYERS / NUMBER_PLAYERS, found automatically; any
 other with --players-var, e.g. --players-var NB_GODS --players 1,11 for
-Santorini) is read from the page when the module is imported:
-    NAME = <int>   ->   NAME = _web_config('NAME', (2, 3, 4))
-_web_config() (generated _webconfig.py) returns globalThis.gameConfig.NAME, set by
-the page before `import proxy`, and raises if it is missing or not one of the
-values: the page never falls back silently on a default. Constants derived from
-NAME at import time are therefore always consistent.
+Santorini) is read from the page when the module is imported, by a few lines
+written in place of `NAME = <int>`:
+    NAME = int(js.gameConfig.NAME)   # + an error if it is missing or not supported
+globalThis.gameConfig = {NAME: n} must be set by the page before `import proxy`;
+the page never falls back silently on a default. Constants derived from NAME at
+import time are therefore always consistent.
 
 proxy.py defines its MCTS arguments per configuration value, checked for every
 value of --players (or the fixed value of the constant without --players):
@@ -71,10 +71,10 @@ import tempfile
 
 ME = os.path.basename(__file__)
 DEFAULT_ALLOW = ('numpy',)      # packages loaded by game.js (pyodide.loadPackage)
-DEFAULT_STUB = ('colorama',)    # packages replaced by an inert object (display only)
 STRIPPED = ('numba',)           # removed by the transformation, never a blocker
 EXCLUDED_ROOT = ('proxy',)      # web-only modules, never generated
-WEB_ONLY = ('js', '_webstub', '_webconfig')   # modules that exist in the page only
+WEB_ONLY = ('js',)              # modules that exist in the page only
+DEFAULT_STRIP = ('colorama',)   # display-only packages removed from the code (see strip_display)
 DEFAULT_EXCLUDE = ('Display',)  # module-name suffixes never shipped (terminal display only)
 # Self-play features the page must not run (PCR, forced playouts / policy target
 # pruning): proxy.py must set these values, checked by static_checks
@@ -86,57 +86,6 @@ SELFPLAY_KWARGS = ('dirichlet_noise', 'is_selfplay')
 TRAINING_ONLY_ARGS = ('dirichletAlpha', 'temperature', 'ratio_fullMCTS', 'forced_playouts_k')
 # numba names with a pure-Python equivalent
 NUMBA_SHIMS = {'prange': 'range', 'literal_unroll': '(lambda x: x)'}
-WEBCONFIG = '''"""Configuration of the page (number of players, gods...), read at import time."""
-import js
-
-
-def get(name, allowed):
-    # globalThis.gameConfig = {NUMBER_PLAYERS: 3} must be set by the page before
-    # `import proxy`; no silent default: a wrong value would load a model and an
-    # engine of different sizes
-    try:
-        config = js.gameConfig.to_py()
-    except AttributeError:
-        raise RuntimeError(f'globalThis.gameConfig is not defined: the page must set it before importing proxy '
-                           f'(e.g. globalThis.gameConfig = {{{name}: {allowed[0]}}})')
-    if name not in config:
-        raise RuntimeError(f'globalThis.gameConfig has no {name} (keys: {list(config)})')
-    value = int(config[name])
-    if value not in allowed:
-        raise ValueError(f'gameConfig.{name} = {value}, supported values: {allowed}')
-    return value
-'''
-WEBSTUB = '''"""Inert stand-in for packages the page does not provide (see --stub)."""
-
-
-class _WebStub:
-    # any attribute, call or concatenation gives back something harmless: colour
-    # codes become empty strings, init() calls do nothing
-    def __getattr__(self, name):
-        return self
-
-    def __call__(self, *args, **kwargs):
-        return self
-
-    def __str__(self):
-        return ''
-
-    __repr__ = __str__
-
-    def __format__(self, spec):
-        return ''
-
-    def __add__(self, other):
-        return other if isinstance(other, str) else self
-
-    __radd__ = __add__
-
-    def __bool__(self):
-        return False
-
-
-stub = _WebStub()
-'''
 PYTHON = sys.executable         # interpreter running --check, see --python
 
 
@@ -308,6 +257,44 @@ def strip_numba(text, name):
     return _apply_edits(text, edits)
 
 
+def strip_display(text, pkgs, name):
+    """Remove a display-only package (--strip, default colorama): its imports, the
+    statements that only call it (init(), just_fix_windows_console()) and every
+    attribute read through it (Fore.RED, Style.RESET_ALL...), which becomes str(),
+    i.e. ''. The functions using it then return unformatted text."""
+    tree = ast.parse(text)
+    edits, namespaces, funcs = [], set(), set()
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Import) and any(a.name.split('.')[0] in pkgs for a in n.names):
+            if not all(a.name.split('.')[0] in pkgs for a in n.names):
+                fail(f'{name} line {n.lineno}: a --strip package imported together with other modules, split the import')
+            namespaces |= {a.asname or a.name.split('.')[0] for a in n.names}
+        elif isinstance(n, ast.ImportFrom) and n.level == 0 and n.module and n.module.split('.')[0] in pkgs:
+            if any(a.name == '*' for a in n.names):
+                fail(f'{name} line {n.lineno}: "from {n.module} import *": import the names explicitly')
+            for a in n.names:   # Fore, Back, Style are namespaces; init, deinit... are functions
+                (namespaces if a.name[:1].isupper() else funcs).add(a.asname or a.name)
+        else:
+            continue
+        edits.append((n.lineno, n.end_lineno, ' ' * n.col_offset + 'pass' if n.col_offset else None))
+    if not edits:
+        return text
+    bound = namespaces | funcs
+    for n in ast.walk(tree):                        # colorama.init() / init(autoreset=True)
+        if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call) \
+                and {x.id for x in ast.walk(n.value.func) if isinstance(x, ast.Name)} & bound:
+            edits.append((n.lineno, n.end_lineno, ' ' * n.col_offset + 'pass' if n.col_offset else None))
+    text = _apply_edits(text, edits)
+    for ns in sorted(namespaces):                   # Fore.RED, colorama.Style.BRIGHT -> str()
+        text = re.sub(rf'(?<![\w.]){re.escape(ns)}(?:\.\w+)+', 'str()', text)
+    left = {k: v for k, v in _loads(ast.parse(text), set()).items() if k in bound}
+    if left:
+        fail(f'{name}: {", ".join(sorted(pkgs))} still used after removing it: '
+             + ', '.join(f'{k} (line {", ".join(map(str, v))})' for k, v in sorted(left.items()))
+             + '. Only attribute reads (Fore.RED) and statement calls (init()) are removed automatically')
+    return text
+
+
 def flatten_imports(text, src):
     """Package and relative imports of local modules -> plain imports (the web folder is flat):
          from .X import a / from <game>.X import a  ->  from X import a
@@ -341,25 +328,6 @@ def flatten_imports(text, src):
     text = re.sub(r'^(\s*)import\s+' + re.escape(src.game) + r'\.(\w+)(?:\s+as\s+(\w+))?\s*$', sub_import,
                   text, flags=re.M)
     return text
-
-
-def stub_imports(text, stubs, name):
-    """Imports of a --stub package -> the inert object of _webstub.py. Returns (text, used?)."""
-    edits = []
-    for n in ast.walk(ast.parse(text)):
-        if isinstance(n, ast.Import) and any(a.name.split('.')[0] in stubs for a in n.names):
-            if not all(a.name.split('.')[0] in stubs for a in n.names):
-                fail(f'{name} line {n.lineno}: a --stub package imported together with other modules, split the import')
-            bound = [a.asname or a.name.split('.')[0] for a in n.names]
-        elif isinstance(n, ast.ImportFrom) and n.level == 0 and n.module and n.module.split('.')[0] in stubs:
-            if any(a.name == '*' for a in n.names):
-                fail(f'{name} line {n.lineno}: "from {n.module} import *" cannot be stubbed, import the names explicitly')
-            bound = [a.asname or a.name for a in n.names]
-        else:
-            continue
-        edits.append((n.lineno, n.end_lineno,
-                      ' ' * n.col_offset + 'from _webstub import ' + ', '.join(f'stub as {b}' for b in bound)))
-    return (_apply_edits(text, edits), True) if edits else (text, False)
 
 
 def _imports(tree):
@@ -540,24 +508,20 @@ def make_mcts_async(text):
 # =============================================================================
 
 def build(src, game_module, opts, keep=frozenset()):
-    """{module: web text} for every shipped module, and whether _webstub.py is needed.
+    """{module: web text} for every shipped module.
     A module left out by --exclude is put back (keep) when the files that import it,
     or proxy.py, cannot do without it."""
     seeds = [game_module, 'MCTS', 'Game']
     for s in seeds:
         if s not in src.path:
             fail(f'{s}.py not found in the framework')
-    parsed, stubbed = {}, set()
-    allow = tuple(opts.allow) + tuple(opts.stubs)
+    parsed = {}
+    allow = tuple(opts.allow)
 
     def prepared(name):
         if name not in parsed:
             text = strip_numba(read(src.path[name]), f'{name}.py')
-            text = flatten_imports(text, src)
-            text, used = stub_imports(text, opts.stubs, f'{name}.py')
-            if used:
-                stubbed.add(name)
-            parsed[name] = text
+            parsed[name] = strip_display(flatten_imports(text, src), opts.strip, f'{name}.py')
         return parsed[name]
 
     def shippable(name):
@@ -572,7 +536,7 @@ def build(src, game_module, opts, keep=frozenset()):
             note(f'{name}.py left out (--exclude {",".join(opts.exclude)})')
             return False
         if bad:
-            note(f'{name}.py left out: imports {sorted(set(bad))}, not available in Pyodide (see --allow / --stub)')
+            note(f'{name}.py left out: imports {sorted(set(bad))}, not available in Pyodide (see --allow)')
         return not bad
 
     ship, queue, verdict, by_suffix = [], list(seeds), {}, set()
@@ -648,11 +612,11 @@ def build(src, game_module, opts, keep=frozenset()):
         culprits = sorted({x for owner in dangling for x in dropped_from.get(owner, ())})
         fail(f'code removed for the web is still used: {details}. It comes from '
              f'{", ".join(c + ".py" for c in culprits)}, left out because it imports a package Pyodide does '
-             f'not provide: see --stub / --allow')
+             f'not provide: load it in the page and add it to --allow')
     if from_proxy:
         note('WARNING proxy.py uses code removed for the web (fine if these are other objects with the same '
              'method name): ' + '; '.join(sorted(s for v in from_proxy.values() for s in v)))
-    return out, bool(stubbed & set(out))
+    return out
 
 
 PLAYERS_PATTERN = r'[A-Z][A-Z0-9_]*PLAYERS[A-Z0-9_]*'
@@ -678,10 +642,16 @@ def set_config(text, var, n):
 
 
 def inject_config(text, var, values):
-    """Web copy: the constant read from the page at import time."""
-    text, n = re.subn(rf'^{var}[ \t]*=[ \t]*\d+',
-                      f'from _webconfig import get as _web_config\n'
-                      f'{var} = _web_config({var!r}, {tuple(values)!r})', text, count=1, flags=re.M)
+    """Web copy: the constant read from the page (globalThis.gameConfig) at import time."""
+    allowed = tuple(values)
+    block = (f"import js as _js   # {var} is set by the page: globalThis.gameConfig = {{{var}: ...}}\n"
+             f"try:\n"
+             f"    {var} = int(_js.gameConfig.{var})\n"
+             f"except AttributeError:\n"
+             f"    raise RuntimeError('globalThis.gameConfig.{var} must be set by the page before importing proxy')\n"
+             f"if {var} not in {allowed!r}:\n"
+             f"    raise ValueError(f'globalThis.gameConfig.{var} = {{{var}}}, supported values: {allowed!r}')")
+    text, n = re.subn(rf'^{var}[ \t]*=[ \t]*\d+[^\n]*', lambda m: block, text, count=1, flags=re.M)
     if n != 1:
         fail(f'"{var} = <int>" not found at module level')
     return text
@@ -798,9 +768,18 @@ def check_proxy(text, files, src, mcts, defaults, config_values, config_var):
         if config_values is not None and sorted(keys) != sorted(config_values):
             errors.append(f'MCTS_PROFILES keys {sorted(keys)} differ from the configuration values '
                           f'{sorted(config_values)}')
-        if not any(isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name) and n.value.id == 'MCTS_PROFILES'
-                   and isinstance(n.ctx, ast.Load) for n in ast.walk(tree)):
+        uses = [n for n in ast.walk(tree) if isinstance(n, ast.Subscript) and isinstance(n.value, ast.Name)
+                and n.value.id == 'MCTS_PROFILES' and isinstance(n.ctx, ast.Load)]
+        if not uses:
             errors.append('MCTS_PROFILES is never used (expected MCTS_PROFILES[<constant>])')
+        defined = _module_names(text)
+        for u in uses:
+            root = u.slice
+            while isinstance(root, ast.Attribute):
+                root = root.value
+            if isinstance(root, ast.Name) and root.id not in defined:
+                errors.append(f'line {u.lineno}: MCTS_PROFILES[{ast.unparse(u.slice)}]: {root.id} is not defined '
+                              f'in proxy.py (import it, e.g. from <module> import {root.id})')
 
     # 4. arguments read by MCTS: None is never a valid value (`None > 0` raises)
     read_keys = set(re.findall(r'self\.args\.(\w+)', mcts))
@@ -965,7 +944,7 @@ async def _js_predict(board, valids):
 js.predict = _js_predict
 import json
 if os.environ.get('WEB_GAME_CONFIG'):                # globalThis.gameConfig of the page
-    js.gameConfig = _R(json.loads(os.environ['WEB_GAME_CONFIG']))
+    js.gameConfig = types.SimpleNamespace(**json.loads(os.environ['WEB_GAME_CONFIG']))
 sys.modules['js'] = js
 sys.path.insert(0, root)
 import importlib
@@ -1065,6 +1044,35 @@ def dynamic_check(src, dst, game_module, game_class, written, config, n, sims, n
 # main
 # =============================================================================
 
+def check_js(dst, written, allow):
+    """The page mounts what list_of_files names (in the .js files of the game folder):
+    every generated module must be there, and every mounted .py must exist. Every
+    --allow package but numpy (loaded by common/game.js) must be in pyPackages."""
+    js_files = sorted(n for n in os.listdir(dst) if n.endswith('.js'))
+    if not js_files:
+        note(f'no .js file in {dst}: list_of_files not checked')
+        return
+    mounted = set()
+    for n in js_files:
+        mounted |= set(re.findall(r'[\'"`](?:[\w.\-]*/)*(\w+)\.py[\'"`]', read(os.path.join(dst, n))))
+    missing = sorted(set(written) - mounted)
+    if missing:
+        fail(f'not in list_of_files ({", ".join(js_files)}): {", ".join(m + ".py" for m in missing)}. '
+             f'The page would not load them')
+    js_text = '\n'.join(read(os.path.join(dst, n)) for n in js_files)
+    m = re.search(r'pyPackages\s*=\s*\[([^\]]*)\]', js_text)
+    declared = set(re.findall(r'[\'"]([\w\-]+)[\'"]', m.group(1))) if m else set()
+    undeclared = sorted(set(allow) - {'numpy'} - declared)
+    if undeclared:
+        fail(f'--allow {", ".join(undeclared)}: not in the pyPackages list of {", ".join(js_files)}, the page '
+             f'would not install it (e.g. const pyPackages = {undeclared!r};)')
+    present = {n[:-3] for n in os.listdir(dst) if n.endswith('.py')}
+    absent = sorted(mounted - present)
+    if absent:
+        note(f'WARNING list_of_files ({", ".join(js_files)}) mounts files that are not in {dst}: '
+             f'{", ".join(a + ".py" for a in absent)}')
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('framework', help='framework root (contains MCTS.py, Game.py and <game>/)')
@@ -1078,9 +1086,9 @@ def main():
     ap.add_argument('--game-file', help='game module, e.g. CatanGame.py (default: found automatically)')
     ap.add_argument('--allow', default=','.join(DEFAULT_ALLOW),
                     help=f'third-party packages available in the page (default {",".join(DEFAULT_ALLOW)})')
-    ap.add_argument('--stub', default=','.join(DEFAULT_STUB),
-                    help=f'packages replaced by an inert object, for display-only use (default '
-                         f'{",".join(DEFAULT_STUB)}; "" for none)')
+    ap.add_argument('--strip', default=','.join(DEFAULT_STRIP),
+                    help=f'display-only packages removed from the generated code, their colour codes becoming '
+                         f'empty strings (default {",".join(DEFAULT_STRIP)})')
     ap.add_argument('--exclude', default=','.join(DEFAULT_EXCLUDE),
                     help=f'module-name suffixes never shipped (default {",".join(DEFAULT_EXCLUDE)})')
     ap.add_argument('--check', action='store_true', help='compare with the framework (needs its environment)')
@@ -1100,9 +1108,9 @@ def main():
     if not defaults:
         note('no main.py (or no argparse defaults in it): every MCTS argument must be set by proxy.py')
     proxy = os.path.join(dst, 'proxy.py')
-    opts = argparse.Namespace(allow=split(args.allow), stubs=split(args.stub), exclude=split(args.exclude),
+    opts = argparse.Namespace(allow=split(args.allow), strip=split(args.strip), exclude=split(args.exclude),
                               defaults=defaults, proxy_text=read(proxy) if os.path.isfile(proxy) else None)
-    files, need_stub = build(src, game_module, opts)
+    files = build(src, game_module, opts)
 
     config, values = None, [None]
     if args.values:
@@ -1124,11 +1132,6 @@ def main():
     written = []
     outputs = [(name, text, f'# Generated by {ME} from {os.path.relpath(src.path[name], src.root)}. Do not edit.\n')
                for name, text in files.items()]
-    if config:
-        outputs.append(('_webconfig', WEBCONFIG, f'# Generated by {ME}. Do not edit.\n'))
-    if need_stub:
-        outputs.append(('_webstub', WEBSTUB, f'# Generated by {ME}, stands for: {", ".join(opts.stubs)}. '
-                                             f'Do not edit.\n'))
     for out_name, out_text, header in outputs:
         with open(os.path.join(dst, out_name + '.py'), 'w') as f:
             f.write(header + out_text)
@@ -1155,6 +1158,8 @@ def main():
         os.remove(os.path.join(dst, stem + '.py'))
     if stale:
         note(f'removed from {dst}, no longer used by the page: {", ".join(s + ".py" for s in stale)}')
+
+    check_js(dst, written, opts.allow)
 
     if args.check:
         global PYTHON

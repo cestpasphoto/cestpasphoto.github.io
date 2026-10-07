@@ -45,5 +45,5 @@ const numPlayers = 2;
 const NB_GODS = +new URLSearchParams(window.location.search).get('gods') || 1;
 const selectedConfig = (NB_GODS === 1) ? configs.noGods : configs.withGods;
 const { gods_name, gods_descr, gods_instructions, onnxOutputSize, defaultModelFileName } = selectedConfig;
-// Read by the Python engine when it is imported (_webconfig.py): must be set before `import proxy`
+// Read by the Python engine when its constants module is imported: must be set before `import proxy`
 globalThis.gameConfig = { NB_GODS: NB_GODS };

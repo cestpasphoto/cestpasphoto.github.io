@@ -22,7 +22,7 @@ const configs = {
 const numPlayers = +new URLSearchParams(window.location.search).get('players') || 2;
 const selectedConfig = configs[numPlayers] || configs[2];
 const { sizeV, sizeCB, defaultModelFileName } = selectedConfig;
-// Read by the Python engine when it is imported (_webconfig.py): must be set before `import proxy`
+// Read by the Python engine when its constants module is imported: must be set before `import proxy`
 globalThis.gameConfig = { NUMBER_PLAYERS: numPlayers };
 
 const colors = [

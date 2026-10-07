@@ -5,9 +5,8 @@ const list_of_files = [
   ['splendor/MCTS.py', 'MCTS.py'],
   ['splendor/SplendorLogic.py', 'SplendorLogic.py'],
   ['splendor/SplendorLogicNumba.py', 'SplendorLogicNumba.py'],
+  ['splendor/Stochastic.py', 'Stochastic.py'],
   ['splendor/SplendorGame.py', 'SplendorGame.py'],
-  ['splendor/_webconfig.py', '_webconfig.py'],
-  ['splendor/_webstub.py', '_webstub.py'],     // colorama stand-in (SplendorLogic.py)
 ];
 
 // Default number of Monte Carlo Tree Search simulations determining the AI's base calculation depth.

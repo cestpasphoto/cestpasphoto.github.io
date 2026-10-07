@@ -445,7 +445,7 @@ const elementsCoord_4pl = [
 const numPlayers = +new URLSearchParams(window.location.search).get('players') || 2;
 const selectedConfig = getGameConfigs()[numPlayers] || getGameConfigs()[2];
 const { elementsCoord, mapAreas, mapPoints, mapDimensions, nbTurns, nbAreas, defaultModelFileName } = selectedConfig;
-// Read by the Python engine when it is imported (_webconfig.py): must be set before `import proxy`
+// Read by the Python engine when its constants module is imported: must be set before `import proxy`
 globalThis.gameConfig = { NUMBER_PLAYERS: numPlayers };
 
 const list_of_files = [
@@ -455,7 +455,6 @@ const list_of_files = [
   ['smallworld/SmallworldDisplay.py'   , 'SmallworldDisplay.py'],
   ['smallworld/SmallworldGame.py'      , 'SmallworldGame.py'],
   ['smallworld/SmallworldConstants.py'  , 'SmallworldConstants.py'],
-  ['smallworld/_webconfig.py'           , '_webconfig.py'],
   ['smallworld/SmallworldLogicNumba.py', 'SmallworldLogicNumba.py'],
   ['smallworld/SmallworldMaps.py'      , 'SmallworldMaps.py'],
   ['smallworld/SmallworldMaps_2pl.py'   , 'SmallworldMaps_2pl.py'],   // SmallworldMaps.py imports the one it needs

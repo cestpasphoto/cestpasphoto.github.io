@@ -1,7 +1,7 @@
 import json
 import numpy as np
 from MCTS import MCTS
-from SplendorGame import SplendorGame as Game
+from SplendorGame import SplendorGame as Game, NUMBER_PLAYERS
 from SplendorLogic import np_all_cards_1, np_all_cards_2, np_all_cards_3, np_all_nobles
 from SplendorLogicNumba import my_packbits, my_unpackbits
 
