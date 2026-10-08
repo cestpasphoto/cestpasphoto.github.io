@@ -12,6 +12,7 @@ const list_of_files = [
     ['thelittleprince/TLPGame.py', 'TLPGame.py'],
     ['thelittleprince/TLPLogicNumba.py', 'TLPLogicNumba.py'],
     ['thelittleprince/TLPDisplay.py', 'TLPDisplay.py'],
+    ['thelittleprince/Stochastic.py', 'Stochastic.py'],
     ['thelittleprince/MCTS.py', 'MCTS.py'],
     ['thelittleprince/Game.py', 'Game.py']
 ];

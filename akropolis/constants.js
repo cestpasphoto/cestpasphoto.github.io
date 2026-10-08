@@ -15,6 +15,7 @@ const sizeV = [1, (numPlayers + 2) * (13*13) * 6];
 const list_of_files = [
     ['./akropolis/Game.py', 'Game.py'],
     ['./akropolis/MCTS.py', 'MCTS.py'],
+    ['./akropolis/Stochastic.py', 'Stochastic.py'],
     ['./akropolis/proxy.py', 'proxy.py'],
     ['./akropolis/AkropolisGame.py', 'AkropolisGame.py'],
     ['./akropolis/AkropolisLogicNumba.py', 'AkropolisLogicNumba.py'],

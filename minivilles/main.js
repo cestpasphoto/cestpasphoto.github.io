@@ -27,7 +27,7 @@ const list_of_files = [
     ['minivilles/proxy.py', 'proxy.py'],
     ['minivilles/MinivillesGame.py', 'MinivillesGame.py'],
     ['minivilles/MinivillesLogicNumba.py', 'MinivillesLogicNumba.py'],
-    ['minivilles/MinivillesDisplay.py', 'MinivillesDisplay.py'],
+    ['minivilles/Stochastic.py', 'Stochastic.py'],
     ['minivilles/MCTS.py', 'MCTS.py'],
     ['minivilles/Game.py', 'Game.py']
 ];

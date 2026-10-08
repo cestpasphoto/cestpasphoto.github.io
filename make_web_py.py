@@ -693,6 +693,18 @@ def _module_names(text):
     return out
 
 
+def _star_names(tree, files, seen=None):
+    """Names bound at module level, including through `from <generated module> import *` (recursively)."""
+    seen = set() if seen is None else seen
+    out = _module_names(ast.unparse(tree))
+    for n in ast.walk(tree):
+        if isinstance(n, ast.ImportFrom) and any(a.name == '*' for a in n.names) and n.module in files \
+                and n.module not in seen:
+            seen.add(n.module)
+            out |= _star_names(ast.parse(files[n.module]), files, seen)
+    return out
+
+
 def _proxy_settings(tree):
     """{key: [value nodes]} for every key proxy.py may set: dict literals, keyword
     arguments (dotdict(cpuct=...)), x['k'] = v and x.k = v."""
@@ -772,7 +784,7 @@ def check_proxy(text, files, src, mcts, defaults, config_values, config_var):
                 and n.value.id == 'MCTS_PROFILES' and isinstance(n.ctx, ast.Load)]
         if not uses:
             errors.append('MCTS_PROFILES is never used (expected MCTS_PROFILES[<constant>])')
-        defined = _module_names(text)
+        defined = _star_names(tree, files)
         for u in uses:
             root = u.slice
             while isinstance(root, ast.Attribute):
@@ -865,6 +877,9 @@ P = g.getNumberOfPlayers()
 params = inspect.signature(g.getNextState).parameters
 def step(b, p, a, seed):
     if 'random_seed' in params:
+        # np.random should not be used when random_seed != 0, but if it is, numba's and
+        # numpy's generators must give the same numbers: both are seeded identically
+        reseed(seed)
         return g.getNextState(b, p, a, random_seed=seed)
     if 'deterministic' in params:
         return g.getNextState(b, p, a, deterministic=True)
@@ -884,19 +899,24 @@ if mode == 'init':
         b, p = step(b, p, int(rng.choice(np.flatnonzero(g.getValidMoves(c, 0)))), int(rng.integers(1, 2**30)))
     np.save(f'{tmp}/positions.npy', np.array(pos))
 elif mode == 'engine':
-    out = []
+    out, np_random_moves = [], 0
     for game in range(6):
         b = np.load(f'{tmp}/init_{game}.npy'); p = 0
         rng = np.random.default_rng(1000 + game)
         for i in range(4000):
             c = g.getCanonicalForm(b, p)
             a = int(rng.choice(np.flatnonzero(g.getValidMoves(c, 0))))
+            if 'random_seed' in params:      # does the move depend on np.random despite random_seed?
+                reseed(10**6 + i)
+                alt = np.copy(g.getNextState(np.copy(b), p, a, random_seed=1 + i + 7919 * game)[0])
             b, p = step(b, p, a, 1 + i + 7919 * game)
+            if 'random_seed' in params and not np.array_equal(alt, b):
+                np_random_moves += 1
             w = g.sampleWorld(g.getObservation(g.getCanonicalForm(b, p), 0), 1 + i).tobytes() if hidden else b''
             out.append(hashlib.sha1(np.asarray(b).tobytes() + w + bytes([int(p)])).hexdigest())
             if np.asarray(g.getGameEnded(b, p)).any():
                 break
-    print(len(out), hashlib.sha1('\n'.join(out).encode()).hexdigest(),
+    print(np_random_moves, len(out), hashlib.sha1('\n'.join(out).encode()).hexdigest(),
           'random_seed' if 'random_seed' in params else ('deterministic' if 'deterministic' in params else 'reseeded'))
 else:
     out = []
@@ -912,15 +932,17 @@ FW_SCRIPT = COMMON + r'''
 sys.path.insert(0, root)
 import importlib
 Klass = getattr(importlib.import_module(f'{os.environ["WEB_GAME_PKG"]}.{mod}'), cls)
+try:                                    # numba's generator is separate from numpy's: seed both
+    from numba import njit
+    @njit
+    def _nb_seed(x):
+        np.random.seed(x)
+except ImportError:
+    _nb_seed = None
 def reseed(seed):
     np.random.seed(seed); random.seed(seed)
-    try:
-        from numba import njit
-        @njit
-        def _s(x): np.random.seed(x)
-        _s(seed)
-    except ImportError:
-        pass
+    if _nb_seed is not None:
+        _nb_seed(seed)
 def new_mcts():
     from MCTS import MCTS
     class Net:
@@ -1023,7 +1045,14 @@ def dynamic_check(src, dst, game_module, game_class, written, config, n, sims, n
         _run(fw_s, a_args, f'{tag} init', env)
         a = _run(fw_s, [fw, tmp, 'engine', game_module, game_class], f'{tag} engine, framework', env)
         b = _run(web_s, [web, tmp, 'engine', game_module, game_class], f'{tag} engine, web', env)
+        nr = int(a.split()[0])
+        a, b = a.split(' ', 1)[1], b.split(' ', 1)[1]
         print(f'  {tag} engine: framework {a}  |  web {b}  ->  {"IDENTICAL" if a == b else "MISMATCH"}')
+        if nr:
+            note(f'WARNING {tag}: {nr} moves give a different result for another np.random seed although '
+                 f'random_seed != 0: the game logic draws from np.random in deterministic mode (Stochastic.py '
+                 f'contract). The search then explores transitions it cannot reproduce. Harmless for this check '
+                 f'(both generators are seeded identically), not for the search')
         if a != b:
             if a.endswith('reseeded'):
                 note(f'WARNING {tag}: getNextState takes no random_seed / deterministic argument, so numba\'s and '

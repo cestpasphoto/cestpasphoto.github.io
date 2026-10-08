@@ -3,7 +3,6 @@ import numpy as np
 
 from MCTS import MCTS
 from SmallworldGame import SmallworldGame as Game
-from SmallworldDisplay import move_to_str
 from SmallworldConstants import *
 from SmallworldMaps import *
 

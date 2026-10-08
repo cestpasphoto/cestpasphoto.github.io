@@ -452,7 +452,7 @@ const list_of_files = [
   ['smallworld/Game.py'                , 'Game.py'],
   ['smallworld/proxy.py'               , 'proxy.py'],
   ['smallworld/MCTS.py'                , 'MCTS.py'],
-  ['smallworld/SmallworldDisplay.py'   , 'SmallworldDisplay.py'],
+  ['smallworld/Stochastic.py'          , 'Stochastic.py'],
   ['smallworld/SmallworldGame.py'      , 'SmallworldGame.py'],
   ['smallworld/SmallworldConstants.py'  , 'SmallworldConstants.py'],
   ['smallworld/SmallworldLogicNumba.py', 'SmallworldLogicNumba.py'],

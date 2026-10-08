@@ -3,7 +3,7 @@ import numpy as np
 
 from MCTS import MCTS
 from MinivillesGame import MinivillesGame as Game, NUMBER_PLAYERS
-from MinivillesDisplay import move_to_str
+#from MinivillesDisplay import move_to_str
 
 # Utility class to allow dot notation access for dictionaries
 # MCTS arguments of the page: common part, then one profile per value of NUMBER_PLAYERS (checked by make_web_py.py)
