@@ -727,7 +727,7 @@ def _proxy_settings(tree):
     return out
 
 
-def check_proxy(text, files, src, mcts, defaults, config_values, config_var):
+def check_proxy(text, files, src, mcts, defaults, config_values, config_var, profile_var=None):
     tree = ast.parse(text)
     errors = []
 
@@ -792,6 +792,12 @@ def check_proxy(text, files, src, mcts, defaults, config_values, config_var):
             if isinstance(root, ast.Name) and root.id not in defined:
                 errors.append(f'line {u.lineno}: MCTS_PROFILES[{ast.unparse(u.slice)}]: {root.id} is not defined '
                               f'in proxy.py (import it, e.g. from <module> import {root.id})')
+            # the key must be the configuration constant itself (NAME or module.NAME)
+            key = u.slice.id if isinstance(u.slice, ast.Name) else \
+                  u.slice.attr if isinstance(u.slice, ast.Attribute) else None
+            if profile_var and key != profile_var:
+                errors.append(f'line {u.lineno}: MCTS_PROFILES[{ast.unparse(u.slice)}]: the profiles are keyed by '
+                              f'{profile_var}, index them with it (MCTS_PROFILES[{profile_var}])')
 
     # 4. arguments read by MCTS: None is never a valid value (`None > 0` raises)
     read_keys = set(re.findall(r'self\.args\.(\w+)', mcts))
@@ -823,7 +829,8 @@ def check_proxy(text, files, src, mcts, defaults, config_values, config_var):
         fail('proxy.py:\n  ' + '\n  '.join(errors))
 
 
-def static_checks(files, game_module, game_class, dst, defaults, src, config_values, config_var):
+def static_checks(files, game_module, game_class, dst, defaults, src, config_values, config_var,
+                  profile_var=None):
     mcts = files['MCTS']
     def members(text, cls):
         for node in ast.parse(text).body:
@@ -846,7 +853,7 @@ def static_checks(files, game_module, game_class, dst, defaults, src, config_val
              f'only reached behind a hasattr / getattr guard, --check runs the search for real')
     proxy = os.path.join(dst, 'proxy.py')
     if os.path.isfile(proxy):
-        check_proxy(read(proxy), files, src, mcts, defaults, config_values, config_var)
+        check_proxy(read(proxy), files, src, mcts, defaults, config_values, config_var, profile_var)
     else:
         note(f'no proxy.py in {dst}: MCTS arguments not checked')
 
@@ -1141,7 +1148,7 @@ def main():
                               defaults=defaults, proxy_text=read(proxy) if os.path.isfile(proxy) else None)
     files = build(src, game_module, opts)
 
-    config, values = None, [None]
+    config, values, hit = None, [None], None
     if args.values:
         values = sorted({int(x) for x in args.values.split(',')})
         mod, var, _ = find_config_var(files, args.var)
@@ -1155,7 +1162,9 @@ def main():
         if hit:
             note(f'{hit[1]} = {hit[2]} in {hit[0]}.py kept as is (fixed configuration; --players a,b,... '
                  f'to read it from the page)')
-    static_checks(files, game_module, game_class, dst, defaults, src, profile_values, config and config[1])
+    profile_var = config[1] if config else (hit[1] if hit else None)
+    static_checks(files, game_module, game_class, dst, defaults, src, profile_values, config and config[1],
+                  profile_var)
 
     os.makedirs(dst, exist_ok=True)
     written = []

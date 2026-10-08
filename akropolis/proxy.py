@@ -9,9 +9,9 @@ from AkropolisGame import AkropolisGame as Game
 # MCTS arguments of the page: common part, then one profile per value of N_PLAYERS (checked by make_web_py.py)
 MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
 MCTS_PROFILES = {
-    2: dict(fpu=0.1, cpuct=1.5, universes=1),
-    3: dict(fpu=0.1, cpuct=1.5, universes=1),
-    4: dict(fpu=0.1, cpuct=1.5, universes=1),
+    2: dict(fpu=0.1, fpu_root=0., cpuct=1.5, universes=1),
+    3: dict(fpu=0.1, fpu_root=0., cpuct=1.5, universes=1),
+    4: dict(fpu=0.1, fpu_root=0., cpuct=1.5, universes=1),
 }
 
 

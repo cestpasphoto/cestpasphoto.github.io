@@ -1,14 +1,17 @@
 import json
 import numpy as np
 from MCTS import MCTS
-from AbaloneGame import AbaloneGame as Game, NUMBER_PLAYERS
+from AbaloneGame import AbaloneGame as Game
 import AbaloneLogicNumba as logic
+from AbaloneLogicNumba import INITIAL_LAYOUT   # read from globalThis.gameConfig at import
 
 
-# MCTS arguments of the page: common part, then one profile per value of NUMBER_PLAYERS (checked by make_web_py.py)
+# MCTS arguments of the page: common part, then one profile per value of INITIAL_LAYOUT (checked by make_web_py.py)
 MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
 MCTS_PROFILES = {
-    2: dict(fpu=0.1   , cpuct=1.5 , universes=0),
+    0: dict(fpu=0.1, fpu_root=0., cpuct=1.5, universes=0),
+    1: dict(fpu=0.1, fpu_root=0., cpuct=1.5, universes=0),
+    2: dict(fpu=0.1, fpu_root=0., cpuct=1.5, universes=0),
 }
 
 
@@ -39,7 +42,7 @@ def init_game(numMCTSSims):
     g = Game()
     board = g.getInitBoard()
 
-    mcts_args = dotdict(MCTS_COMMON, numMCTSSims=numMCTSSims, **MCTS_PROFILES[NUMBER_PLAYERS])
+    mcts_args = dotdict(MCTS_COMMON, numMCTSSims=numMCTSSims, **MCTS_PROFILES[INITIAL_LAYOUT])
 
     mcts = MCTS(g, None, mcts_args)
     player = 0
