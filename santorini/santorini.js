@@ -3,7 +3,6 @@ const list_of_files = [
   ['santorini/Game.py', 'Game.py'],
   ['santorini/proxy.py', 'proxy.py'],
   ['santorini/MCTS.py', 'MCTS.py'],
-  ['santorini/SantoriniDisplay.py', 'SantoriniDisplay.py'],
   ['santorini/SantoriniGame.py', 'SantoriniGame.py'],
   ['santorini/SantoriniLogicNumba.py', 'SantoriniLogicNumba.py'],
   ['santorini/SantoriniConstants.py', 'SantoriniConstants.py'],
