@@ -2,9 +2,9 @@
 const numPlayers = 3;
 const numMCTSSims = 25;
 
-// ONNX model dimensions based on observation_size and action_size from Python
-const sizeCB = [1, 55, 15]; 
-const sizeV = [1, 9]; 
+// ONNX model dimensions, from observation_size and action_size in TLPLogicNumba.py
+const sizeCB = [1, 18 * numPlayers + 1, 15];
+const sizeV = [1, numPlayers * numPlayers + 4];   // take card & designate (n*n), then choose stack (4)
 
 const defaultModelFileName = './thelittleprince/model.onnx';
 const list_of_files = [
@@ -51,7 +51,10 @@ const CHARACTERS_NAME = [
     'Gardener', 'Turkish Ast.', 'Little Prince'
 ];
 
-const PLAYER_COLORS = ['blue', 'green', 'orange', 'purple'];
+const PLAYER_COLORS = ['blue', 'green', 'orange', 'purple', 'teal'];
+
+// Stacks the first player of a turn chooses from (order of the actions n*n + t)
+const STACKS_NAME = ['Center', 'Uphill edge', 'Downhill edge', 'Character'];
 
 // --- UI HELPER FUNCTIONS FOR ALPINE.JS ---
 
@@ -152,4 +155,21 @@ function ui_getPlayerSegmentClass(pIdx) {
     }
     
     return classes;
+}
+
+/**
+ * True when it is a human's turn and the UI can accept an action
+ */
+function ui_humanToPlay() {
+    const store = Alpine.store('game');
+    return !!store && !store.isThinking && !store.gameEnded && store.arePlayersHuman[store.currentPlayer];
+}
+
+/**
+ * Label of a stack button: name and number of cards left in that stack
+ */
+function ui_stackLabel(t) {
+    const store = Alpine.store('game');
+    const left = (store && store.view && store.view.stacksLeft) ? store.view.stacksLeft[t] : '?';
+    return `${STACKS_NAME[t]} (${left} left)`;
 }

@@ -172,6 +172,21 @@
       <div class="item" id="marketArea" x-data="{ selectedCardIdx: -1 }">
         <div class="ui large horizontal divider">Market (Round <span x-text="$store.game.view.round"></span>)</div>
         
+        <div class="ui center aligned basic segment" style="padding: 0 0 1rem 0;" x-text="$store.game.statusMessage"></div>
+
+        <!-- Start of a turn: the first player chooses the stack the market is drawn from -->
+        <div class="market-container" id="stackChoice" x-show="$store.game.view.chooseStack">
+          <template x-if="ui_humanToPlay()">
+            <div class="ui buttons">
+              <template x-for="(ok, t) in $store.game.view.validStacks" :key="'stack-'+t">
+                <button class="ui button" :class="{'disabled': !ok}" :disabled="!ok"
+                        @click="$store.game.act('stack', t)" x-text="ui_stackLabel(t)">
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
+
         <div class="market-container">
           <template x-for="(card, mIdx) in $store.game.view.market" :key="'market-'+mIdx">
             <div x-show="!ui_isMarketEmpty(card)" style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
@@ -182,11 +197,11 @@
                    x-html="ui_renderTile(card)">
               </div>
 
-              <div class="ui tiny buttons" x-show="selectedCardIdx === mIdx && !$store.game.isThinking">
+              <div class="ui tiny buttons" x-show="selectedCardIdx === mIdx && ui_humanToPlay()">
                 <template x-for="(player, pIdx) in $store.game.view.players" :key="'btn-'+pIdx">
                    <button class="ui button" 
                            :class="ui_getButtonColor(pIdx)"
-                           x-show="player.canPlay"
+                           x-show="$store.game.view.validTakes[mIdx][pIdx]"
                            @click="$store.game.act('play', mIdx, pIdx); selectedCardIdx = -1;">
                      <i class="user icon"></i> P<span x-text="pIdx"></span>
                    </button>
@@ -205,7 +220,7 @@
           
           <div class="ui segment" :class="ui_getPlayerSegmentClass(pIdx)">
             <a class="ui ribbon label" :class="ui_getButtonColor(pIdx)">
-              <i class="user icon"></i> <span x-text="pIdx === 0 ? 'You (P0)' : 'AI P' + pIdx"></span>
+              <i class="user icon"></i> <span x-text="($store.game.arePlayersHuman[pIdx] ? 'You (P' + pIdx + ')' : 'AI P' + pIdx)"></span>
             </a>
             <div class="ui top right attached label score-badge">
               <i class="star icon"></i> <span x-text="player.score"></span>

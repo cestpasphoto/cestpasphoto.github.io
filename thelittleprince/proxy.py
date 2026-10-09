@@ -60,15 +60,22 @@ def getNextState(action):
     return get_render_state()
 
 def handle_action(action_name, *args):
-    # Routes UI interactions (card selection + next player) to the proper game action ID
+    # Routes UI interactions to the proper game action ID:
+    #   "play", card, next_player -> take market card and designate next player (absolute id)
+    #   "stack", t                -> choose the stack the market is refilled from
+    n = g.getNumberOfPlayers()
     if action_name == "play":
         card_idx = int(args[0])
         next_player_id = int(args[1])
-        
-        # Calculate the delta since actions are encoded relative to the current player
-        player_delta = (next_player_id - player) % g.getNumberOfPlayers()
-        action = card_idx * g.getNumberOfPlayers() + player_delta
-        
+        # Actions are encoded relative to the current player
+        action = card_idx * n + (next_player_id - player) % n
+    elif action_name == "stack":
+        action = n * n + int(args[0])
+    else:
+        return get_render_state()
+
+    # A stale or illegal click is ignored rather than corrupting the game
+    if g.getValidMoves(board, player)[action]:
         execute_move(action)
 
     return get_render_state()
@@ -87,6 +94,7 @@ def get_render_state():
     end = g.getGameEnded(board, player)
     valids = g.getValidMoves(board, player)
     n = g.getNumberOfPlayers()
+    game_ended = bool(np.any(end != 0))
 
     # Extract market cards
     market_cards = [g.board.market[i].tolist() for i in range(n)]
@@ -107,16 +115,37 @@ def get_render_state():
             "canPlay": bool(who_can_play[p])
         })
 
+    # Legal designations per market card, in ABSOLUTE player ids: validTakes[card][player]
+    valid_takes = [[bool(valids[c*n + (q - player) % n]) for q in range(n)] for c in range(n)]
+    # Stack choice (start of a turn): legal stacks and cards left in each stack
+    valid_stacks = [bool(v) for v in valids[n*n:]]
+    available = g.board._available_cards()
+    stacks_left = [int(available[20*t:20*(t+1)].sum()) for t in range(len(valid_stacks))]
+    choose_stack = any(valid_stacks)
+
+    if game_ended:
+        best = max(view_players[p]["score"] for p in range(n))
+        winners = [p for p in range(n) if view_players[p]["score"] == best]
+        status = "Game over: " + " and ".join(f"P{p}" for p in winners) + (" win (tie)" if len(winners) > 1 else " wins")
+    elif choose_stack:
+        status = f"P{player} chooses the next stack"
+    else:
+        status = f"P{player} takes a card and designates the next player"
+
     viewData = {
         "market": market_cards,
         "players": view_players,
         "round": int(g.getRound(board)),
+        "chooseStack": choose_stack,
+        "validStacks": valid_stacks,
+        "stacksLeft": stacks_left,
+        "validTakes": valid_takes,
     }
 
     state_dict = {
-        "statusMessage": "",
+        "statusMessage": status,
         "currentPlayer": int(player),
-        "gameEnded": bool(end[0] != 0 if isinstance(end, np.ndarray) else end != 0),
+        "gameEnded": game_ended,
         "editMode": 0,
         "canUndo": len(history) > 0,
         "validMoves": [bool(v) for v in valids],
