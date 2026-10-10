@@ -16,8 +16,8 @@ const numMCTSSims = 25;
 const sizeCB = [1, 58, 2];
 
 // Size of the Valid Actions array:
-// In MinivillesLogicNumba.py, action_size() returns 21.
-const sizeV = [1, 21];
+// In MinivillesLogicNumba.py, action_size() returns 23.
+const sizeV = [1, 23];
 
 // Path to the ONNX model trained for Minivilles
 const defaultModelFileName = 'minivilles/model.onnx';

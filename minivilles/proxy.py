@@ -3,13 +3,12 @@ import numpy as np
 
 from MCTS import MCTS
 from MinivillesGame import MinivillesGame as Game, NUMBER_PLAYERS
-#from MinivillesDisplay import move_to_str
 
 # Utility class to allow dot notation access for dictionaries
 # MCTS arguments of the page: common part, then one profile per value of NUMBER_PLAYERS (checked by make_web_py.py)
 MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
 MCTS_PROFILES = {
-    2: dict(fpu=0.185, cpuct=2.35, universes=2),
+    2: dict(fpu=0.1, fpu_root=0., cpuct=1.25, universes=1),
 }
 
 
@@ -51,6 +50,13 @@ def undo(are_players_human):
             if (state[0] == player_asking_revert) and (index+1 == len(history) or history[index+1][0] != player_asking_revert):
                 break
         
+        if state[2] in (21, 22):
+            # The block starts with a dice choice: keep the roll, revert to just after it,
+            # otherwise undo would let a human redraw the dice
+            if index == 0:
+                return get_render_state()   # only the roll itself: nothing to undo
+            index -= 1
+            state = history[index]
         player, board = state[0], state[1]
         history = history[index+1:]
     
@@ -76,8 +82,10 @@ def handle_action(action_name, *args):
     Action mapping:
       0-14  : Buy a card from the market
       15-18 : Buy a monument
-      19    : Re-roll the dice (Radio Tower effect)
+      19    : Re-roll the dice (Radio Tower effect), same number of dice
       20    : End turn / Do nothing
+      21    : Roll 1 die  (Train Station owner, start of turn)
+      22    : Roll 2 dice (Train Station owner, start of turn)
     """
     action = -1
 
@@ -97,7 +105,12 @@ def handle_action(action_name, *args):
     elif action_name == "do_nothing":
         action = 20
 
-    if action >= 0:
+    elif action_name == "roll_dice":
+        nb_dice = int(args[0])
+        if nb_dice in (1, 2):
+            action = 20 + nb_dice
+
+    if action >= 0 and g.getValidMoves(board, player)[action]:
         execute_move(action)
 
     return get_render_state()
@@ -149,8 +162,12 @@ def get_render_state():
         "market": market,
         "players": view_players,
         "round": int(g.board.round[0]),
-        "lastDice": int(g.board.last_dice[0]),
-        "playerState": int(g.board.player_state[0])
+        "lastDice": int(g.board.last_dice[0]),     # 0 while awaiting the dice choice
+        "nbDice": int(g.board.last_dice[1]),       # number of dice of the last roll (1 or 2)
+        "playerState": int(g.board.player_state[0]),
+        "awaitingDiceChoice": bool(g.board.player_state[0] & 4),
+        "isDouble": bool(g.board.player_state[0] & 2),
+        "rerolled": bool(g.board.player_state[0] & 1),
     }
 
     # 4. Compile Extra Context
