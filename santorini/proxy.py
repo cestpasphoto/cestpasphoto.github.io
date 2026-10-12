@@ -8,8 +8,8 @@ import SantoriniConstants as constants
 # MCTS arguments of the page: common part, then one profile per value of NB_GODS (checked by make_web_py.py)
 MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
 MCTS_PROFILES = {
-     1: dict(fpu=0.03  , fpu_root=0., cpuct=2.75, universes=1),
-    11: dict(fpu=0.0191, fpu_root=0., cpuct=1.08, universes=1),
+     1: dict(fpu=0.1   , fpu_root=0., cpuct=1.25, universes=1),
+    11: dict(fpu=0.1   , fpu_root=0., cpuct=1.25, universes=1),
 }
 
 

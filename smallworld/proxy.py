@@ -10,9 +10,9 @@ from SmallworldMaps import *
 # MCTS arguments of the page: common part, then one profile per value of NUMBER_PLAYERS (checked by make_web_py.py)
 MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
 MCTS_PROFILES = {
-    2: dict(fpu=0.177, fpu_root=0., cpuct=0.4, universes=1),
-    3: dict(fpu=0.1  , fpu_root=0., cpuct=1.0, universes=1),
-    4: dict(fpu=0.5  , fpu_root=0., cpuct=0.5, universes=2),
+    2: dict(fpu=0.1  , fpu_root=0., cpuct=1.25, universes=1),
+    3: dict(fpu=0.1  , fpu_root=0., cpuct=1.0 , universes=1),
+    4: dict(fpu=0.1  , fpu_root=0., cpuct=1.25, universes=1),
 }
 
 

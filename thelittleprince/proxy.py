@@ -9,7 +9,7 @@ from TLPLogicNumba import my_unpackbits
 # MCTS arguments of the page: common part, then one profile per value of NUMBER_PLAYERS (checked by make_web_py.py)
 MCTS_COMMON = dict(prob_fullMCTS=1., forced_playouts=False, no_mem_optim=False)
 MCTS_PROFILES = {
-    3: dict(fpu=0.2, fpu_root=0., cpuct=1.0, universes=1),
+    3: dict(fpu=0.1, fpu_root=0., cpuct=1.25, universes=1),
 }
 
 
