@@ -105,8 +105,7 @@ async function init_infrastructure() {
     Alpine.store('game').loadingMessage = "Loading Pyodide & Engine...";
 
     try {
-        pyodide = await loadPyodide({ fullStdLib: false });
-        await pyodide.loadPackage("numpy");
+        pyodide = await loadPyodide({ packages: ["numpy"] });
 
         // Chargement propre des fichiers en utilisant JSON
         let files = JSON.stringify(list_of_files);
