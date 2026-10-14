@@ -1,7 +1,7 @@
 // Define main constants for each mode
 const configs = {
 	2: {
-		defaultModelFileName: 'splendor/model.onnx',
+		defaultModelFileName: 'splendor/model_2pl.onnx',
 		sizeCB: [1, 56, 7],
 		sizeV: [1, 81],
 	},

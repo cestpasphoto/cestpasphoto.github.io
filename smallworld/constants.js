@@ -2,7 +2,7 @@
 function getGameConfigs() {
   return {
     2: {
-      defaultModelFileName: 'smallworld/model.onnx',
+      defaultModelFileName: 'smallworld/model_2pl.onnx',
       nbAreas: 23,
       nbTurns: 10,
       mapDimensions: "0 0 100 70",
