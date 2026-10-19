@@ -32,7 +32,7 @@
     /* prompt: dice, status, selected row, choices */
     .prompt { background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; padding: 5px 7px; margin-top: 5px; }
     .prompt.over { background: #f0faf2; border-color: #a6dbb2; }
-    .prompt .row1 { display: flex; align-items: center; gap: 6px; min-height: 1.7em; }
+    .prompt .row1 { display: flex; align-items: center; gap: 6px; min-height: 1.7em; font-size: 1.2em; line-height: 1.25; }
     .prompt .dice { display: inline-flex; align-items: center; gap: 3px; }
     .prompt .dice .sum { margin-left: 3px; font-size: 1.1em; }
     .die { width: 1.55em; height: 1.55em; }
@@ -48,7 +48,8 @@
     .ledger th, .ledger td { padding: 0 3px; border-bottom: 1px solid #f1eee6; }
     .ledger tr:last-child td { border-bottom: none; }
     .ledger th { font-size: 0.8em; text-align: center; background: #faf8f2; line-height: 1.15; padding: 3px 1px; white-space: nowrap; overflow: hidden; }
-    .ledger th.n { width: 2.1rem; } .ledger th.p { width: 2.75rem; } .ledger th.cost { width: 3.5rem; }
+    .ledger th.n { width: 2.1rem; } .ledger th.left { width: 1.6rem; } .ledger th.p { width: 2.75rem; } .ledger th.cost { width: 2.7rem; }
+    .ledger th.left { font-size: 0.68em; color: #aaa; font-weight: normal; }
     .ledger th.p { font-size: 0.74em; letter-spacing: -0.02em; }
     .ledger th.turn { box-shadow: inset 0 -3px 0 currentColor; }
     .ledger td { height: 2.05em; }
@@ -60,7 +61,7 @@
     .ledger td.k.me { background: #eef5fc; font-weight: bold; color: #2185D0; }
     .ledger td.cost { text-align: right; white-space: nowrap; padding-right: 5px; }
     .ledger td.cost b { color: #8a5a00; font-size: 0.92em; }
-    .ledger td.cost .l { font-size: 0.72em; color: #999; }
+    .ledger td.left { text-align: center; font-size: 0.78em; color: #999; padding: 0; }
     .ledger tr.buy { cursor: pointer; }
     .ledger tr.dim td.fx, .ledger tr.dim td.cost { opacity: 0.45; }
     .ledger tr.lm td:not(.n) { background: #fffcf0; }
@@ -141,6 +142,7 @@
     <thead>
       <tr>
         <th class="n"></th>
+        <th class="left">left</th>
         <th style="text-align:left; padding-left:5px">Card</th>
         <template x-for="p in ui_cols()" :key="'h' + p">
           <th class="p" :class="{ turn: p === $store.game.currentPlayer && !$store.game.gameEnded }"
@@ -154,11 +156,12 @@
         <tr :class="{ lm: !ui_isCard(i), sel: $store.game.extra.sel === i, buy: ui_canAct(), dim: ui_rowDim(i) }"
             @click="ui_clickRow(i)" :title="ui_rowInfo(i).name">
           <td class="n" :style="'background:' + ui_rowBand(i)" x-text="ui_rowNum(i)"></td>
+          <td class="left" x-text="ui_isCard(i) ? '×' + ui_rowLeft(i) : ''"></td>
           <td class="fx"><span class="e" x-text="ui_rowInfo(i).e"></span><span x-text="ui_rowInfo(i).fx"></span></td>
           <template x-for="p in ui_cols()" :key="'k' + i + '-' + p">
             <td class="k" :class="{ z: !ui_owned(i, p), me: p === ui_viewer() && ui_owned(i, p) }" x-text="ui_cellText(i, p)"></td>
           </template>
-          <td class="cost"><b x-text="ui_rowCost(i) + '🪙'"></b><span class="l" x-show="ui_isCard(i)" x-text="' ×' + ui_rowLeft(i)"></span></td>
+          <td class="cost"><b x-text="ui_rowCost(i) + '🪙'"></b></td>
         </tr>
       </template>
     </tbody>

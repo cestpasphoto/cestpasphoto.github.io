@@ -119,11 +119,14 @@ function ui_promptHtml() {
   }
   const cur = s.currentPlayer;
   if (!s.arePlayersHuman[cur]) return `${ui_nameHtml(cur)} ${s.isThinking ? 'is thinking…' : 'to play'}`;
-  const who = ui_viewer() === cur ? 'You' : ui_nameHtml(cur);
-  if (v.awaiting) return `${who}: roll 1 or 2 dice`;
+  const mine = ui_viewer() === cur;
+  const who = mine ? 'You' : ui_nameHtml(cur);
+  // coins after the roll (also in the table header: repeated here on purpose)
+  const now = ` · ${mine ? 'you have' : 'has'} <b>${ui_player(cur).money}🪙</b>`;
+  if (v.awaiting) return `${who}: roll 1 or 2 dice${now}`;
   const roll = v.double ? 'rolled a double' : 'rolled';
   const gain = v.gained >= 0 ? `+${v.gained}` : `−${-v.gained}`;
-  return `${who} ${roll}${v.rerolled ? ' (rerolled)' : ''} · ${who === 'You' ? 'earned' : 'earns'} <b>${gain}🪙</b>`;
+  return `${who} ${roll}${v.rerolled ? ' (rerolled)' : ''} · ${mine ? 'earned' : 'earns'} <b>${gain}🪙</b>${now}`;
 }
 
 // Selected row: name, when it pays, what it does, and why it cannot be bought
