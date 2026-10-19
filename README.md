@@ -28,6 +28,11 @@ All AI are running on client side, need 10\~20s to load it first time.
 - <https://cestpasphoto.github.io/catan.html?players=3>
 - <https://cestpasphoto.github.io/catan.html?players=4>
 
+**Machi Koro (Minivilles)**
+- <https://cestpasphoto.github.io/minivilles.html?players=2>
+- <https://cestpasphoto.github.io/minivilles.html?players=3>
+- <https://cestpasphoto.github.io/minivilles.html?players=4>
+
 **Wordle**
 - <https://cestpasphoto.github.io/wordle.html>
 
@@ -108,6 +113,22 @@ Official rules, with a few changes needed to keep the search tractable:
 ### Strength
 
 No objective tests against another Catan AI done yet. It wins more than 90% of games against a simple rule-based bot.
+The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
+
+
+## Online Machi Koro AI
+
+Using same AI as Santorini, described above. Supporting 2, 3 and 4 players.
+
+### Rules
+
+Official base-game rules, with the choices that the original game leaves to the player made automatically:
+* Business Center: your cheapest establishment is swapped with the most expensive one of the wealthiest player (purple cards excluded).
+* TV Station: 5 coins are taken from a player who has at least 5, the wealthiest first.
+
+### Strength
+
+No objective tests done.
 The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
 
 
