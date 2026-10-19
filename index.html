@@ -1,9 +1,45 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta http-equiv="refresh" content="0; url='/splendor.html'" />
-  </head>
-  <body>
-    <p>Please follow <a href="/splendor.html">this link</a>.</p>
-  </body>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>AI on your browser</title>
+<style>
+  /* Variant B, minimal: no background colour, no accent colour, borders only */
+  :root { --line: rgba(128, 128, 128, .35); --muted: rgba(128, 128, 128, .9); }
+  /* Text font first, emoji fonts last: avoids odd word spacing from emoji fonts */
+  body { margin: 0; font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif,
+         "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"; }
+  main { max-width: 720px; margin: 0 auto; padding: 40px 12px; }
+  h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 4px; }
+  p.sub { margin: 0 0 28px; color: var(--muted); font-size: .95rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+  .card { border: 1px solid var(--line); border-radius: 6px; padding: 16px 12px; text-align: center; }
+  .emoji { display: block; font-size: 2rem; line-height: 1.2; margin-bottom: 4px; }
+  .name { display: block; font-weight: 700; margin-bottom: 10px; white-space: nowrap; }
+  .links { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+  .links a { padding: 2px 9px; border: 1px solid var(--line); border-radius: 6px;
+             font-size: .85rem; color: inherit; text-decoration: none; }
+  .links a:hover { border-color: currentColor; }
+  footer { margin-top: 28px; font-size: .85rem; color: var(--muted); }
+  footer a { color: inherit; }
+</style>
+</head>
+<body>
+<main>
+  <h1>AI on your browser</h1>
+  <p class="sub">All AIs run on client side. First load takes 10~20 s.</p>
+  <div class="grid">
+    <div class="card"><span class="emoji">🏛️</span><span class="name">Akropolis</span><span class="links"><a href="akropolis.html?players=2">2</a><a href="akropolis.html?players=3">3</a><a href="akropolis.html?players=4">4</a></span></div>
+    <div class="card"><span class="emoji">🏗️</span><span class="name">Santorini</span><span class="links"><a href="santorini.html">classic</a><a href="santorini.html?gods=11">gods</a></span></div>
+    <div class="card"><span class="emoji">💎</span><span class="name">Splendor</span><span class="links"><a href="splendor.html?players=2">2</a><a href="splendor.html?players=3">3</a><a href="splendor.html?players=4">4</a></span></div>
+    <div class="card"><span class="emoji">🧙</span><span class="name">Smallworld</span><span class="links"><a href="smallworld.html?players=2">2</a><a href="smallworld.html?players=3">3</a><a href="smallworld.html?players=4">4</a></span></div>
+    <div class="card"><span class="emoji">🌾</span><span class="name">Catan</span><span class="links"><a href="catan.html?players=2">2</a><a href="catan.html?players=3">3</a><a href="catan.html?players=4">4</a></span></div>
+    <div class="card"><span class="emoji">🎲</span><span class="name">Machi Koro</span><span class="links"><a href="minivilles.html?players=2">2</a><a href="minivilles.html?players=3">3</a><a href="minivilles.html?players=4">4</a></span></div>
+    <div class="card"><span class="emoji">🔤</span><span class="name">Wordle solver</span><span class="links"><a href="wordle.html">open</a></span></div>
+  </div>
+  <footer><a href="https://github.com/cestpasphoto/alpha-zero-general">Source</a> · <a href="https://github.com/cestpasphoto/cestpasphoto.github.io#readme">Details &amp; strength</a></footer>
+</main>
+</body>
 </html>
