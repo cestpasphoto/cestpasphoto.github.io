@@ -4,10 +4,25 @@ All AI are running on client side, need 10\~20s to load it first time.
 
 ### Links
 
+**Abalone**
+- <https://cestpasphoto.github.io/abalone.html?layout=0>
+- <https://cestpasphoto.github.io/abalone.html?layout=1>
+- <https://cestpasphoto.github.io/abalone.html?layout=2>
+
 **Akropolis**
 - <https://cestpasphoto.github.io/akropolis.html?players=2>
 - <https://cestpasphoto.github.io/akropolis.html?players=3>
 - <https://cestpasphoto.github.io/akropolis.html?players=4>
+
+**Catan**
+- <https://cestpasphoto.github.io/catan.html?players=2>
+- <https://cestpasphoto.github.io/catan.html?players=3>
+- <https://cestpasphoto.github.io/catan.html?players=4>
+
+**Machi Koro (Minivilles)**
+- <https://cestpasphoto.github.io/minivilles.html?players=2>
+- <https://cestpasphoto.github.io/minivilles.html?players=3>
+- <https://cestpasphoto.github.io/minivilles.html?players=4>
 
 **Santorini**
 - <https://cestpasphoto.github.io/santorini.html>
@@ -22,16 +37,6 @@ All AI are running on client side, need 10\~20s to load it first time.
 - <https://cestpasphoto.github.io/smallworld.html?players=2>
 - <https://cestpasphoto.github.io/smallworld.html?players=3>
 - <https://cestpasphoto.github.io/smallworld.html?players=4>
-
-**Catan**
-- <https://cestpasphoto.github.io/catan.html?players=2>
-- <https://cestpasphoto.github.io/catan.html?players=3>
-- <https://cestpasphoto.github.io/catan.html?players=4>
-
-**Machi Koro (Minivilles)**
-- <https://cestpasphoto.github.io/minivilles.html?players=2>
-- <https://cestpasphoto.github.io/minivilles.html?players=3>
-- <https://cestpasphoto.github.io/minivilles.html?players=4>
 
 **Wordle**
 - <https://cestpasphoto.github.io/wordle.html>

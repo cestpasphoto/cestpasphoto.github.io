@@ -5,15 +5,15 @@ const configs = {
     // Classic
     0: {
         // Path to the ONNX model
-        defaultModelFileName: 'abalone/model_layout0.onnx',
+        defaultModelFileName: 'abalone/model.onnx',
     },
     // Belgian Daisy
     1: {
-        defaultModelFileName: 'abalone/model_layout1.onnx',
+        defaultModelFileName: 'abalone/model.onnx',
     },
     // German Daisy
     2: {
-        defaultModelFileName: 'abalone/model_layout2.onnx',
+        defaultModelFileName: 'abalone/model.onnx',
     },
 };
 
