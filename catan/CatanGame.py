@@ -7,8 +7,9 @@ from CatanConstants import N_ISOMETRIES, SYM_TRIVIAL_MAX_LEGAL, N_SYM_TRIVIAL
 from CatanLogicNumba import Board, observation_size, action_size
 import numpy as np
 
-# MCTS.search() is recursive (one Python frame per ply) and a Catan game runs up
-# to 4*MAX_ROUNDS=1600 decisions, well past Python's default limit of 1000.
+# MCTS.search() is recursive (one Python frame per ply) and a Catan game can run
+# well over a thousand decisions (MAX_ROUNDS player turns of several plies each),
+# past Python's default limit of 1000.
 # This raises Python's counter only: if a hard crash (segfault) ever appears,
 # the OS stack is too small, e.g. `ulimit -s 65532` before launching python.
 if sys.getrecursionlimit() < 20000:
