@@ -3,261 +3,192 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>The Little Prince with AI</title>
 
   <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.wasm.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js"></script>
-  
 
-  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">  
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
 
-  <script src="./thelittleprince/main.js"></script>
+  <script src="./thelittleprince/constants.js"></script>
   <script src="./common/game.js"></script>
+  <script src="./thelittleprince/tlp.js"></script>
 
   <style>
-      .game-layout {
-          display: grid;
-          gap: 1.5rem;
-      }
+    body { background: #fff; }
+    body, .tlp * { font-family: Lato, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 6px 1.5em; }
+    .small { font-size: 0.85em; color: #777; }
 
-      #marketArea { grid-area: M; }
-      #player0Area { grid-area: P0; }
-      #player1Area { grid-area: P1; }
-      #player2Area { grid-area: P2; }
+    /* top bar: title and settings */
+    .bar { display: flex; align-items: center; gap: 6px; padding: 6px; background: #fff; border-bottom: 1px solid #e3e0d6; }
+    .bar h1 { font-size: 1.1em; margin: 0 auto 0 2px; white-space: nowrap; }
+    .bar h1 .ai { font-weight: normal; color: #999; font-size: 0.8em; }
+    .bar select { font-size: 0.9em; padding: 3px 4px; border: 1px solid #ddd; border-radius: 4px; background: #fff; max-width: 6.8em; }
+    .bar .ui.icon.button { margin: 0; padding: 0.5em 0.6em; }
 
-      /* Layout Desktop / Tablette (Paysage) */
-      @media (min-width: 768px) {
-          .game-layout {
-              grid-template-columns: 1fr 1fr 1fr;
-              grid-template-areas:
-                  "M M M"
-                  "P0 P1 P2";
-          }
-      }
+    /* prompt: status, market or stacks, selection, choices */
+    .prompt { background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; padding: 5px 7px; margin-top: 5px; }
+    .prompt.over { background: #f0faf2; border-color: #a6dbb2; }
+    .prompt .row1 { display: flex; align-items: baseline; gap: 6px; font-size: 1.05em; min-height: 1.5em; }
+    .prompt .sel { margin-top: 4px; font-size: 0.92em; line-height: 1.35; }
+    .choices { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .choices .ui.button { margin: 0; }
+    .choices .undo { margin-left: auto !important; }
 
-      /* Layout Mobile (Portrait) */
-      @media (max-width: 767px) {
-          .game-layout {
-              grid-template-columns: 1fr 1fr;
-              grid-template-areas:
-                  "M M"
-                  "P0 P0"
-                  "P1 P2";
-          }
-          /* Réduire un peu la taille de la police sur les petites planètes des adversaires */
-          #player1Area .planet-tile, #player2Area .planet-tile {
-              font-size: 0.8rem;
-          }
-      }
+    /* tiles, tinted by slot type: center, uphill edge, downhill edge, character */
+    .t0 { background: #fff4d6; } .t1 { background: #e3f1dc; } .t2 { background: #dcebf8; } .t3 { background: #f1e4f6; }
+    .planet { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; }
+    .tile { position: relative; aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center;
+            overflow: hidden; border: 1px solid rgba(0,0,0,0.06); font-size: 0.8em; }
+    .tile.empty { opacity: 0.55; border: 1px dashed rgba(0,0,0,0.15); }
+    .tile.empty .ph { color: #999; font-size: 0.9em; opacity: 0.6; }
+    .tile.fd, .mcard.fd { background: repeating-linear-gradient(45deg, #6d6d6d, #6d6d6d 3px, #7d7d7d 3px, #7d7d7d 6px); }
+    .fdmark { filter: grayscale(1); opacity: 0.3; }
+    .ic { display: flex; flex-wrap: wrap; justify-content: center; align-content: center; line-height: 1.05; }
+    .chr { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+    .chr .ce { font-size: 1.35em; }
+    .chr .st { font-size: 0.55em; }
+    .chr .fx { font-size: 0.78em; font-weight: 900; color: #5b3a6b; white-space: nowrap; letter-spacing: -0.02em; }
+    .sh { display: inline-block; border-radius: 50%; line-height: 1.15; padding: 0 1px; }
+    .sh.w { background: #fff; box-shadow: 0 0 0 1px #bbb inset; }
+    .sh.g { background: #9ea4ab; }
+    .sh.b { background: #b07a45; }
 
-      /* Styles spécifiques à la Planète (Grille 4x4) */
-      .planet-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 4px;
-          background-color: #f0f0f0;
-          padding: 6px;
-          border-radius: 8px;
-          box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
-      }
+    /* market cards and stacks */
+    .market { display: grid; gap: 5px; margin-top: 5px; }
+    .mcard { position: relative; height: 3.6em; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+             border: 1px solid rgba(0,0,0,0.1); font-size: 1.05em; user-select: none; }
+    .mcard.tap { cursor: pointer; }
+    .mcard.sel { box-shadow: 0 0 0 2.5px #21ba45; }
+    .mcard.gone { background: #f4f4f4; border-style: dashed; }
+    .mcard.back { flex-direction: column; line-height: 1.1; }
+    .mcard.back .cnt { font-weight: 900; font-size: 0.95em; margin-left: 4px; color: #444; }
+    .mcard.back .sub { font-size: 0.62em; color: #777; }
+    .mcard.off { opacity: 0.4; }
+    .dl { position: absolute; top: -6px; right: -4px; font-size: 0.7em; font-weight: 900; padding: 0 4px; border-radius: 8px; background: #eee; color: #555; }
+    .dl.pos { background: #d8f0dc; color: #1d6b2c; } .dl.neg { background: #f8dcd8; color: #a3352a; }
 
-      .planet-tile {
-          aspect-ratio: 1 / 1;
-          background-color: #fff;
-          border-radius: 4px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          position: relative;
-          font-size: 1.2rem;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-          overflow: hidden;
-      }
+    /* planets */
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+    .pcard { background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; padding: 4px; border-top: 3px solid; }
+    .pcard.now { box-shadow: 0 0 0 1.5px #21ba45; }
+    .pcard .hd { display: flex; align-items: baseline; gap: 4px; font-size: 0.9em; margin-bottom: 3px; white-space: nowrap; overflow: hidden; }
+    .pcard .hd .sc { margin-left: auto; font-weight: 900; font-size: 1.15em; }
+    .pcard .ft { margin-top: 3px; font-size: 0.72em; color: #555; display: flex; flex-wrap: wrap; gap: 0 5px; }
+    .pcard .ft .neg { color: #a3352a; }
+    .pcard .ft .vol { margin-left: auto; color: #888; font-size: 1.1em; }
+    .pcard .ft .vol.max { color: #a3352a; font-weight: bold; }
+    .tag { display: inline-block; width: 1.1em; text-align: center; font-size: 0.85em; }
+    .tag.done { color: #aaa; } .tag.now { color: #21ba45; } .tag.wait { color: #333; }
 
-      .planet-tile.empty-tile {
-          background-color: transparent;
-          box-shadow: none;
-          border: 1px dashed #ccc;
-      }
-
-      .planet-tile.face-down {
-          background: repeating-linear-gradient(45deg, #ddd, #ddd 10px, #eee 10px, #eee 20px);
-      }
-
-      /* Styles pour le Marché central */
-      .market-container {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 1rem;
-          justify-content: center;
-      }
-
-      .market-card {
-          width: 80px;
-          height: 80px;
-          cursor: pointer;
-          transition: transform 0.2s;
-          border: 2px solid transparent;
-      }
-      
-      .market-card:hover {
-          transform: translateY(-5px);
-      }
-
-      .market-card.selected {
-          border-color: #2185d0; /* Semantic UI blue */
-          transform: scale(1.05);
-      }
-
-      /* Badge pour les scores */
-      .score-badge {
-          position: absolute;
-          top: 5px;
-          right: 5px;
-      }
+    /* folding panels below the fold */
+    .panel { margin-top: 6px; background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; padding: 5px 8px; }
+    .panel .head { cursor: pointer; }
+    .panel .evt { padding: 0.12em 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; }
+    .panel .evt.turn { color: #999; }
+    .panel .evt b { color: #333; }
+    .jc { display: inline-block; padding: 0 3px; margin: 0 1px; border-radius: 3px; background: #f3f1ea; line-height: 1.3; }
+    .legend { font-size: 0.85em; color: #555; } .legend div { margin: 0.15em 0; }
+    .sw { display: inline-block; padding: 0 3px; border-radius: 3px; }
   </style>
 </head>
-<body><div x-data x-init="$store.game.start(); $store.game.showDetails = false;">
+<body><div class="tlp" x-data x-init="$store.game.start()">
 
-<div class="ui borderless menu">
-  <div class="ui container">    
-    <div class="fitted item">
-      <button class="ui icon button" @click="$store.game.reset()"><i class="file outline icon"></i></button>
-    </div> 
-    <div class="fitted item"> 
-      <button class="ui icon disabled button"><i class="edit icon"></i></button>
+<!-- Title and settings -->
+<div class="bar">
+  <button class="ui basic icon button" title="New game" @click="ui_newGame()"><i class="file outline icon"></i></button>
+  <h1>The Little Prince <span class="ai">with AI</span></h1>
+  <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" title="AI level">
+    <optgroup label="Above optimal">
+    <option value="1600">Boosted</option>
+    </optgroup>
+    <optgroup label="Level used during training">
+    <option value="400">Native</option>
+    </optgroup>
+    <optgroup label="Sub optimal levels">
+    <option value="100">Medium</option>
+    <option value="25" selected>Easy</option>
+    <option value="12">Easier</option>
+    <option value="3">Come on</option>
+    </optgroup>
+  </select>
+  <select @change="$store.game.setGameMode($event.target.value)" title="Who plays">
+    <option value="P0" selected>You vs AI</option>
+    <option value="P1">AI vs you</option>
+    <option value="Human">No AI</option>
+    <option value="AI">WarGames</option>
+  </select>
+</div>
+
+<div class="wrap">
+
+  <!-- Status, market (or stacks at the start of a turn), selection and choices -->
+  <div class="prompt" :class="{ over: $store.game.gameEnded }">
+    <div class="row1">
+      <i class="notched circle loading icon" x-show="$store.game.isThinking || $store.game.isLoading"></i>
+      <span x-html="ui_promptHtml()"></span>
     </div>
-    <div class="fitted item"> 
-      <div class="ui small form">
-        <div class="field">
-          <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" class="ui dropdown">
-            <optgroup label="Above optimal">
-            <option value="12800">God-like</option>
-            <option value="4800">Boosted</option>
-            </optgroup>
-            <optgroup label="Level used during training">
-            <option value="1600">Native</option>
-            </optgroup>
-            <optgroup label="Sub optimal levels">
-            <option value="400">Easy</option>
-            <option value="100">Easier</option>
-            <option value="25" selected>Very easy</option>
-            </optgroup>
-          </select>
-        </div>
-      </div>
+    <div class="market" x-show="$store.game.view.players && !$store.game.gameEnded"
+         :style="'grid-template-columns: repeat(' + ui_slots().length + ', 1fr)'">
+      <template x-for="o in ui_slots()" :key="o.kind + o.i">
+        <div class="mcard" :class="ui_slotClass(o)" @click="ui_clickSlot(o)" x-html="ui_slotHtml(o)"></div>
+      </template>
     </div>
-    <div class="fitted item"> 
-      <div class="ui small form">
-        <div class="field">
-          <select class="ui dropdown" @change="$store.game.setGameMode($event.target.value)">
-              <option value="P0" selected>You vs AI</option>
-              <option value="P1">AI vs you</option>
-              <option value="Human">No AI</option>
-              <option value="AI">WarGames</option>
-          </select>
-        </div>
-      </div>
+    <div class="sel" x-show="ui_canAct() && $store.game.extra.sel" x-html="ui_selHtml()"></div>
+    <div class="choices">
+      <template x-for="(c, i) in (ui_canAct() ? ($store.game.extra.choices || []) : [])" :key="'c' + i + c.l">
+        <button class="ui compact button" :class="c.c" :style="ui_choiceStyle(c)" @click="$store.game.act(c.a, ...c.x)" x-html="ui_choiceLabel(c)"></button>
+      </template>
+      <button class="ui compact basic icon button undo" title="Undo" @click="ui_undo()"
+              :class="{ disabled: !$store.game.canUndo || $store.game.isThinking || $store.game.isLoading }">
+        <i class="undo icon"></i>
+      </button>
     </div>
   </div>
-</div>
 
-<div class="ui container">
-  <h1 class="ui huge center aligned header">The Little Prince</h1> 
-
-  <template x-if="!$store.game.isLoading && $store.game.view && $store.game.view.market">
-    <div class="game-layout">
-
-      <div class="item" id="marketArea" x-data="{ selectedCardIdx: -1 }">
-        <div class="ui large horizontal divider">Market (Round <span x-text="$store.game.view.round"></span>)</div>
-        
-        <div class="ui center aligned basic segment" style="padding: 0 0 1rem 0;" x-text="$store.game.statusMessage"></div>
-
-        <!-- Start of a turn: the first player chooses the stack the market is drawn from -->
-        <div class="market-container" id="stackChoice" x-show="$store.game.view.chooseStack">
-          <template x-if="ui_humanToPlay()">
-            <div class="ui buttons">
-              <template x-for="(ok, t) in $store.game.view.validStacks" :key="'stack-'+t">
-                <button class="ui button" :class="{'disabled': !ok}" :disabled="!ok"
-                        @click="$store.game.act('stack', t)" x-text="ui_stackLabel(t)">
-                </button>
-              </template>
-            </div>
-          </template>
-        </div>
-
-        <div class="market-container">
-          <template x-for="(card, mIdx) in $store.game.view.market" :key="'market-'+mIdx">
-            <div x-show="!ui_isMarketEmpty(card)" style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
-              
-              <div class="planet-tile market-card" 
-                   :class="{'selected': selectedCardIdx === mIdx}"
-                   @click="selectedCardIdx = (selectedCardIdx === mIdx ? -1 : mIdx)"
-                   x-html="ui_renderTile(card)">
-              </div>
-
-              <div class="ui tiny buttons" x-show="selectedCardIdx === mIdx && ui_humanToPlay()">
-                <template x-for="(player, pIdx) in $store.game.view.players" :key="'btn-'+pIdx">
-                   <button class="ui button" 
-                           :class="ui_getButtonColor(pIdx)"
-                           x-show="$store.game.view.validTakes[mIdx][pIdx]"
-                           @click="$store.game.act('play', mIdx, pIdx); selectedCardIdx = -1;">
-                     <i class="user icon"></i> P<span x-text="pIdx"></span>
-                   </button>
-                </template>
-              </div>
-
-            </div>
-          </template>
-        </div>
-        
-        <div class="ui active centered inline loader" x-show="$store.game.isThinking"></div>
+  <!-- Planets: the viewer first -->
+  <div class="grid" x-show="$store.game.view.players">
+    <template x-for="p in ui_cols()" :key="'pl' + p">
+      <div class="pcard" :class="{ now: p === $store.game.currentPlayer && !$store.game.gameEnded }" :style="'border-top-color:' + SEAT_COLORS[p]">
+        <div class="hd" x-html="ui_headHtml(p)"></div>
+        <div class="planet" x-html="ui_planetHtml(p)"></div>
+        <div class="ft" x-html="ui_footHtml(p)"></div>
       </div>
+    </template>
+  </div>
 
-      <template x-for="(player, pIdx) in $store.game.view.players" :key="'player-'+pIdx">
-        <div class="item" :id="'player'+pIdx+'Area'">
-          
-          <div class="ui segment" :class="ui_getPlayerSegmentClass(pIdx)">
-            <a class="ui ribbon label" :class="ui_getButtonColor(pIdx)">
-              <i class="user icon"></i> <span x-text="($store.game.arePlayersHuman[pIdx] ? 'You (P' + pIdx + ')' : 'AI P' + pIdx)"></span>
-            </a>
-            <div class="ui top right attached label score-badge">
-              <i class="star icon"></i> <span x-text="player.score"></span>
-            </div>
+  <!-- Rules reminder -->
+  <div class="panel legend" x-data="{ open: false }">
+    <div class="head" @click="open = !open"><span class="small" x-text="open ? '▾' : '▸'"></span> <b>Rules</b></div>
+    <div x-show="open" style="margin-top: 0.3em" x-html="ui_rulesHtml()"></div>
+  </div>
 
-            <div class="ui divider"></div>
-
-            <div class="planet-grid">
-              <template x-for="(tile, tIdx) in player.planet" :key="'p'+pIdx+'-t'+tIdx">
-                <div class="planet-tile" 
-                     :class="ui_getTileClasses(tile)" 
-                     x-html="ui_renderTile(tile)">
-                </div>
-              </template>
-            </div>
-            
-            <div class="ui mini labels" style="margin-top: 10px;" x-show="player.detailedScore[1] > 0 || player.detailedScore[2] > 0">
-               <div class="ui red label" x-show="player.detailedScore[1] > 0">
-                 Baobabs <div class="detail" x-text="player.detailedScore[1]"></div>
-               </div>
-               <div class="ui orange label" x-show="player.detailedScore[2] > 0">
-                 Volcanos <div class="detail" x-text="player.detailedScore[2]"></div>
-               </div>
-            </div>
-
-          </div>
-
-        </div>
+  <!-- Journal: what happened since your last card -->
+  <div class="panel" x-data="{ open: true }" x-show="$store.game.view.players">
+    <div class="head" @click="open = !open"><span class="small" x-text="open ? '▾' : '▸'"></span> <b>Journal</b></div>
+    <div x-show="open" style="margin-top: 0.3em">
+      <template x-for="ev in ui_recent()" :key="'ev' + ev.id">
+        <div class="evt" :class="{ turn: ev.k === 'turn' }" x-html="ui_evHtml(ev)"></div>
       </template>
-
     </div>
-  </template>
+  </div>
 
-  <button x-show="$store.game.isLoading" class="ui fluid large active loading button">Loading...</button>
+  <!-- State ID: same wire format as pit.py's --state / -s (Arena.playGame) -->
+  <div class="panel" x-data="{ open: false, copied: false }" x-show="$store.game.view.players">
+    <div class="head" @click="open = !open"><span class="small" x-text="open ? '▾' : '▸'"></span> <b>State ID</b></div>
+    <div x-show="open" style="margin-top: 0.3em">
+      <div class="small" style="margin-bottom: 0.3em">For <code>pit.py --state</code> / <code>-s</code>.</div>
+      <textarea readonly rows="3"
+                style="width: 100%; font-family: monospace; font-size: 0.72em; word-break: break-all; resize: none; border: 1px solid #ddd; padding: 0.3em; box-sizing: border-box"
+                x-text="$store.game.view.stateId" @click="$el.select()"></textarea>
+      <button class="ui compact button" style="margin-top: 0.3em"
+              @click="navigator.clipboard.writeText($store.game.view.stateId || '').then(() => { copied = true; setTimeout(() => copied = false, 1200) })"
+              x-text="copied ? 'Copied ✓' : 'Copy'"></button>
+    </div>
+  </div>
+
 </div>
-
 </div></body>
 </html>

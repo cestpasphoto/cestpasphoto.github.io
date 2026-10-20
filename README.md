@@ -38,6 +38,11 @@ All AI are running on client side, need 10\~20s to load it first time.
 - <https://cestpasphoto.github.io/smallworld.html?players=3>
 - <https://cestpasphoto.github.io/smallworld.html?players=4>
 
+**The Little Prince**
+- <https://cestpasphoto.github.io/tlp.html?players=3>
+- <https://cestpasphoto.github.io/tlp.html?players=4>
+- <https://cestpasphoto.github.io/tlp.html?players=5>
+
 **Wordle**
 - <https://cestpasphoto.github.io/wordle.html>
 
@@ -130,6 +135,20 @@ Using same AI as Santorini, described above. Supporting 2, 3 and 4 players.
 Official base-game rules, with the choices that the original game leaves to the player made automatically:
 * Business Center: your cheapest establishment is swapped with the most expensive one of the wealthiest player (purple cards excluded).
 * TV Station: 5 coins are taken from a player who has at least 5, the wealthiest first.
+
+### Strength
+
+No objective tests done.
+The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
+
+
+## Online The Little Prince AI
+
+Using same AI as Santorini, described above. Supporting 3, 4 and 5 players.
+
+### Rules
+
+Official turn structure: the first player of a turn chooses the stack (center, uphill edge, downhill edge or character), one card per player is drawn, then each player takes a card and designates who plays next among those who have not played yet. The last player opens the next turn.
 
 ### Strength
 
