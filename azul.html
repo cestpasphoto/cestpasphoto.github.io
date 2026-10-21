@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Azul with AI</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.wasm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js"></script>
+
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
+  <script src="./azul/constants.js"></script>
+  <script src="./common/game.js"></script>
+  <script src="./azul/azul.js"></script>
+
+  <style>
+    body { background: #fff; }
+    body, .az * { font-family: Lato, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 6px 1.5em; }
+    .small { font-size: 0.85em; color: #6f6f6f; }
+
+    /* top bar: title and settings */
+    .bar { display: flex; align-items: center; gap: 6px; padding: 6px; background: #fff; border-bottom: 1px solid #e3e0d6; }
+    .bar h1 { font-size: 1.1em; margin: 0 auto 0 2px; white-space: nowrap; }
+    .bar h1 .ai { font-weight: normal; color: #999; font-size: 0.8em; }
+    .bar select { font-size: 0.9em; padding: 3px 4px; border: 1px solid #ddd; border-radius: 4px; background: #fff; max-width: 6.8em; }
+    .bar .ui.icon.button { margin: 0; padding: 0.5em 0.6em; }
+
+    /* prompt: status, detail, choices, undo */
+    .prompt { background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; padding: 5px 7px; margin-top: 6px; }
+    .prompt.over { background: #f0faf2; border-color: #a6dbb2; }
+    .prompt .row1 { display: flex; align-items: center; gap: 6px; font-size: 1.05em; min-height: 1.5em; line-height: 1.35; flex-wrap: wrap; }
+    .choices { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center; }
+    .choices .ui.button { margin: 0; }
+    .choices .undo { margin-left: auto !important; }
+
+    /* tiles: one class per colour, plus ghost (wall), empty slot, token, unknown */
+    .t { display: block; flex: none; width: var(--s); height: var(--s); box-sizing: border-box; border-radius: calc(var(--s) / 7);
+         border: 1px solid rgba(0,0,0,0.25); }
+    .t0 { background: #2f6db5; } .t1 { background: #f2c12e; } .t2 { background: #cf3b2d; }
+    .t3 { background: #2b2b2b; } .t4 { background: #f4f0e6; }
+    .t.g { opacity: 0.2; border-color: transparent; }
+    .t.e { background: #faf8f2; border: 1px dashed #cfc8b6; }
+    .t.none { visibility: hidden; }
+    .t.tk { background: #fff; border: 1.5px solid #333; color: #333; font-weight: 900; text-align: center;
+            font-size: calc(var(--s) * 0.6); line-height: calc(var(--s) - 3px); }
+    .t.tq { background: #bbb; }
+    .t.i { --s: 1em; display: inline-block; vertical-align: -0.15em; margin: 0 1px; font-size: inherit; line-height: 0.85em; }
+    .t.tk.i { font-size: 0.75em; --s: 1.3em; line-height: 1.15em; }
+    .t.ring { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #21BA45; }
+    .t.faded { opacity: 0.3; }
+    .t.tap { cursor: pointer; }
+
+    /* factories and centre */
+    .src { background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; padding: 6px; margin-top: 6px; }
+    .src .list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; }
+    .fac { --s: 20px; position: relative; width: 68px; height: 68px; border-radius: 50%; background: #ece6d6;
+           display: grid; grid-template-columns: repeat(2, 20px); gap: 4px; align-content: center; justify-content: center; }
+    .fac.empty { background: #f4f1ea; }
+    .fac .lab, .ctr .lab { position: absolute; left: 4px; top: 1px; font-size: 10px; color: #8a8a8a; line-height: 1.2; }
+    .ctr { --s: 20px; position: relative; min-width: 92px; min-height: 68px; box-sizing: border-box; border-radius: 10px; background: #ece6d6;
+           padding: 12px 6px 6px; display: flex; flex-wrap: wrap; gap: 5px; align-content: center; justify-content: center; max-width: 100%; }
+    .ctr .grp { display: flex; align-items: center; gap: 1px; font-size: 12px; font-weight: 700; color: #444; }
+    .src .info { font-size: 0.8em; color: #6f6f6f; text-align: right; margin-top: 3px; }
+
+    /* boards: pattern lines, wall, floor */
+    .brd { background: #fff; border: 1px solid #e3e0d6; border-top: 3px solid; border-radius: 6px; padding: 3px; box-sizing: border-box; min-width: 0; }
+    .brd .hd { display: flex; align-items: baseline; gap: 5px; white-space: nowrap; overflow: hidden; margin-bottom: 3px; }
+    .brd .hd .now { color: #21ba45; }
+    .brd .hd .nm { overflow: hidden; text-overflow: ellipsis; }
+    .brd .hd .sub { color: #6f6f6f; overflow: hidden; text-overflow: ellipsis; }
+    .brd .hd .sc { margin-left: auto; font-weight: 900; line-height: 1; }
+    .brd .lines { display: flex; flex-direction: column; gap: var(--g); align-items: center; }
+    .brd .row { display: flex; align-items: center; gap: var(--g); padding: 1px 2px; border-radius: 4px; }
+    .brd .row.legal { outline: 2px dashed #F2711C; outline-offset: 1px; cursor: pointer; }
+    .brd .row.dim { opacity: 0.4; }
+    .brd .sp { flex: none; width: var(--sp); }
+    .brd .hint { flex: none; width: var(--hw); text-align: right; font-weight: 700; white-space: nowrap; color: #555; font-size: var(--hf); }
+    .brd .hint.good { color: #1a7f33; } .brd .hint.bad { color: #a8392a; } .brd .hint.recent { color: #c9a46a; }
+    .brd .floor { align-items: flex-start; margin-top: 2px; }
+    .brd .floor .cell { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .brd .floor .pen { font-size: 10px; color: #7a7a7a; line-height: 1; }
+    .brd .floor .more { align-self: center; font-size: var(--hf); color: #7a7a7a; }
+
+    .brd.big { --s: min(30px, calc((100vw - 100px) / 11)); --g: 3px; --sp: 10px; --hw: 46px; --hf: 12px; margin-top: 6px; padding: 6px 5px; }
+    .brd.big .hd { font-size: 1em; margin-bottom: 4px; } .brd.big .hd .sub { font-size: 0.8em; } .brd.big .hd .sc { font-size: 1.6em; }
+    .opps { display: grid; gap: 4px; margin-top: 6px; }
+    .opps .brd { --g: 1px; --sp: 4px; --hw: 6px; --hf: 9px; }
+    .opps .brd .hd { font-size: 0.8em; } .opps .brd .hd .sc { font-size: 1.35em; }
+    .opps.n1 { grid-template-columns: minmax(0, 1fr); } .opps.n1 .brd { --s: 14px; --g: 2px; --hw: 10px; }
+    .opps.n2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .opps.n2 .brd { --s: min(11px, calc((100vw - 70px) / 20)); --g: 2px; }
+    .opps.n3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .opps.n3 .brd { --s: min(9px, calc((100vw - 101px) / 30)); }
+
+    /* folding panels below the fold */
+    .panel { margin-top: 6px; background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; padding: 5px 8px; }
+    .panel .head { cursor: pointer; }
+    .panel .evt { padding: 0.15em 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; }
+    .panel .evt.turn { color: #999; }
+    .legend { font-size: 0.85em; color: #555; } .legend div { margin: 0.25em 0; }
+  </style>
+</head>
+<body><div class="az" x-data x-init="$store.game.start()">
+
+<!-- Title and settings -->
+<div class="bar">
+  <button class="ui basic icon button" title="New game" @click="ui_newGame()"><i class="file outline icon"></i></button>
+  <h1>Azul <span class="ai">with AI</span></h1>
+  <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" title="AI level">
+    <optgroup label="Above optimal">
+    <option value="1600">Boosted</option>
+    </optgroup>
+    <optgroup label="Level used during training">
+    <option value="800">Native</option>
+    </optgroup>
+    <optgroup label="Sub optimal levels">
+    <option value="200">Medium</option>
+    <option value="50" selected>Easy</option>
+    <option value="12">Easier</option>
+    <option value="3">Come on</option>
+    </optgroup>
+  </select>
+  <select @change="$store.game.setGameMode($event.target.value)" title="Who plays">
+    <option value="P0" selected>You vs AI</option>
+    <option value="P1">AI vs you</option>
+    <option value="Human">No AI</option>
+    <option value="AI">WarGames</option>
+  </select>
+</div>
+
+<div class="wrap">
+
+  <!-- Status, choices and undo -->
+  <div class="prompt" :class="{ over: $store.game.gameEnded }">
+    <div class="row1">
+      <i class="notched circle loading icon" x-show="$store.game.isThinking || $store.game.isLoading"></i>
+      <span x-html="ui_promptHtml()"></span>
+    </div>
+    <div class="small" x-show="ui_subPrompt()" x-text="ui_subPrompt()"></div>
+    <div class="choices">
+      <template x-for="(c, i) in (ui_canAct() ? ($store.game.extra.choices || []) : [])" :key="'c' + i + c.l">
+        <button class="ui compact button" :class="c.c" @click="$store.game.act(c.a, ...c.x)" x-html="ui_fmt(c.l)"></button>
+      </template>
+      <button class="ui compact basic icon button undo" title="Undo" aria-label="Undo" @click="ui_undo()"
+              :class="{ disabled: !$store.game.canUndo || $store.game.isThinking || $store.game.isLoading }">
+        <i class="undo icon"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Factories and centre -->
+  <div class="src" x-show="$store.game.view.players">
+    <div class="list">
+      <template x-for="(f, i) in ($store.game.view.factories || [])" :key="'f' + i">
+        <div class="fac" :class="{ empty: !f.length }">
+          <span class="lab" x-text="i + 1"></span>
+          <template x-for="(c, j) in f" :key="'f' + i + '-' + j">
+            <span :class="ui_srcTileClass(i + 1, c)" :title="TILE_NAMES[c]" @click="ui_pick(i + 1, c)"></span>
+          </template>
+        </div>
+      </template>
+      <div class="ctr">
+        <span class="lab">centre</span>
+        <span class="grp" x-show="$store.game.view.token" title="First-player token"><span class="t tk">1</span></span>
+        <template x-for="g in ui_centre()" :key="'ctr' + g.c">
+          <span class="grp" @click="ui_pick(0, g.c)">
+            <span :class="ui_srcTileClass(0, g.c)" :title="TILE_NAMES[g.c]"></span><span x-text="'×' + g.n"></span>
+          </span>
+        </template>
+      </div>
+    </div>
+    <div class="info" x-text="'Round ' + $store.game.view.round + ' · bag ' + $store.game.view.bag + ' · lid ' + $store.game.view.lid"></div>
+  </div>
+
+  <!-- Boards: the focused seat large, then the others in turn order -->
+  <template x-if="$store.game.view.players">
+    <div>
+      <template x-for="p in [ui_focus()]" :key="'big' + p">
+        <div class="brd big" :style="'border-top-color:' + SEAT_COLORS[p]">
+          <div class="hd">
+            <span class="now" x-show="ui_now(p)">▸</span>
+            <b class="nm" :style="'color:' + SEAT_COLORS[p]" x-text="ui_name(p)"></b>
+            <span class="sub" x-text="ui_headSub(p)"></span>
+            <span class="sc" x-text="ui_player(p).score"></span>
+          </div>
+          <div class="lines">
+            <template x-for="r in [0, 1, 2, 3, 4]" :key="'br' + p + r">
+              <div class="row" :class="ui_rowClass(p, r)" @click="ui_actsOn(p) && ui_place(r)">
+                <span :class="ui_hintClass(p, r)" x-text="ui_hint(p, r)"></span>
+                <template x-for="(v, j) in ui_patCells(p, r)" :key="'bp' + j"><span :class="ui_patClass(v)"></span></template>
+                <span class="sp"></span>
+                <template x-for="c in [0, 1, 2, 3, 4]" :key="'bw' + c"><span :class="ui_wallClass(p, r, c)"></span></template>
+              </div>
+            </template>
+            <div class="row floor" :class="ui_rowClass(p, 5)" @click="ui_actsOn(p) && ui_place(5)">
+              <span :class="ui_hintClass(p, 5)" x-text="ui_hint(p, 5)" style="align-self: center"></span>
+              <template x-for="(v, i) in ui_floorCells(p)" :key="'bf' + i">
+                <span class="cell"><span :class="ui_floorClass(v)" x-text="v === TOKEN ? '1' : ''"></span><span class="pen" x-text="'−' + FLOOR_PEN[i]"></span></span>
+              </template>
+              <span class="more" x-text="ui_floorExtra(p) || 'floor'"></span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <div class="opps" :class="'n' + (numPlayers - 1)">
+        <template x-for="p in ui_others()" :key="'o' + p">
+          <div class="brd" :style="'border-top-color:' + SEAT_COLORS[p]">
+            <div class="hd">
+              <span class="now" x-show="ui_now(p)">▸</span>
+              <b class="nm" :style="'color:' + SEAT_COLORS[p]" x-text="ui_name(p)"></b>
+              <span class="sc" x-text="ui_player(p).score"></span>
+            </div>
+            <div class="lines">
+              <template x-for="r in [0, 1, 2, 3, 4]" :key="'or' + p + r">
+                <div class="row">
+                  <span :class="ui_hintClass(p, r)" x-text="ui_hint(p, r)"></span>
+                  <template x-for="(v, j) in ui_patCells(p, r)" :key="'op' + j"><span :class="ui_patClass(v)"></span></template>
+                  <span class="sp"></span>
+                  <template x-for="c in [0, 1, 2, 3, 4]" :key="'ow' + c"><span :class="ui_wallClass(p, r, c)"></span></template>
+                </div>
+              </template>
+              <div class="row floor">
+                <span :class="ui_hintClass(p, 5)" x-text="ui_hint(p, 5)" style="align-self: center"></span>
+                <template x-for="(v, i) in ui_floorCells(p)" :key="'of' + i">
+                  <span :class="ui_floorClass(v)" x-text="v === TOKEN ? '1' : ''"></span>
+                </template>
+                <span class="more" x-text="ui_floorExtra(p)"></span>
+              </div>
+            </div>
+            <div class="small" style="font-size: 0.7em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis" x-text="ui_headSub(p) || ' '"></div>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+
+  <!-- Journal: what happened since your last move -->
+  <div class="panel" x-data="{ open: true }" x-show="$store.game.view.players">
+    <div class="head" @click="open = !open"><span class="small" x-text="open ? '▾' : '▸'"></span> <b>Journal</b></div>
+    <div x-show="open" style="margin-top: 0.3em">
+      <template x-for="ev in ui_recentEvents().list" :key="'ev' + ev.id">
+        <div class="evt" :class="{ turn: ev.k === 'turn' }" x-html="ui_fmt(ev.t)"></div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Rules reminder -->
+  <div class="panel legend" x-data="{ open: false }">
+    <div class="head" @click="open = !open"><span class="small" x-text="open ? '▾' : '▸'"></span> <b>Rules</b></div>
+    <div x-show="open" style="margin-top: 0.3em">
+      <div><b>Take</b> every tile of one colour from a factory (the rest goes to the centre), or from the centre: the first to take from the centre also gets the <span class="t tk i">1</span> token, which goes to the floor.</div>
+      <div><b>Place</b> them on one pattern row. A row holds a single colour, which must not already be on that row of the wall. Tiles that do not fit go to the floor.</div>
+      <div><b>End of round:</b> each full row moves one tile to the wall: +1 alone, otherwise +1 per tile of the horizontal line and +1 per tile of the vertical line it joins. Floor: −1 −1 −2 −2 −2 −3 −3. The <span class="t tk i">1</span> holder starts the next round.</div>
+      <div><b>End of game:</b> after the round in which a wall row is complete. Bonus +2 per complete row, +7 per complete column, +10 per colour placed 5 times. Tie: most complete rows.</div>
+      <div class="small">Tap a tile, then the row. Left of each row: its fill after the move, and the floor penalty. ● = changed since your last move.</div>
+    </div>
+  </div>
+
+  <!-- State ID: same wire format as pit.py's --state / -s (Arena.playGame) -->
+  <div class="panel" x-data="{ open: false, copied: false }" x-show="$store.game.view.players">
+    <div class="head" @click="open = !open"><span class="small" x-text="open ? '▾' : '▸'"></span> <b>State ID</b></div>
+    <div x-show="open" style="margin-top: 0.3em">
+      <div class="small" style="margin-bottom: 0.3em">For <code>pit.py --state</code> / <code>-s</code>.</div>
+      <textarea readonly rows="3"
+                style="width: 100%; font-family: monospace; font-size: 0.72em; word-break: break-all; resize: none; border: 1px solid #ddd; padding: 0.3em; box-sizing: border-box"
+                x-text="$store.game.view.stateId" @click="$el.select()"></textarea>
+      <button class="ui compact button" style="margin-top: 0.3em"
+              @click="navigator.clipboard.writeText($store.game.view.stateId || '').then(() => { copied = true; setTimeout(() => copied = false, 1200) })"
+              x-text="copied ? 'Copied ✓' : 'Copy'"></button>
+    </div>
+  </div>
+
+</div>
+</div></body>
+</html>

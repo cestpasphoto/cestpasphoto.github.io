@@ -14,6 +14,11 @@ All AI are running on client side, need 10\~20s to load it first time.
 - <https://cestpasphoto.github.io/akropolis.html?players=3>
 - <https://cestpasphoto.github.io/akropolis.html?players=4>
 
+**Azul**
+- <https://cestpasphoto.github.io/azul.html?players=2>
+- <https://cestpasphoto.github.io/azul.html?players=3>
+- <https://cestpasphoto.github.io/azul.html?players=4>
+
 **Botanik**
 - <https://cestpasphoto.github.io/botanik.html>
 
@@ -166,6 +171,20 @@ Two players, rules of [Botanik](https://boardgamegeek.com/boardgame/271529/botan
 An arrival card is played as soon as you tap a highlighted slot. The other decisions are previewed first: tap where the card goes, then *Place*; in a machine, tap the same cell again to turn the card. Undoing the move that emptied the arrival zone also undoes the draw.
 
 No objective tests done.
+
+## Online Azul AI
+
+Using same AI as Santorini, described above. Supporting 2, 3 and 4 players.
+
+### Rules
+
+Official rules, with the coloured wall (side A). The factories of a round are drawn from the bag at the end of the previous round.
+
+### Strength
+
+No objective tests against another Azul AI done yet.
+The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
+
 
 ## Online wordle solver
 
