@@ -14,6 +14,9 @@ All AI are running on client side, need 10\~20s to load it first time.
 - <https://cestpasphoto.github.io/akropolis.html?players=3>
 - <https://cestpasphoto.github.io/akropolis.html?players=4>
 
+**Botanik**
+- <https://cestpasphoto.github.io/botanik.html>
+
 **Catan**
 - <https://cestpasphoto.github.io/catan.html?players=2>
 - <https://cestpasphoto.github.io/catan.html?players=3>
@@ -155,6 +158,14 @@ Official turn structure: the first player of a turn chooses the stack (center, u
 No objective tests done.
 The training has been fully done on CPU, check [my repo](https://github.com/cestpasphoto/alpha-zero-general).
 
+
+## Online Botanik AI
+
+Two players, rules of [Botanik](https://boardgamegeek.com/boardgame/271529/botanik) with one adaptation: a card that would close the last open pipe of a machine cannot be placed (engine filter, not a rule of the game); freed cards with no legal place are thrown away.
+
+An arrival card is played as soon as you tap a highlighted slot. The other decisions are previewed first: tap where the card goes, then *Place*; in a machine, tap the same cell again to turn the card. Undoing the move that emptied the arrival zone also undoes the draw.
+
+No objective tests done.
 
 ## Online wordle solver
 

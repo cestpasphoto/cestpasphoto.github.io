@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Botanik with AI</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.wasm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js"></script>
+
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/fomantic-ui@2.9.3/dist/semantic.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
+  <script src="./botanik/constants.js"></script>
+  <script src="./common/game.js"></script>
+  <script src="./botanik/botanik.js"></script>
+
+  <style>
+    body { background: #fff; }
+    body, .bk * { font-family: Lato, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji"; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 6px 1.5em; }
+    .small { font-size: 0.85em; color: #777; }
+
+    /* top bar: title and settings */
+    .bar { display: flex; align-items: center; gap: 6px; padding: 6px; background: #fff; border-bottom: 1px solid #e3e0d6; }
+    .bar h1 { font-size: 1.1em; margin: 0 auto 0 2px; white-space: nowrap; }
+    .bar h1 .ai { font-weight: normal; color: #999; font-size: 0.8em; }
+    .bar select { font-size: 0.9em; padding: 3px 4px; border: 1px solid #ddd; border-radius: 4px; background: #fff; max-width: 6.8em; }
+    .bar .ui.icon.button { margin: 0; padding: 0.5em 0.6em; }
+
+    /* prompt: status, arrival zone, preview, choices */
+    .prompt { background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; padding: 5px 7px; margin-top: 5px; }
+    .prompt.over { background: #f0faf2; border-color: #a6dbb2; }
+    .prompt .row1 { display: flex; align-items: baseline; gap: 6px; font-size: 1.05em; min-height: 1.5em; line-height: 1.35; }
+    .prompt .arr { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+    .prompt .arr .lab { font-size: 0.8em; color: #777; width: 3.2rem; }
+    .prompt .arr .left { margin-left: auto; font-size: 0.8em; color: #777; white-space: nowrap; }
+    .prompt .sel { margin-top: 5px; font-size: 0.92em; line-height: 1.45; }
+    .choices { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .choices .ui.button { margin: 0; }
+    .choices .undo { margin-left: auto !important; }
+
+    /* cards: colour fill, pipes as bars from the centre, glyph, flowers */
+    .cd { position: relative; box-sizing: border-box; border-radius: 4px; overflow: hidden; flex: none;
+          border: 1px solid rgba(0,0,0,0.15); line-height: 1; user-select: none; }
+    .cd > i { position: absolute; display: block; }
+    .cd > .pN { left: 38%; top: 0; width: 24%; height: 62%; }
+    .cd > .pE { top: 38%; left: 38%; width: 62%; height: 24%; }
+    .cd > .pS { left: 38%; top: 38%; width: 24%; height: 62%; }
+    .cd > .pW { top: 38%; left: 0; width: 62%; height: 24%; }
+    .cd > .gl { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    .cd > .fl { position: absolute; right: 2px; bottom: 1px; font-weight: 900; font-size: 0.4em; }
+    .cd > .tg { position: absolute; left: 2px; top: 1px; font-size: 0.4em; }
+    .cd > .bd { position: absolute; right: 1px; top: 1px; font-size: 11px; font-weight: 900; line-height: 1.2; color: #fff;
+                background: #a3352a; border-radius: 6px; padding: 0 3px; }
+    .cd.r { width: 44px; height: 44px; font-size: 30px; }
+    .cd.h { width: 24px; height: 24px; font-size: 17px; }
+    .cd.m { width: 100%; aspect-ratio: 1; font-size: min(37px, 8.6vw); }
+    .cd.i { display: inline-block; width: 1.3em; height: 1.3em; vertical-align: -0.3em; font-size: 0.75em; border-radius: 2px; margin: 0 1px; }
+    .cd.i > .gl { font-size: 0.9em; }
+    .cd.empty { border: 1px dashed #e6e3da; background: transparent; }
+    .cd.legal { outline: 2px dashed #F2711C; outline-offset: 1px; cursor: pointer; }
+    .cd.empty.legal { outline: none; border: 1.5px dashed #F2711C; background: #fff4ec; }
+    .cd.ok { cursor: pointer; }
+    .cd.sel { box-shadow: 0 0 0 2.5px #21ba45; cursor: pointer; }
+    .cd.ghost { opacity: 0.6; border: 2.5px solid #21ba45; cursor: pointer; }
+    .cd.warn { outline: 2px dashed #a3352a; outline-offset: 1px; }
+    .cd.last { box-shadow: 0 0 0 2.5px #c9a46a; }
+    .cd.dim, .cd.wait { opacity: 0.45; }
+
+    /* register: other seat, middle row, focused seat; freed cards on the right */
+    .reg { background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; margin-top: 6px; padding: 3px 5px; }
+    .reg .line { display: grid; grid-template-columns: 4.4rem repeat(5, minmax(0, 1fr)) 3.3rem; gap: 3px; align-items: center; justify-items: center; padding: 3px 0; border-radius: 4px; }
+    .reg .line.mid { background: #faf8f2; }
+    .reg .line.head { font-size: 0.72em; color: #999; padding: 0; }
+    .reg .lab { justify-self: start; font-size: 0.8em; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+    .reg .freed { display: flex; gap: 2px; align-items: center; justify-content: center; }
+
+    /* machines */
+    .mach { background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; padding: 4px 5px 5px; margin-top: 6px; border-top: 3px solid; }
+    .mach .hd { display: flex; align-items: baseline; gap: 5px; font-size: 0.9em; margin-bottom: 3px; white-space: nowrap; overflow: hidden; }
+    .mach .hd .now { color: #21ba45; width: 0.8em; }
+    .mach .hd .grps { color: #555; font-size: 0.9em; overflow: hidden; text-overflow: ellipsis; }
+    .mach .hd .sc { margin-left: auto; font-weight: 900; font-size: 1.25em; }
+    .mach .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; max-width: 420px; margin: 0 auto; }
+
+    /* folding panels below the fold */
+    .panel { margin-top: 6px; background: #fff; border: 1px solid #e3e0d6; border-radius: 6px; padding: 5px 8px; }
+    .panel .head { cursor: pointer; }
+    .panel .evt { padding: 0.15em 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9em; }
+    .panel .evt.turn { color: #999; }
+    .legend { font-size: 0.85em; color: #555; } .legend div { margin: 0.2em 0; }
+  </style>
+</head>
+<body><div class="bk" x-data x-init="$store.game.start()">
+
+<!-- Title and settings -->
+<div class="bar">
+  <button class="ui basic icon button" title="New game" @click="ui_newGame()"><i class="file outline icon"></i></button>
+  <h1>Botanik <span class="ai">with AI</span></h1>
+  <select x-model.number="$store.game.numMCTSSims" @change="$store.game.changeDifficulty()" title="AI level">
+    <optgroup label="Above optimal">
+    <option value="1600">Boosted</option>
+    </optgroup>
+    <optgroup label="Level used during training">
+    <option value="800">Native</option>
+    </optgroup>
+    <optgroup label="Sub optimal levels">
+    <option value="200">Medium</option>
+    <option value="50" selected>Easy</option>
+    <option value="12">Easier</option>
+    <option value="3">Come on</option>
+    </optgroup>
+  </select>
+  <select @change="$store.game.setGameMode($event.target.value)" title="Who plays">
+    <option value="P0" selected>You vs AI</option>
+    <option value="P1">AI vs you</option>
+    <option value="Human">No AI</option>
+    <option value="AI">WarGames</option>
+  </select>
+</div>
+
+<div class="wrap">
+
+  <!-- Status, arrival zone, preview and choices -->
+  <div class="prompt" :class="{ over: $store.game.gameEnded }">
+    <div class="row1">
+      <i class="notched circle loading icon" x-show="$store.game.isThinking || $store.game.isLoading"></i>
+      <span x-html="ui_promptHtml()"></span>
+    </div>
+    <div class="arr" x-show="$store.game.view.players && !$store.game.gameEnded">
+      <span class="lab">Arrival</span>
+      <template x-for="i in [0, 1, 2]" :key="'arr' + i">
+        <div @click="ui_clickArrival(i)" x-html="ui_arrivalHtml(i)"></div>
+      </template>
+      <span class="left" x-text="'🂠 ' + $store.game.view.deck + ' left · round ' + $store.game.view.round"></span>
+    </div>
+    <div class="sel" x-show="ui_canAct() && $store.game.extra.sel" x-html="ui_selHtml()"></div>
+    <div class="choices">
+      <button class="ui compact green button" x-show="ui_canAct() && $store.game.extra.canPlace" @click="$store.game.act('place')">✓ Place</button>
+      <button class="ui compact basic button" x-show="ui_canAct() && $store.game.extra.canCancel" @click="$store.game.act('cancel')">Cancel</button>
+      <template x-for="(c, i) in (ui_canAct() ? ($store.game.extra.choices || []) : [])" :key="'c' + i + c.l">
+        <button class="ui compact button" :class="c.c" @click="$store.game.act(c.a, ...c.x)" x-html="ui_fmt(c.l)"></button>
+      </template>
+      <button class="ui compact basic icon button undo" title="Undo" aria-label="Undo" @click="ui_undo()"
+              :class="{ disabled: !$store.game.canUndo || $store.game.isThinking || $store.game.isLoading }">
+        <i class="undo icon"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Registers and middle row -->
+  <div class="reg" x-show="$store.game.view.players">
+    <div class="line head"><span></span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>freed</span></div>
+    <template x-for="r in ui_rows()" :key="'row' + r.k + r.p">
+      <div class="line" :class="r.k">
+        <span class="lab" x-html="ui_rowLabel(r)"></span>
+        <template x-for="s in [0, 1, 2, 3, 4]" :key="'s' + r.k + r.p + s">
+          <div @click="ui_clickSlot(r, s)" x-html="ui_slotHtml(r, s)"></div>
+        </template>
+        <div class="freed" @click="ui_clickFreed(r, $event)" x-html="ui_freedHtml(r)"></div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Machines: the focused seat first -->
+  <template x-for="p in ui_cols()" :key="'m' + p">
+    <div class="mach" x-show="$store.game.view.players" :style="'border-top-color:' + SEAT_COLORS[p]">
+      <div class="hd" x-html="ui_headHtml(p)"></div>
+      <div class="grid">
+        <template x-for="k in 49" :key="'c' + p + '-' + k">
+          <div @click="ui_clickCell(p, k - 1)" x-html="ui_cellHtml(p, k - 1)"></div>
+        </template>
+      </div>
+    </div>
+  </template>
+
+  <!-- Journal: what happened since your last decision -->
+  <div class="panel" x-data="{ open: true }" x-show="$store.game.view.players">
+    <div class="head" @click="open = !open"><span class="small" x-text="open ? '▾' : '▸'"></span> <b>Journal</b></div>
+    <div x-show="open" style="margin-top: 0.3em">
+      <template x-for="ev in ui_recent()" :key="'ev' + ev.id">
+        <div class="evt" :class="{ turn: ev.k === 'turn' }" x-html="ui_evHtml(ev)"></div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Rules reminder -->
+  <div class="panel legend" x-data="{ open: false }">
+    <div class="head" @click="open = !open"><span class="small" x-text="open ? '▾' : '▸'"></span> <b>Rules</b></div>
+    <div x-show="open" style="margin-top: 0.3em" x-html="ui_rulesHtml()"></div>
+  </div>
+
+  <!-- State ID: same wire format as pit.py's --state / -s (Arena.playGame) -->
+  <div class="panel" x-data="{ open: false, copied: false }" x-show="$store.game.view.players">
+    <div class="head" @click="open = !open"><span class="small" x-text="open ? '▾' : '▸'"></span> <b>State ID</b></div>
+    <div x-show="open" style="margin-top: 0.3em">
+      <div class="small" style="margin-bottom: 0.3em">For <code>pit.py --state</code> / <code>-s</code>.</div>
+      <textarea readonly rows="3"
+                style="width: 100%; font-family: monospace; font-size: 0.72em; word-break: break-all; resize: none; border: 1px solid #ddd; padding: 0.3em; box-sizing: border-box"
+                x-text="$store.game.view.stateId" @click="$el.select()"></textarea>
+      <button class="ui compact button" style="margin-top: 0.3em"
+              @click="navigator.clipboard.writeText($store.game.view.stateId || '').then(() => { copied = true; setTimeout(() => copied = false, 1200) })"
+              x-text="copied ? 'Copied ✓' : 'Copy'"></button>
+    </div>
+  </div>
+
+</div>
+</div></body>
+</html>
