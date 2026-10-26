@@ -133,20 +133,20 @@ def handle_action(actionName, *args):
         # When in EDIT mode
         if edit_mode != 0:
             if board[r, q, 0] == 1:
-                # Noir -> Blanc
+                # Black -> White
                 board[r, q, 0] = 0
                 board[r, q, 1] = 1
             elif board[r, q, 1] == 1:
-                # Blanc -> Vide
+                # White -> Empty
                 board[r, q, 0] = 0
                 board[r, q, 1] = 0
             else:
-                # Vide -> Noir
+                # Empty -> Black
                 board[r, q, 0] = 1
                 board[r, q, 1] = 0
             return get_render_state()
         
-        is_my_marble = (board[r, q, 0] == 1)
+        is_my_marble = (board[r, q, player] == 1)
         
         if interaction_step == 0:
             if is_my_marble:
@@ -159,15 +159,7 @@ def handle_action(actionName, *args):
             elif is_my_marble:
                 line_info = _get_line_info(selected_anchor[0], selected_anchor[1], r, q)
                 if line_info:
-                    has_moves = False
-                    for a in range(3402):
-                        if valids[a]:
-                            r_a, q_a, s_a, ax_a, _ = logic._decode_action(a)
-                            if (r_a, q_a) == line_info['anchor'] and s_a == line_info['size'] and ax_a == line_info['axis']:
-                                has_moves = True
-                                break
-                    
-                    if has_moves:
+                    if _group_has_moves(line_info) or _extensions(line_info):
                         selected_anchor = line_info['anchor']
                         selected_group_size = line_info['size']
                         selected_group_axis = line_info['axis']
@@ -186,8 +178,16 @@ def handle_action(actionName, *args):
 
         elif interaction_step == 2:
             if is_my_marble:
-                selected_anchor = (r, q)
-                interaction_step = 1
+                extended = _extend_group(r, q)
+                if selected_group_size == 3 and (r, q) in _group_cells(selected_anchor, 3, selected_group_axis):
+                    pass  # Already in the selected group: keep it
+                elif extended:
+                    selected_anchor = extended['anchor']
+                    selected_group_size = extended['size']
+                    selected_group_axis = extended['axis']
+                else:
+                    selected_anchor = (r, q)
+                    interaction_step = 1
             else:
                 for a in range(3402):
                     if valids[a]:
@@ -219,6 +219,45 @@ def _reset_interaction(full_reset=True):
         previous_coords = []
 
 
+def _group_has_moves(line_info):
+    for a in range(3402):
+        if valids[a]:
+            r_a, q_a, s_a, ax_a, _ = logic._decode_action(a)
+            if (r_a, q_a) == line_info['anchor'] and s_a == line_info['size'] and ax_a == line_info['axis']:
+                return True
+    return False
+
+
+def _group_cells(anchor, size, axis):
+    return [(anchor[0] + i * logic.DIRECTIONS[axis][0], anchor[1] + i * logic.DIRECTIONS[axis][1]) for i in range(size)]
+
+
+def _extensions(pair_info):
+    # Groups of 3 that can move, made of a pair + one aligned marble at either end: {added cell: group info}
+    result = {}
+    if pair_info['size'] != 2:
+        return result
+    ends = _group_cells(pair_info['anchor'], 2, pair_info['axis'])
+    for far_end in ends:
+        for sign in (-1, 1):
+            cand = (far_end[0] + sign * 2 * logic.DIRECTIONS[pair_info['axis']][0],
+                    far_end[1] + sign * 2 * logic.DIRECTIONS[pair_info['axis']][1])
+            if cand in ends or cand in result:
+                continue
+            info = _get_line_info(far_end[0], far_end[1], cand[0], cand[1])
+            if info and info['size'] == 3 and info['axis'] == pair_info['axis'] and _group_has_moves(info):
+                result[cand] = info
+    return result
+
+
+def _extend_group(r, q):
+    # Selected group of 2 + a marble aligned with it at either end -> group of 3, if it can move
+    if selected_group_size != 2:
+        return None
+    pair = {'anchor': selected_anchor, 'size': 2, 'axis': selected_group_axis}
+    return _extensions(pair).get((r, q))
+
+
 def _get_direction(r1, q1, r2, q2):
     dr = r2 - r1
     dq = q2 - q1
@@ -240,7 +279,6 @@ def _get_line_info(r1, q1, r2, q2):
         step_r, step_q = 1 if dr > 0 else -1, 0
     elif dr == -dq and dr != 0:
         axis, steps = 2, abs(dr)
-        # CORRECTION ICI: step_q prend correctement le signe inverse
         step_r, step_q = 1 if dr > 0 else -1, 1 if dq > 0 else -1
     else:
         return None
@@ -253,10 +291,10 @@ def _get_line_info(r1, q1, r2, q2):
         curr_r = r1 + i * step_r
         curr_q = q1 + i * step_q
         
-        # CORRECTION ICI: Bounds check avant de lire le board
+        # Bounds check before reading the board
         if not (0 <= curr_r < 9 and 0 <= curr_q < 9):
             return None
-        if board[curr_r, curr_q, 0] != 1:
+        if board[curr_r, curr_q, player] != 1:
             return None
             
         marbles.append((curr_r, curr_q))
@@ -338,6 +376,9 @@ def get_render_state():
                         dest_q = m_q + logic.DIRECTIONS[d_a][1]
                         if 0 <= dest_r < 9 and 0 <= dest_q < 9:
                             selectable_mask[dest_r, dest_q] = True
+        if selected_group_size == 2:
+            for (e_r, e_q) in _extensions({'anchor': selected_anchor, 'size': 2, 'axis': selected_group_axis}):
+                selectable_mask[e_r, e_q] = True
 
     cells = []
     for r in range(9):
